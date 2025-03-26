@@ -24,26 +24,26 @@ public class GameWebSocketHandlerIntegrationTest {
         String url = "ws://localhost:" + port + "/monopoly";
         CompletableFuture<String> future = new CompletableFuture<>();
 
-        // WebSocket-Client erstellen
+
         StandardWebSocketClient client = new StandardWebSocketClient();
 
-        // Verbindungsaufbau
+
         client.doHandshake(new AbstractWebSocketHandler() {
             @Override
             protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-                System.out.println("Nachricht empfangen: " + message.getPayload());
+                System.out.println("message received " + message.getPayload());
                 future.complete(message.getPayload());
             }
 
             @Override
             public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-                System.out.println("Verbindung hergestellt!");
-                future.complete("Verbindung hergestellt!");
+                System.out.println("Connection created!");
+                future.complete("Connection created!");
             }
         }, url).get();
 
-        // Warte auf die Nachricht
+
         String receivedMessage = future.get(5, TimeUnit.SECONDS);
-        assertThat(receivedMessage).isEqualTo("Verbindung hergestellt!");
+        assertThat(receivedMessage).isEqualTo("Connection created!");
     }
 }
