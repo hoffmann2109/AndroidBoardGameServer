@@ -21,6 +21,7 @@ class GameWebSocketHandlerUnitTest {
         gameWebSocketHandler= new GameWebSocketHandler();
         session= mock(WebSocketSession.class);
         when(session.getId()).thenReturn("1");
+        when(session.isOpen()).thenReturn(true);
     }
 
 
@@ -57,7 +58,6 @@ class GameWebSocketHandlerUnitTest {
         when(session2.getId()).thenReturn("2");
 
 
-        when(session.isOpen()).thenReturn(true);
         when(session2.isOpen()).thenReturn(true);
 
 
