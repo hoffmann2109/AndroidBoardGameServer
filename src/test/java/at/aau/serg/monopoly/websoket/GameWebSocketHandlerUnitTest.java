@@ -33,7 +33,12 @@ class GameWebSocketHandlerUnitTest {
     }
 
     @Test
-    void handleTextMessage() {
+    void testHandleTextMessage() throws Exception {
+        TextMessage textMessage = new TextMessage("Test");
+        gameWebSocketHandler.afterConnectionEstablished(session);
+        gameWebSocketHandler.handleTextMessage(session,textMessage);
+        verify(session, times(1)).sendMessage(new TextMessage("Player 1: Test"));
+
     }
 
     @Test
