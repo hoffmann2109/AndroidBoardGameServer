@@ -41,12 +41,17 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     private void broadcastMessage(String message) {
         for (WebSocketSession session : sessions) {
             try {
-                session.sendMessage(new TextMessage(message));
+                if (session.isOpen()) {
+                    session.sendMessage(new TextMessage(message));
+                } else {
+                    sessions.remove(session);  // Inaktive Sitzungen entfernen
+                }
             } catch (Exception e) {
                 System.err.println("Error sending message: " + e.getMessage());
             }
         }
     }
+
 
     private void startGame() {
         broadcastMessage("Game started! All 4 players are connected.");
