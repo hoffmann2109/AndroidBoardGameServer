@@ -33,6 +33,41 @@ class GameWebSocketHandlerUnitTest {
     }
 
     @Test
+    void testGameStartTriggeredOnFourConnections() throws Exception {
+        // Erstelle vier Mock-Sitzungen
+        WebSocketSession session1 = mock(WebSocketSession.class);
+        WebSocketSession session2 = mock(WebSocketSession.class);
+        WebSocketSession session3 = mock(WebSocketSession.class);
+        WebSocketSession session4 = mock(WebSocketSession.class);
+
+        // Setze IDs und isOpen()-Status
+        when(session1.getId()).thenReturn("1");
+        when(session2.getId()).thenReturn("2");
+        when(session3.getId()).thenReturn("3");
+        when(session4.getId()).thenReturn("4");
+
+        when(session1.isOpen()).thenReturn(true);
+        when(session2.isOpen()).thenReturn(true);
+        when(session3.isOpen()).thenReturn(true);
+        when(session4.isOpen()).thenReturn(true);
+
+
+        gameWebSocketHandler.afterConnectionEstablished(session1);
+        gameWebSocketHandler.afterConnectionEstablished(session2);
+        gameWebSocketHandler.afterConnectionEstablished(session3);
+        gameWebSocketHandler.afterConnectionEstablished(session4);
+
+    String expectedPayload = "Game started! All 4 players are connected.";
+
+
+        verify(session1, atLeastOnce()).sendMessage(argThat(msg -> msg.getPayload().equals(expectedPayload)));
+        verify(session2, atLeastOnce()).sendMessage(argThat(msg -> msg.getPayload().equals(expectedPayload)));
+        verify(session3, atLeastOnce()).sendMessage(argThat(msg -> msg.getPayload().equals(expectedPayload)));
+        verify(session4, atLeastOnce()).sendMessage(argThat(msg -> msg.getPayload().equals(expectedPayload)));
+    }
+
+
+    @Test
     void testHandleTextMessage() throws Exception {
         TextMessage textMessage = new TextMessage("Test");
         gameWebSocketHandler.afterConnectionEstablished(session);
