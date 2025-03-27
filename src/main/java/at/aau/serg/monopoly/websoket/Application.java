@@ -1,13 +1,13 @@
-package at.aau.serg.websocketdemoserver;
+package at.aau.serg.monopoly.websoket;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class WebSocketDemoServerApplication {
+public class Application {
 
     public static void main(String[] args) {
-        SpringApplication.run(WebSocketDemoServerApplication.class, args);
+        SpringApplication.run(Application.class, args);
+        System.out.println("Monopoly WebSocket Server gestartet...");
     }
-
 }
