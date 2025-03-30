@@ -57,7 +57,7 @@ class GameWebSocketHandlerUnitTest {
         gameWebSocketHandler.afterConnectionEstablished(session3);
         gameWebSocketHandler.afterConnectionEstablished(session4);
 
-    String expectedPayload = "Game started! All 4 players are connected.";
+        String expectedPayload = "Game started! 4 players are connected.";
 
 
         verify(session1, atLeastOnce()).sendMessage(argThat(msg -> msg.getPayload().equals(expectedPayload)));
