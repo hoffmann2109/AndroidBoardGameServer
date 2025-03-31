@@ -12,9 +12,10 @@ public class DiceManager implements DiceManagerInterface {
         rollHistory = new ArrayList<>();
     }
 
-    public void addDiceToGame(Dice firstDice, Dice secondDice){
-        dices.add(firstDice);
-        dices.add(secondDice);
+    public void addDicesToGame(List<Dice> diceList){
+        for (Dice dice : diceList) {
+            dices.add(dice);
+        }
     }
 
     @Override
