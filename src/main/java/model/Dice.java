@@ -1,5 +1,7 @@
 package model;
 
+import java.security.SecureRandom;
+
 public record Dice(int sides) {
     public Dice {
         if (sides < 1){
@@ -7,6 +9,7 @@ public record Dice(int sides) {
         }
     }
     public int roll(){
-        return (int) (Math.random() * sides) + 1;
+        SecureRandom random = new SecureRandom();
+        return random.nextInt(sides) + 1;
     }
 }
