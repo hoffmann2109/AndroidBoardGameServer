@@ -40,8 +40,9 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     protected void handleTextMessage(WebSocketSession session, TextMessage message) {
         String payload = message.getPayload();
         if (payload.trim().equalsIgnoreCase("Roll")){
-            System.out.println("Player " + session.getId() + ": rolled " + diceManager.rollDices());
-            broadcastMessage("Player " + session.getId() + ": rolled " + diceManager.rollDices());
+            int rollResult = diceManager.rollDices();
+            System.out.println("Player " + session.getId() + ": rolled " + rollResult);
+            broadcastMessage("Player " + session.getId() + ": rolled " + rollResult);
         } else {
             System.out.println("Received: " + payload);
             broadcastMessage("Player " + session.getId() + ": " + payload);
