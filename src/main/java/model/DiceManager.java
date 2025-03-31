@@ -12,6 +12,13 @@ public class DiceManager implements DiceManagerInterface {
         rollHistory = new ArrayList<>();
     }
 
+    public void initializeStandardDices() {
+        Dice firstDice = new Dice(6);
+        Dice secondDice = new Dice(6);
+        dices.add(firstDice);
+        dices.add(secondDice);
+    }
+
     public void addDicesToGame(List<Dice> diceList){
         for (Dice dice : diceList) {
             dices.add(dice);
