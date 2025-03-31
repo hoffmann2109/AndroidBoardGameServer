@@ -1,4 +1,7 @@
 package at.aau.serg.monopoly.websoket;
+import model.Dice;
+import model.DiceManager;
+import model.DiceManagerInterface;
 import model.Game;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.NonNull;
@@ -14,6 +17,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     private final CopyOnWriteArrayList<WebSocketSession> sessions = new CopyOnWriteArrayList<>();
     private final Game game = new Game();
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private DiceManagerInterface diceManager;
 
     @Override
     public void afterConnectionEstablished(@NonNull WebSocketSession session) {
@@ -22,6 +26,8 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         game.addPlayer(session.getId(), "Player " + sessions.size());
         broadcastMessage("Player joined: " + session.getId() + " (Total: " + sessions.size() + ")");
 
+        diceManager = new DiceManager();
+        diceManager.initializeStandardDices();
         // Check if 2-4 players are connected
         if (sessions.size() >= 2 && sessions.size() <= 4) {
             startGame();
@@ -33,8 +39,13 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) {
         String payload = message.getPayload();
-        System.out.println("Received: " + payload);
-        broadcastMessage("Player " + session.getId() + ": " + payload);
+        if (payload.trim().equalsIgnoreCase("Roll")){
+            System.out.println("Player " + session.getId() + ": rolled " + diceManager.rollDices());
+            broadcastMessage("Player " + session.getId() + ": rolled " + diceManager.rollDices());
+        } else {
+            System.out.println("Received: " + payload);
+            broadcastMessage("Player " + session.getId() + ": " + payload);
+        }
     }
 
     @Override
