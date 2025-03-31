@@ -4,23 +4,27 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class DiceManager implements DiceManagerInterface {
-    private Dice firstDice;
-    private Dice secondDice;
+    private static List<Dice> dices;
     private static List<Integer> rollHistory;
 
     public DiceManager() {
-        this.firstDice = new Dice(6);
-        this.secondDice = new Dice(6);
+        dices = new ArrayList<>();
         rollHistory = new ArrayList<>();
+    }
+
+    public void addDiceToGame(Dice firstDice, Dice secondDice){
+        dices.add(firstDice);
+        dices.add(secondDice);
     }
 
     @Override
     public int rollDices() {
-        int firstDiceRoll = firstDice.roll();
-        int secondDiceRoll = secondDice.roll();
-        rollHistory.add(firstDiceRoll);
-        rollHistory.add(secondDiceRoll);
-        return firstDiceRoll + secondDiceRoll;
+        int rollResult = 0;
+        for (Dice dice : dices) {
+            rollResult += dice.roll();
+        }
+        rollHistory.add(rollResult);
+        return rollResult;
     }
 
     @Override
