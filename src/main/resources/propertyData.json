@@ -14,7 +14,7 @@
       "housePrice": 50,
       "hotelPrice": 50,
       "mortgageValue": 30,
-      "isMortgaged": false,
+      "isMortgaged": false
     },
     {
       "id": 2,
@@ -351,7 +351,7 @@
       "hotelPrice": 200,
       "mortgageValue": 200,
       "isMortgaged": false
-    },
+    }
   ],
   "trainStations": [
     {
@@ -399,7 +399,7 @@
       "rent4Stations": 200,
       "mortgageValue": 100,
       "isMortgaged": false
-    },
+    }
   ],
    "utilities": [
     {
