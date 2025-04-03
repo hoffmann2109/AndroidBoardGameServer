@@ -1,24 +1,15 @@
 package model.properties;
-import lombok.Getter;
-import lombok.Setter;
 
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
 public class TrainStation extends BaseProperty {
-    @Getter
-    @Setter
     private int baseRent;
-    @Getter
-    @Setter
     private int rent2Stations;
-    @Getter
-    @Setter
     private int rent3Stations;
-    @Getter
-    @Setter
     private int rent4Stations;
-
-    public TrainStation() {
-        super();
-    }
 
     public TrainStation(int id, Integer ownerId, String name, int purchasePrice,
                         int baseRent, int rent2Stations, int rent3Stations, int rent4Stations,

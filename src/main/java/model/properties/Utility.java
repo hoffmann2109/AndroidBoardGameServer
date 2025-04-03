@@ -1,18 +1,13 @@
 package model.properties;
-import lombok.Getter;
-import lombok.Setter;
 
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
 public class Utility extends BaseProperty {
-    @Getter
-    @Setter
     private int rentOneUtilityMultiplier;
-    @Getter
-    @Setter
     private int rentTwoUtilitiesMultiplier;
-
-    public Utility() {
-        super();
-    }
 
     public Utility(int id, Integer ownerId, String name, int purchasePrice,
                    int rentOneUtilityMultiplier, int rentTwoUtilitiesMultiplier,

@@ -1,38 +1,21 @@
 package model.properties;
 
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public abstract class BaseProperty {
-    @Setter
-    @Getter
     protected int id;
-        @Setter
-        @Getter
-        protected Integer ownerId; // kann null sein
-        @Setter
-        @Getter
-        protected String name;
-        @Setter
-        @Getter
-        protected int purchasePrice;
-        @Setter
-        @Getter
-        protected int mortgageValue;
-        protected boolean isMortgaged;
+    protected Integer ownerId; // kann null sein
+    protected String name;
+    protected int purchasePrice;
+    protected int mortgageValue;
 
-        public BaseProperty() {
-        }
+    @JsonProperty("isMortgaged")
+    protected boolean isMortgaged;
+}
 
-        public BaseProperty(int id, Integer ownerId, String name, int purchasePrice, int mortgageValue, boolean isMortgaged) {
-            this.id = id;
-            this.ownerId = ownerId;
-            this.name = name;
-            this.purchasePrice = purchasePrice;
-            this.mortgageValue = mortgageValue;
-            this.isMortgaged = isMortgaged;
-        }
-
-    public boolean isMortgaged() { return isMortgaged; }
-        public void setMortgaged(boolean mortgaged) { isMortgaged = mortgaged; }
-    }
