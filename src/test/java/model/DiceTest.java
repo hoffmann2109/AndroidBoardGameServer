@@ -37,14 +37,13 @@ class DiceTest {
     @ParameterizedTest
     @ValueSource(ints = {0, -10, -100})
     void testDiceWithInvalidSidesReturnsException(int invalidSides){
-        assertThrows(IllegalArgumentException.class, () -> {
-            Dice zeroSidedDice = new Dice(invalidSides);
-        });
+        assertThrows(IllegalArgumentException.class, () -> new Dice(invalidSides));
     }
 
     @RepeatedTest(100)
     void testRollingReturnsMoreThanTwo(){
-        assert(diceManager.rollDices() > 1 && diceManager.rollDices() <= 2 * SIDES);
+        int roll = diceManager.rollDices();
+        assertTrue(roll > 1 && roll <= 2 * SIDES);
     }
 
     @Test
@@ -54,7 +53,8 @@ class DiceTest {
         DiceManager onesidedDiceManager = new DiceManager();
         onesidedDiceManager.addDicesToGame(onSidedDiceList);
         for (int i = 0; i < 100; i++){
-            assert(onesidedDiceManager.rollDices() == 1);
+            int rollResult = onesidedDiceManager.rollDices();
+            assertEquals(1, rollResult);
         }
     }
 
