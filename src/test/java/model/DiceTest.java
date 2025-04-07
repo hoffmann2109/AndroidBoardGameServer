@@ -8,10 +8,9 @@ import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import java.util.ArrayList;
 import java.util.List;
 
-public class DiceTest {
+class DiceTest {
     private Dice firstDice;
     private Dice secondDice;
     private DiceManagerInterface diceManager;
@@ -19,7 +18,7 @@ public class DiceTest {
     private final int SIDES = 6;
 
     @BeforeEach
-    public void setUp() {
+    void setUp() {
         this.firstDice = new Dice(SIDES);
         this.secondDice = new Dice(SIDES);
         this.diceList = List.of(firstDice, secondDice);
@@ -28,7 +27,7 @@ public class DiceTest {
     }
 
     @Test
-    public void testConstructorWithCorrectParameterWorks() {
+    void testConstructorWithCorrectParameterWorks() {
         Dice testDice = new Dice(SIDES);
         Dice testSecondDice = new Dice(50);
         assertEquals(SIDES, testDice.sides());
@@ -37,30 +36,30 @@ public class DiceTest {
 
     @ParameterizedTest
     @ValueSource(ints = {0, -10, -100})
-    public void testDiceWithInvalidSidesReturnsException(int invalidSides){
-        assertThrows(IllegalArgumentException.class, () -> {
-            Dice zeroSidedDice = new Dice(invalidSides);
-        });
+    void testDiceWithInvalidSidesReturnsException(int invalidSides){
+        assertThrows(IllegalArgumentException.class, () -> new Dice(invalidSides));
     }
 
     @RepeatedTest(100)
-    public void testRollingReturnsMoreThanTwo(){
-        assert(diceManager.rollDices() > 1 && diceManager.rollDices() <= 2 * SIDES);
+    void testRollingReturnsMoreThanTwo(){
+        int roll = diceManager.rollDices();
+        assertTrue(roll > 1 && roll <= 2 * SIDES);
     }
 
     @Test
-    public void testOneSidedDiceCanOnlyReturnOne(){
+    void testOneSidedDiceCanOnlyReturnOne(){
         Dice oneSidedDice = new Dice(1);
         List<Dice> onSidedDiceList = List.of(oneSidedDice);
         DiceManager onesidedDiceManager = new DiceManager();
         onesidedDiceManager.addDicesToGame(onSidedDiceList);
         for (int i = 0; i < 100; i++){
-            assert(onesidedDiceManager.rollDices() == 1);
+            int rollResult = onesidedDiceManager.rollDices();
+            assertEquals(1, rollResult);
         }
     }
 
     @Test
-    public void testGetHistoryReturnsCorrectHistory(){
+    void testGetHistoryReturnsCorrectHistory(){
         int firstResult = diceManager.rollDices();
         int secondResult = diceManager.rollDices();
         assertEquals(firstResult, diceManager.getRollHistory().get(0));
@@ -68,7 +67,7 @@ public class DiceTest {
     }
 
     @AfterEach
-    public void tearDown() {
+    void tearDown() {
         firstDice = null;
         secondDice = null;
         diceManager = null;

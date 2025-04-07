@@ -5,10 +5,10 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 import java.util.List;
 
-public class SoundControllerTest {
+class SoundControllerTest {
 
     @Test
-    public void testGetAvailableSounds() {
+    void testGetAvailableSounds() {
         SoundController controller = new SoundController();
 
         List<String> sounds = controller.getAvailableSounds();
@@ -22,7 +22,7 @@ public class SoundControllerTest {
     }
 
     @Test
-    public void testSetUserSound() {
+    void testSetUserSound() {
         SoundController controller = new SoundController();
 
         String result = controller.setUserSound("Chime");
@@ -31,7 +31,7 @@ public class SoundControllerTest {
     }
 
     @Test
-    public void testSetUserSoundInvalid() {
+    void testSetUserSoundInvalid() {
         SoundController controller = new SoundController();
 
         String result = controller.setUserSound("NonExistingSound");
