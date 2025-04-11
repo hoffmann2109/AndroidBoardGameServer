@@ -42,6 +42,14 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             int rollResult = diceManager.rollDices();
             System.out.println("Player " + session.getId() + ": rolled " + rollResult);
             broadcastMessage("Player " + session.getId() + ": rolled " + rollResult);
+        } else if (payload.startsWith("UPDATE_MONEY:")) {
+            try {
+                int amount = Integer.parseInt(payload.substring("UPDATE_MONEY:".length()));
+                game.updatePlayerMoney(session.getId(), amount);
+                broadcastGameState();
+            } catch (NumberFormatException e) {
+                System.err.println("Invalid money update format: " + payload);
+            }
         } else {
             System.out.println("Received: " + payload);
             broadcastMessage("Player " + session.getId() + ": " + payload);
@@ -66,6 +74,15 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             } catch (Exception e) {
                 System.err.println("Error sending message: " + e.getMessage());
             }
+        }
+    }
+
+    private void broadcastGameState() {
+        try {
+            String gameState = objectMapper.writeValueAsString(game.getPlayerInfo());
+            broadcastMessage("GAME_STATE:" + gameState);
+        } catch (Exception e) {
+            System.err.println("Error broadcasting game state: " + e.getMessage());
         }
     }
 

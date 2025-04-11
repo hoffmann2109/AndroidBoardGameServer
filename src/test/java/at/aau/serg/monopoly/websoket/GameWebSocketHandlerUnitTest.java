@@ -109,9 +109,150 @@ class GameWebSocketHandlerUnitTest {
         verify(session2, times(1)).sendMessage(new TextMessage("Player left: 1 (Total: 1)"));
     }
 
+    @Test
+    void testHandleUpdateMoneyMessage() throws Exception {
+        // Setup
+        gameWebSocketHandler.afterConnectionEstablished(session);
+        
+        // Test successful money update
+        TextMessage validMoneyMessage = new TextMessage("UPDATE_MONEY:500");
+        gameWebSocketHandler.handleTextMessage(session, validMoneyMessage);
+        
+        // Verify that the game state was broadcast
+        verify(session, atLeastOnce()).sendMessage(argThat(msg -> 
+            ((TextMessage)msg).getPayload().startsWith("GAME_STATE:")));
+    }
 
+    @Test
+    void testHandleInvalidUpdateMoneyMessage() throws Exception {
+        // Setup
+        gameWebSocketHandler.afterConnectionEstablished(session);
+        
+        // Test invalid money format
+        TextMessage invalidMoneyMessage = new TextMessage("UPDATE_MONEY:notanumber");
+        gameWebSocketHandler.handleTextMessage(session, invalidMoneyMessage);
+        
+        // Verify that no game state was broadcast for invalid format
+        verify(session, never()).sendMessage(argThat(msg -> 
+            ((TextMessage)msg).getPayload().startsWith("GAME_STATE:")));
+    }
 
+    @Test
+    void testHandleUpdateMoneyMessageWithNegativeAmount() throws Exception {
+        // Setup
+        gameWebSocketHandler.afterConnectionEstablished(session);
+        
+        // Test negative money update
+        TextMessage negativeMoneyMessage = new TextMessage("UPDATE_MONEY:-300");
+        gameWebSocketHandler.handleTextMessage(session, negativeMoneyMessage);
+        
+        // Verify that the game state was broadcast
+        verify(session, atLeastOnce()).sendMessage(argThat(msg -> 
+            ((TextMessage)msg).getPayload().startsWith("GAME_STATE:")));
+    }
 
+    @Test
+    void testHandleUpdateMoneyMessageWithZeroAmount() throws Exception {
+        // Setup
+        gameWebSocketHandler.afterConnectionEstablished(session);
+        
+        // Test zero money update
+        TextMessage zeroMoneyMessage = new TextMessage("UPDATE_MONEY:0");
+        gameWebSocketHandler.handleTextMessage(session, zeroMoneyMessage);
+        
+        // Verify that the game state was broadcast
+        verify(session, atLeastOnce()).sendMessage(argThat(msg -> 
+            ((TextMessage)msg).getPayload().startsWith("GAME_STATE:")));
+    }
+
+    @Test
+    void testGameStateBroadcastOnPlayerJoin() throws Exception {
+        // Setup first player
+        gameWebSocketHandler.afterConnectionEstablished(session);
+        
+        // Verify initial join message
+        verify(session, times(1)).sendMessage(new TextMessage("Player joined: 1 (Total: 1)"));
+        
+        // Setup second player
+        WebSocketSession session2 = mock(WebSocketSession.class);
+        when(session2.getId()).thenReturn("2");
+        when(session2.isOpen()).thenReturn(true);
+        gameWebSocketHandler.afterConnectionEstablished(session2);
+        
+        // Verify messages for both players
+        verify(session, times(1)).sendMessage(new TextMessage("Player joined: 2 (Total: 2)"));
+        verify(session2, times(1)).sendMessage(new TextMessage("Player joined: 2 (Total: 2)"));
+        
+        // Verify game state broadcasts
+        verify(session, atLeastOnce()).sendMessage(argThat(msg -> {
+            String payload = ((TextMessage)msg).getPayload();
+            return payload.startsWith("GAME_STATE:") && 
+                   payload.contains("\"id\":\"1\"") && 
+                   payload.contains("\"id\":\"2\"");
+        }));
+        
+        verify(session2, atLeastOnce()).sendMessage(argThat(msg -> {
+            String payload = ((TextMessage)msg).getPayload();
+            return payload.startsWith("GAME_STATE:") && 
+                   payload.contains("\"id\":\"1\"") && 
+                   payload.contains("\"id\":\"2\"");
+        }));
+    }
+
+    @Test
+    void testGameStateBroadcastOnMoneyUpdate() throws Exception {
+        // Setup two players
+        gameWebSocketHandler.afterConnectionEstablished(session);
+        WebSocketSession session2 = mock(WebSocketSession.class);
+        when(session2.getId()).thenReturn("2");
+        when(session2.isOpen()).thenReturn(true);
+        gameWebSocketHandler.afterConnectionEstablished(session2);
+        
+        // Update money for first player
+        TextMessage moneyMessage = new TextMessage("UPDATE_MONEY:500");
+        gameWebSocketHandler.handleTextMessage(session, moneyMessage);
+        
+        // Verify game state broadcast to both players
+        verify(session, atLeastOnce()).sendMessage(argThat(msg -> 
+            ((TextMessage)msg).getPayload().startsWith("GAME_STATE:")));
+        verify(session2, atLeastOnce()).sendMessage(argThat(msg -> 
+            ((TextMessage)msg).getPayload().startsWith("GAME_STATE:")));
+    }
+
+    @Test
+    void testGameStateBroadcastOnGameStart() throws Exception {
+        // Setup four players to trigger game start
+        WebSocketSession session1 = mock(WebSocketSession.class);
+        WebSocketSession session2 = mock(WebSocketSession.class);
+        WebSocketSession session3 = mock(WebSocketSession.class);
+        WebSocketSession session4 = mock(WebSocketSession.class);
+        
+        when(session1.getId()).thenReturn("1");
+        when(session2.getId()).thenReturn("2");
+        when(session3.getId()).thenReturn("3");
+        when(session4.getId()).thenReturn("4");
+        
+        when(session1.isOpen()).thenReturn(true);
+        when(session2.isOpen()).thenReturn(true);
+        when(session3.isOpen()).thenReturn(true);
+        when(session4.isOpen()).thenReturn(true);
+        
+        // Connect all players
+        gameWebSocketHandler.afterConnectionEstablished(session1);
+        gameWebSocketHandler.afterConnectionEstablished(session2);
+        gameWebSocketHandler.afterConnectionEstablished(session3);
+        gameWebSocketHandler.afterConnectionEstablished(session4);
+        
+        // Verify game state broadcast to all players
+        verify(session1, atLeastOnce()).sendMessage(argThat(msg -> 
+            ((TextMessage)msg).getPayload().startsWith("GAME_STATE:")));
+        verify(session2, atLeastOnce()).sendMessage(argThat(msg -> 
+            ((TextMessage)msg).getPayload().startsWith("GAME_STATE:")));
+        verify(session3, atLeastOnce()).sendMessage(argThat(msg -> 
+            ((TextMessage)msg).getPayload().startsWith("GAME_STATE:")));
+        verify(session4, atLeastOnce()).sendMessage(argThat(msg -> 
+            ((TextMessage)msg).getPayload().startsWith("GAME_STATE:")));
+    }
 
     @AfterEach
     void tearDown() {
