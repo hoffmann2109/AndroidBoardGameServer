@@ -69,6 +69,15 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
+    private void broadcastGameState() {
+        try {
+            String gameState = objectMapper.writeValueAsString(game.getPlayerInfo());
+            broadcastMessage("GAME_STATE:" + gameState);
+        } catch (Exception e) {
+            System.err.println("Error broadcasting game state: " + e.getMessage());
+        }
+    }
+
     private void startGame() {
         try {
             // Send initial game state to all players
