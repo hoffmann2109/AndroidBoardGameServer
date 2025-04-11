@@ -19,6 +19,19 @@ public class Game {
         players.add(new Player(id, name));
     }
 
+    public void updatePlayerMoney(String playerId, int amount) {
+        for (Player player : players) {
+            if (player.getId().equals(playerId)) {
+                if (amount > 0) {
+                    player.addMoney(amount);
+                } else {
+                    player.subtractMoney(Math.abs(amount));
+                }
+                break;
+            }
+        }
+    }
+
     public Player getCurrentPlayer() {
         return players.get(currentPlayerIndex);
     }
