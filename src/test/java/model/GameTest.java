@@ -67,4 +67,26 @@ class GameTest {
         assertThat(playerInfo.get(0).getMoney()).isEqualTo(1500);
         assertThat(playerInfo.get(1).getMoney()).isEqualTo(1500);
     }
+
+    @Test
+    void testUpdatePlayerMoney() {
+        game.addPlayer("1", "Player 1");
+        game.addPlayer("2", "Player 2");
+
+        // Test adding money
+        game.updatePlayerMoney("1", 500);
+        assertThat(game.getPlayers().get(0).getMoney()).isEqualTo(2000); // 1500 + 500
+
+        // Test subtracting money
+        game.updatePlayerMoney("1", -300);
+        assertThat(game.getPlayers().get(0).getMoney()).isEqualTo(1700); // 2000 - 300
+
+        // Test zero amount (should not change money)
+        game.updatePlayerMoney("1", 0);
+        assertThat(game.getPlayers().get(0).getMoney()).isEqualTo(1700);
+
+        // Test non-existent player ID (should not throw exception)
+        game.updatePlayerMoney("999", 100);
+        assertThat(game.getPlayers()).hasSize(2); // Should still have 2 players
+    }
 }
