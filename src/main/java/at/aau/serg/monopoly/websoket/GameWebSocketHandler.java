@@ -42,6 +42,14 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             int rollResult = diceManager.rollDices();
             System.out.println("Player " + session.getId() + ": rolled " + rollResult);
             broadcastMessage("Player " + session.getId() + ": rolled " + rollResult);
+        } else if (payload.startsWith("UPDATE_MONEY:")) {
+            try {
+                int amount = Integer.parseInt(payload.substring("UPDATE_MONEY:".length()));
+                game.updatePlayerMoney(session.getId(), amount);
+                broadcastGameState();
+            } catch (NumberFormatException e) {
+                System.err.println("Invalid money update format: " + payload);
+            }
         } else {
             System.out.println("Received: " + payload);
             broadcastMessage("Player " + session.getId() + ": " + payload);
