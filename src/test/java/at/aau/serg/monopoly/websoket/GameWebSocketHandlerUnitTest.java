@@ -109,9 +109,61 @@ class GameWebSocketHandlerUnitTest {
         verify(session2, times(1)).sendMessage(new TextMessage("Player left: 1 (Total: 1)"));
     }
 
+    @Test
+    void testHandleUpdateMoneyMessage() throws Exception {
+        // Setup
+        gameWebSocketHandler.afterConnectionEstablished(session);
+        
+        // Test successful money update
+        TextMessage validMoneyMessage = new TextMessage("UPDATE_MONEY:500");
+        gameWebSocketHandler.handleTextMessage(session, validMoneyMessage);
+        
+        // Verify that the game state was broadcast
+        verify(session, atLeastOnce()).sendMessage(argThat(msg -> 
+            ((TextMessage)msg).getPayload().startsWith("GAME_STATE:")));
+    }
 
+    @Test
+    void testHandleInvalidUpdateMoneyMessage() throws Exception {
+        // Setup
+        gameWebSocketHandler.afterConnectionEstablished(session);
+        
+        // Test invalid money format
+        TextMessage invalidMoneyMessage = new TextMessage("UPDATE_MONEY:notanumber");
+        gameWebSocketHandler.handleTextMessage(session, invalidMoneyMessage);
+        
+        // Verify that no game state was broadcast for invalid format
+        verify(session, never()).sendMessage(argThat(msg -> 
+            ((TextMessage)msg).getPayload().startsWith("GAME_STATE:")));
+    }
 
+    @Test
+    void testHandleUpdateMoneyMessageWithNegativeAmount() throws Exception {
+        // Setup
+        gameWebSocketHandler.afterConnectionEstablished(session);
+        
+        // Test negative money update
+        TextMessage negativeMoneyMessage = new TextMessage("UPDATE_MONEY:-300");
+        gameWebSocketHandler.handleTextMessage(session, negativeMoneyMessage);
+        
+        // Verify that the game state was broadcast
+        verify(session, atLeastOnce()).sendMessage(argThat(msg -> 
+            ((TextMessage)msg).getPayload().startsWith("GAME_STATE:")));
+    }
 
+    @Test
+    void testHandleUpdateMoneyMessageWithZeroAmount() throws Exception {
+        // Setup
+        gameWebSocketHandler.afterConnectionEstablished(session);
+        
+        // Test zero money update
+        TextMessage zeroMoneyMessage = new TextMessage("UPDATE_MONEY:0");
+        gameWebSocketHandler.handleTextMessage(session, zeroMoneyMessage);
+        
+        // Verify that the game state was broadcast
+        verify(session, atLeastOnce()).sendMessage(argThat(msg -> 
+            ((TextMessage)msg).getPayload().startsWith("GAME_STATE:")));
+    }
 
     @AfterEach
     void tearDown() {
