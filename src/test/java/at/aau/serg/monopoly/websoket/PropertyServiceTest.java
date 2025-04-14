@@ -61,7 +61,6 @@ public class PropertyServiceTest {
                 try {
                     throw new IOException("Simulated IO Exception");
                 } catch (IOException e) {
-                    e.printStackTrace();
                     throw new RuntimeException("Failed to initialize property data", e);
                 }
             }
