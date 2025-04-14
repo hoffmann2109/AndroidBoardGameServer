@@ -29,7 +29,6 @@ public class PropertyService {
             this.trainStations = wrapper.getTrainStations();
             this.utilities = wrapper.getUtilities();
         } catch (IOException e) {
-            e.printStackTrace();
             throw new RuntimeException("Failed to initialize property data", e);
         }
     }
