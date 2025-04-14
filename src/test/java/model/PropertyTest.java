@@ -31,7 +31,8 @@ class PropertyTest {
                 50,               // housePrice
                 50,               // hotelPrice
                 30,               // mortgageValue
-                false             // isMortgaged
+                false,            // isMortgaged
+                "Badstrasse_Bild"
         );
 
         trainStation = new TrainStation(
@@ -44,7 +45,8 @@ class PropertyTest {
                 150,              // rent3Stations
                 200,              // rent4Stations
                 100,              // mortgageValue
-                false             // isMortgaged
+                false,             // isMortgaged
+                "Südbahnhof_Bild"
         );
 
         utility = new Utility(
@@ -55,7 +57,8 @@ class PropertyTest {
                 4,                // rentOneUtilityMultiplier
                 10,               // rentTwoUtilitiesMultiplier
                 75,               // mortgageValue
-                false             // isMortgaged
+                false,             // isMortgaged
+                "Elektrizität_Bild"
         );
     }
 

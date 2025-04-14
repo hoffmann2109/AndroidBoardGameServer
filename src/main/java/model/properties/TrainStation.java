@@ -13,8 +13,8 @@ public class TrainStation extends BaseProperty {
 
     public TrainStation(int id, Integer ownerId, String name, int purchasePrice,
                         int baseRent, int rent2Stations, int rent3Stations, int rent4Stations,
-                        int mortgageValue, boolean isMortgaged) {
-        super(id, ownerId, name, purchasePrice, mortgageValue, isMortgaged);
+                        int mortgageValue, boolean isMortgaged, String image) {
+        super(id, ownerId, name, purchasePrice, mortgageValue, image, isMortgaged);
         this.baseRent = baseRent;
         this.rent2Stations = rent2Stations;
         this.rent3Stations = rent3Stations;

@@ -20,8 +20,10 @@ public class PropertyService {
     @PostConstruct
     public void init() throws RuntimeException {
         ObjectMapper mapper = new ObjectMapper();
-        try (InputStream is = getClass().getResourceAsStream("/propertyData.json")) {
-            //JSON-Struktur in ein Wrapper-Objekt, das alle Listen enthält.
+        try (InputStream is = getClass().getClassLoader().getResourceAsStream("propertyData.json")) {
+            if (is == null) {
+                throw new RuntimeException("propertyData.json not found in resources folder");
+            }
             PropertyDataWrapper wrapper = mapper.readValue(is, PropertyDataWrapper.class);
             this.houseableProperties = wrapper.getProperties();
             this.trainStations = wrapper.getTrainStations();

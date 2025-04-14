@@ -18,8 +18,8 @@ public class HouseableProperty extends BaseProperty {
     public HouseableProperty(int id, Integer ownerId, String name, int purchasePrice,
                              int baseRent, int rent1House, int rent2Houses, int rent3Houses,
                              int rent4Houses, int rentHotel, int housePrice, int hotelPrice,
-                             int mortgageValue, boolean isMortgaged) {
-        super(id, ownerId, name, purchasePrice, mortgageValue, isMortgaged);
+                             int mortgageValue, boolean isMortgaged, String image) {
+        super(id, ownerId, name, purchasePrice, mortgageValue, image, isMortgaged);
         this.baseRent = baseRent;
         this.rent1House = rent1House;
         this.rent2Houses = rent2Houses;
