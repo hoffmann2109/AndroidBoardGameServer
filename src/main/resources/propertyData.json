@@ -14,7 +14,8 @@
       "housePrice": 50,
       "hotelPrice": 50,
       "mortgageValue": 30,
-      "isMortgaged": false
+      "isMortgaged": false,
+      "image": "Badstrasse_Bild"
     },
     {
       "id": 2,
@@ -30,7 +31,8 @@
       "housePrice": 50,
       "hotelPrice": 50,
       "mortgageValue": 30,
-      "isMortgaged": false
+      "isMortgaged": false,
+      "image": "Turmstrasse_Bild"
     },
     {
       "id": 3,
@@ -46,7 +48,8 @@
       "housePrice": 50,
       "hotelPrice": 50,
       "mortgageValue": 50,
-      "isMortgaged": false
+      "isMortgaged": false,
+      "image": "Chausseestrasse_Bild"
     },
     {
       "id": 4,
@@ -62,7 +65,8 @@
       "housePrice": 50,
       "hotelPrice": 50,
       "mortgageValue": 50,
-      "isMortgaged": false
+      "isMortgaged": false,
+      "image": "Elisenstrasse_Bild"
     },
     {
       "id": 5,
@@ -78,7 +82,8 @@
       "housePrice": 50,
       "hotelPrice": 50,
       "mortgageValue": 60,
-      "isMortgaged": false
+      "isMortgaged": false,
+      "image": "Poststrasse_Bild"
     },
     {
       "id": 6,
@@ -94,7 +99,8 @@
       "housePrice": 100,
       "hotelPrice": 100,
       "mortgageValue": 70,
-      "isMortgaged": false
+      "isMortgaged": false,
+      "image": "Seestrasse_Bild"
     },
     {
       "id": 7,
@@ -110,7 +116,8 @@
       "housePrice": 100,
       "hotelPrice": 100,
       "mortgageValue": 70,
-      "isMortgaged": false
+      "isMortgaged": false,
+      "image": "Hafenstrasse_Bild"
     },
     {
       "id": 8,
@@ -126,7 +133,8 @@
       "housePrice": 100,
       "hotelPrice": 100,
       "mortgageValue": 80,
-      "isMortgaged": false
+      "isMortgaged": false,
+      "image": "Neustrasse_Bild"
     },
     {
       "id": 9,
@@ -142,7 +150,8 @@
       "housePrice": 100,
       "hotelPrice": 100,
       "mortgageValue": 90,
-      "isMortgaged": false
+      "isMortgaged": false,
+      "image": "Münchnerstrasse_Bild"
     },
     {
       "id": 10,
@@ -158,7 +167,8 @@
       "housePrice": 100,
       "hotelPrice": 100,
       "mortgageValue": 90,
-      "isMortgaged": false
+      "isMortgaged": false,
+      "image": "Wienerstrasse_Bild"
     },
     {
       "id": 11,
@@ -174,7 +184,8 @@
       "housePrice": 100,
       "hotelPrice": 100,
       "mortgageValue": 100,
-      "isMortgaged": false
+      "isMortgaged": false,
+      "image": "Berlinerstrasse_Bild"
     },
     {
       "id": 12,
@@ -190,7 +201,8 @@
       "housePrice": 150,
       "hotelPrice": 150,
       "mortgageValue": 110,
-      "isMortgaged": false
+      "isMortgaged": false,
+      "image": "Theaterstrasse_Bild"
     },
     {
       "id": 13,
@@ -206,7 +218,8 @@
       "housePrice": 150,
       "hotelPrice": 150,
       "mortgageValue": 110,
-      "isMortgaged": false
+      "isMortgaged": false,
+      "image": "Meuseumsstrasse_Bild"
     },
     {
       "id": 14,
@@ -222,7 +235,8 @@
       "housePrice": 150,
       "hotelPrice": 150,
       "mortgageValue": 120,
-      "isMortgaged": false
+      "isMortgaged": false,
+      "image": "Opernplatz_Bild"
     },
     {
       "id": 15,
@@ -238,7 +252,8 @@
       "housePrice": 150,
       "hotelPrice": 150,
       "mortgageValue": 130,
-      "isMortgaged": false
+      "isMortgaged": false,
+      "image": "Liesingstrasse_Bild"
     },
     {
       "id": 16,
@@ -254,7 +269,8 @@
       "housePrice": 150,
       "hotelPrice": 150,
       "mortgageValue": 130,
-      "isMortgaged": false
+      "isMortgaged": false,
+      "image": "Schillerstrasse_Bild"
     },
     {
       "id": 17,
@@ -270,7 +286,8 @@
       "housePrice": 150,
       "hotelPrice": 150,
       "mortgageValue": 140,
-      "isMortgaged": false
+      "isMortgaged": false,
+      "image": "Goethestrasse_Bild"
     },
     {
       "id": 18,
@@ -286,7 +303,8 @@
       "housePrice": 200,
       "hotelPrice": 200,
       "mortgageValue": 150,
-      "isMortgaged": false
+      "isMortgaged": false,
+      "image": "Rathahusplatz_Bild"
     },
     {
       "id": 19,
@@ -302,7 +320,8 @@
       "housePrice": 200,
       "hotelPrice": 200,
       "mortgageValue": 150,
-      "isMortgaged": false
+      "isMortgaged": false,
+      "image": "hauptstrasse_Bild"
     },
     {
       "id": 20,
@@ -318,7 +337,8 @@
       "housePrice": 200,
       "hotelPrice": 200,
       "mortgageValue": 160,
-      "isMortgaged": false
+      "isMortgaged": false,
+      "image": "Bahnhofstrasse_Bild"
     },
     {
       "id": 21,
@@ -334,7 +354,8 @@
       "housePrice": 200,
       "hotelPrice": 200,
       "mortgageValue": 175,
-      "isMortgaged": false
+      "isMortgaged": false,
+      "image": "Parkstrasse_Bild"
     },
     {
       "id": 22,
@@ -350,7 +371,8 @@
       "housePrice": 200,
       "hotelPrice": 200,
       "mortgageValue": 200,
-      "isMortgaged": false
+      "isMortgaged": false,
+      "image": "Schlossallee_Bild"
     }
   ],
   "trainStations": [
@@ -362,7 +384,8 @@
       "baseRent": 50,
       "rent2Stations": 100,
       "rent3Stations": 150,
-      "rent4Stations": 200
+      "rent4Stations": 200,
+      "image": "Südbahnhof_Bild"
     },
     {
       "id": 102,
@@ -374,7 +397,8 @@
       "rent3Stations": 150,
       "rent4Stations": 200,
       "mortgageValue": 100,
-      "isMortgaged": false
+      "isMortgaged": false,
+      "image": "Westbahnhof_Bild"
     },
     {
       "id": 103,
@@ -386,7 +410,8 @@
       "rent3Stations": 150,
       "rent4Stations": 200,
       "mortgageValue": 100,
-      "isMortgaged": false
+      "isMortgaged": false,
+      "image": "Nordbahnhof_Bild"
     },
     {
       "id": 104,
@@ -398,7 +423,8 @@
       "rent3Stations": 150,
       "rent4Stations": 200,
       "mortgageValue": 100,
-      "isMortgaged": false
+      "isMortgaged": false,
+      "image": "Hauptbahnhof_Bild"
     }
   ],
    "utilities": [
@@ -410,7 +436,8 @@
       "rentOneUtilityMultiplier": 4,
       "rentTwoUtilitiesMultiplier": 10,
       "mortgageValue": 75,
-      "isMortgaged": false
+      "isMortgaged": false,
+      "image": "Elektrizität_Bild"
     },
     {
       "id": 202,
@@ -420,7 +447,8 @@
       "rentOneUtilityMultiplier": 4,
       "rentTwoUtilitiesMultiplier": 10,
       "mortgageValue": 75,
-      "isMortgaged": false
+      "isMortgaged": false,
+      "image": "Wasser_Bild"
     }
   ]
 }
