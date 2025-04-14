@@ -9,28 +9,27 @@ import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
-import at.aau.serg.monopoly.websoket.exception.PropertyDataLoadException;
 
 @Service
-class PropertyService {
+public class PropertyService {
 
     private List<HouseableProperty> houseableProperties;
     private List<TrainStation> trainStations;
     private List<Utility> utilities;
 
     @PostConstruct
-    public void init() {
+    public void init() throws RuntimeException {
         ObjectMapper mapper = new ObjectMapper();
         try (InputStream is = getClass().getClassLoader().getResourceAsStream("propertyData.json")) {
             if (is == null) {
-                throw new PropertyDataLoadException("propertyData.json not found in resources folder");
+                throw new RuntimeException("propertyData.json not found in resources folder");
             }
             PropertyDataWrapper wrapper = mapper.readValue(is, PropertyDataWrapper.class);
             this.houseableProperties = wrapper.getProperties();
             this.trainStations = wrapper.getTrainStations();
             this.utilities = wrapper.getUtilities();
         } catch (IOException e) {
-            throw new PropertyDataLoadException("Failed to initialize property data", e);
+            throw new RuntimeException("Failed to initialize property data", e);
         }
     }
 
