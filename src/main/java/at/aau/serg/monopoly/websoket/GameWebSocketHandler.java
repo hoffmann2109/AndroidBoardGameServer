@@ -1,4 +1,6 @@
 package at.aau.serg.monopoly.websoket;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import data.DiceRollMessage;
 import model.DiceManager;
 import model.DiceManagerInterface;
 import model.Game;
@@ -39,9 +41,17 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     protected void handleTextMessage(WebSocketSession session, TextMessage message) {
         String payload = message.getPayload();
         if (payload.trim().equalsIgnoreCase("Roll")){
-            int rollResult = diceManager.rollDices();
-            System.out.println("Player " + session.getId() + ": rolled " + rollResult);
-            broadcastMessage("Player " + session.getId() + ": rolled " + rollResult);
+            int roll = diceManager.rollDices();
+            System.out.println("Player " + session.getId() + " rolled " + roll);
+
+            DiceRollMessage drm = new DiceRollMessage(session.getId(), roll);
+            String json = null;
+            try {
+                json = objectMapper.writeValueAsString(drm);
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
+            broadcastMessage(json);
         } else if (payload.startsWith("UPDATE_MONEY:")) {
             try {
                 int amount = Integer.parseInt(payload.substring("UPDATE_MONEY:".length()));
