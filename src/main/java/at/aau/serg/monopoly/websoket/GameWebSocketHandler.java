@@ -49,7 +49,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             try {
                 json = objectMapper.writeValueAsString(drm);
             } catch (JsonProcessingException e) {
-                throw new RuntimeException(e);
+                throw new IllegalStateException("Failed to serialize DiceRollMessage", e);
             }
             broadcastMessage(json);
         } else if (payload.startsWith("UPDATE_MONEY:")) {

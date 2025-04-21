@@ -7,6 +7,7 @@ import model.DiceManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.MockedConstruction;
 import org.mockito.Mockito;
 import org.springframework.web.socket.CloseStatus;
@@ -100,11 +101,7 @@ class GameWebSocketHandlerUnitTest {
 
             GameWebSocketHandler handler = new GameWebSocketHandler();
 
-            WebSocketSession session = mock(WebSocketSession.class);
-            when(session.getId()).thenReturn("1");
-            when(session.isOpen()).thenReturn(true);
             handler.afterConnectionEstablished(session);
-
             handler.handleTextMessage(session, new TextMessage("Roll"));
 
             DiceManager diceMock = diceConstr.constructed().get(0);
@@ -120,21 +117,19 @@ class GameWebSocketHandlerUnitTest {
         // Gemockte Instanz von DiceManager und Object-Mapper (JSON-Serialisierung)
         try (MockedConstruction<ObjectMapper> omConstr = mockConstruction(ObjectMapper.class,
                 (mock, context) -> when(mock.writeValueAsString(any()))
-                        .thenThrow(new JsonProcessingException("Serialization Failure!") {
-                        }));
+                        .thenThrow(new JsonProcessingException("Serialization Failure!") {}));
              MockedConstruction<model.DiceManager> diceConstr = mockConstruction(model.DiceManager.class,
                      (mock, context) -> when(mock.rollDices()).thenReturn(12))) {
 
             GameWebSocketHandler handler = new GameWebSocketHandler();
-
-            WebSocketSession session = mock(WebSocketSession.class);
             when(session.getId()).thenReturn("sessionX");
             when(session.isOpen()).thenReturn(true);
             handler.afterConnectionEstablished(session);
 
-            assertThrows(RuntimeException.class, () ->
-                    handler.handleTextMessage(session, new TextMessage("Roll"))
-            );
+            TextMessage rollMsg = new TextMessage("Roll");
+
+            Executable invocation = () -> handler.handleTextMessage(session, rollMsg);
+            assertThrows(RuntimeException.class, invocation);
         }
     }
 
