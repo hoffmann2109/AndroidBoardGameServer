@@ -1,4 +1,6 @@
 package at.aau.serg.monopoly.websoket;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import data.DiceRollMessage;
 import model.DiceManager;
 import model.DiceManagerInterface;
 import model.Game;
@@ -7,12 +9,13 @@ import lombok.NonNull;
 import org.springframework.web.socket.*;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 import org.springframework.stereotype.Component;
+import java.util.logging.Logger;
 
 import java.util.concurrent.CopyOnWriteArrayList;
 
 @Component
 public class GameWebSocketHandler extends TextWebSocketHandler {
-
+    private final Logger logger = Logger.getLogger(GameWebSocketHandler.class.getName());
     private final CopyOnWriteArrayList<WebSocketSession> sessions = new CopyOnWriteArrayList<>();
     private final Game game = new Game();
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -39,9 +42,17 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     protected void handleTextMessage(WebSocketSession session, TextMessage message) {
         String payload = message.getPayload();
         if (payload.trim().equalsIgnoreCase("Roll")){
-            int rollResult = diceManager.rollDices();
-            System.out.println("Player " + session.getId() + ": rolled " + rollResult);
-            broadcastMessage("Player " + session.getId() + ": rolled " + rollResult);
+            int roll = diceManager.rollDices();
+            logger.info("Player " + session.getId() + " rolled " + roll);
+
+            DiceRollMessage drm = new DiceRollMessage(session.getId(), roll);
+            String json = null;
+            try {
+                json = objectMapper.writeValueAsString(drm);
+            } catch (JsonProcessingException e) {
+                throw new IllegalStateException("Failed to serialize DiceRollMessage", e);
+            }
+            broadcastMessage(json);
         } else if (payload.startsWith("UPDATE_MONEY:")) {
             try {
                 int amount = Integer.parseInt(payload.substring("UPDATE_MONEY:".length()));

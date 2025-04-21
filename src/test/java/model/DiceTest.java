@@ -35,12 +35,12 @@ class DiceTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {0, -10, -100})
+    @ValueSource(ints = {0, -1, -10, -100})
     void testDiceWithInvalidSidesReturnsException(int invalidSides){
         assertThrows(IllegalArgumentException.class, () -> new Dice(invalidSides));
     }
 
-    @RepeatedTest(100)
+    @RepeatedTest(200)
     void testRollingReturnsMoreThanTwo(){
         int roll = diceManager.rollDices();
         assertTrue(roll > 1 && roll <= 2 * SIDES);
