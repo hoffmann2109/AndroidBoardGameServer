@@ -1,13 +1,21 @@
 package at.aau.serg.monopoly.websoket;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import data.DiceRollMessage;
+import model.DiceManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedConstruction;
+import org.mockito.Mockito;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
 import java.io.IOException;
+
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 
@@ -23,8 +31,6 @@ class GameWebSocketHandlerUnitTest {
         when(session.getId()).thenReturn("1");
         when(session.isOpen()).thenReturn(true);
     }
-
-
 
     @Test
     void testAfterConnectionEstablished() throws IOException {
@@ -81,6 +87,55 @@ class GameWebSocketHandlerUnitTest {
         gameWebSocketHandler.afterConnectionClosed(session, CloseStatus.NORMAL);
         verify(session, never()).sendMessage(any());
 
+    }
+
+    @Test
+    public void testRollDiceNormalCase() throws Exception {
+        // Gemockte Instanz von DiceManager und Object-Mapper (JSON-Serialisierung)
+        try (MockedConstruction<DiceManager> diceConstr = Mockito.mockConstruction(DiceManager.class,
+                (mock, context) -> when(mock.rollDices()).thenReturn(12));
+             MockedConstruction<ObjectMapper> omConstr = Mockito.mockConstruction(ObjectMapper.class,
+                     (mock, context) -> when(mock.writeValueAsString(any()))
+                             .thenReturn("{\"rolled\":12}"))) {
+
+            GameWebSocketHandler handler = new GameWebSocketHandler();
+
+            WebSocketSession session = mock(WebSocketSession.class);
+            when(session.getId()).thenReturn("1");
+            when(session.isOpen()).thenReturn(true);
+            handler.afterConnectionEstablished(session);
+
+            handler.handleTextMessage(session, new TextMessage("Roll"));
+
+            DiceManager diceMock = diceConstr.constructed().get(0);
+            ObjectMapper  omMock   = omConstr.constructed().get(0);
+
+            verify(diceMock).rollDices();
+            verify(omMock).writeValueAsString(any(DiceRollMessage.class));
+        }
+    }
+
+    @Test
+    void testRollDiceErrorCase() throws Exception {
+        // Gemockte Instanz von DiceManager und Object-Mapper (JSON-Serialisierung)
+        try (MockedConstruction<ObjectMapper> omConstr = mockConstruction(ObjectMapper.class,
+                (mock, context) -> when(mock.writeValueAsString(any()))
+                        .thenThrow(new JsonProcessingException("Serialization Failure!") {
+                        }));
+             MockedConstruction<model.DiceManager> diceConstr = mockConstruction(model.DiceManager.class,
+                     (mock, context) -> when(mock.rollDices()).thenReturn(12))) {
+
+            GameWebSocketHandler handler = new GameWebSocketHandler();
+
+            WebSocketSession session = mock(WebSocketSession.class);
+            when(session.getId()).thenReturn("sessionX");
+            when(session.isOpen()).thenReturn(true);
+            handler.afterConnectionEstablished(session);
+
+            assertThrows(RuntimeException.class, () ->
+                    handler.handleTextMessage(session, new TextMessage("Roll"))
+            );
+        }
     }
 
     @Test
