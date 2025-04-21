@@ -9,12 +9,13 @@ import lombok.NonNull;
 import org.springframework.web.socket.*;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 import org.springframework.stereotype.Component;
+import java.util.logging.Logger;
 
 import java.util.concurrent.CopyOnWriteArrayList;
 
 @Component
 public class GameWebSocketHandler extends TextWebSocketHandler {
-
+    private final Logger logger = Logger.getLogger(GameWebSocketHandler.class.getName());
     private final CopyOnWriteArrayList<WebSocketSession> sessions = new CopyOnWriteArrayList<>();
     private final Game game = new Game();
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -42,7 +43,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         String payload = message.getPayload();
         if (payload.trim().equalsIgnoreCase("Roll")){
             int roll = diceManager.rollDices();
-            System.out.println("Player " + session.getId() + " rolled " + roll);
+            logger.info("Player " + session.getId() + " rolled " + roll);
 
             DiceRollMessage drm = new DiceRollMessage(session.getId(), roll);
             String json = null;
