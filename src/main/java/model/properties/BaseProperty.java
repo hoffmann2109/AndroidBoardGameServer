@@ -10,7 +10,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 @AllArgsConstructor
 public abstract class BaseProperty {
     protected int id;
-    protected Integer ownerId; // kann null sein
+    protected String ownerId; // Changed from Integer to String
     protected String name;
     protected int purchasePrice;
     protected int mortgageValue;
