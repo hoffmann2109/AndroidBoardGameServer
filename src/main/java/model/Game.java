@@ -2,6 +2,7 @@ package model;
 import lombok.Data;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Data
 public class Game {
@@ -46,5 +47,16 @@ public class Game {
             info.add(new PlayerInfo(player.getId(), player.getName(), player.getMoney()));
         }
         return info;
+    }
+
+    /**
+     * Finds a player by their unique ID.
+     * @param id The ID of the player to find.
+     * @return An Optional containing the Player if found, otherwise empty.
+     */
+    public Optional<Player> getPlayerById(String id) {
+        return players.stream()
+                      .filter(player -> player.getId().equals(id))
+                      .findFirst();
     }
 }
