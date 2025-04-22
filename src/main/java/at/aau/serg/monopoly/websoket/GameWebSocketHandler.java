@@ -54,7 +54,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 logger.info("Player " + playerId + " rolled " + roll);
 
                 DiceRollMessage drm = new DiceRollMessage(playerId, roll);
-                String json = null;
+                String json;
                 try {
                     json = objectMapper.writeValueAsString(drm);
                 } catch (JsonProcessingException e) {
@@ -141,7 +141,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 boolean success = propertyTransactionService.buyProperty(player, propertyId);
                 if (success) {
                     logger.info("Property " + propertyId + " bought successfully by player " + playerId);
-                    broadcastMessage(createJsonMessage("PROPERTY_BOUGHT", "Player " + playerId + " bought property " + propertyId));
+                    broadcastMessage(createJsonMessage("Player " + playerId + " bought property " + propertyId));
                     broadcastGameState();
                 } else {
                     logger.warning("Property purchase failed for player " + playerId + ", property " + propertyId + " after canBuy check.");
@@ -175,8 +175,8 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         return "{\"type\":\"ERROR\", \"message\":\"" + escapeJson(errorMessage) + "\"}";
     }
 
-    private String createJsonMessage(String type, String message) {
-        return "{\"type\":\""+ escapeJson(type) +"\", \"message\":\"" + escapeJson(message) + "\"}";
+    private String createJsonMessage(String message) {
+        return "{\"type\":\""+ escapeJson("PROPERTY_BOUGHT") +"\", \"message\":\"" + escapeJson(message) + "\"}";
     }
 
     private String escapeJson(String value) {

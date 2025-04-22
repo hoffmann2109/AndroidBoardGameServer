@@ -7,7 +7,6 @@ import model.DiceManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.function.Executable;
 import org.mockito.MockedConstruction;
 import org.mockito.Mockito;
 import org.springframework.web.socket.CloseStatus;
@@ -16,7 +15,6 @@ import org.springframework.web.socket.WebSocketSession;
 
 import java.io.IOException;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 
