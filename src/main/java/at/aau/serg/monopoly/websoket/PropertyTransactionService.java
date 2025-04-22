@@ -64,7 +64,7 @@ public class PropertyTransactionService {
     /**
      * Helper method to find a property by its ID across all property types
      */
-    private BaseProperty findPropertyById(int propertyId) {
+    BaseProperty findPropertyById(int propertyId) {
         // Check houseable properties
         BaseProperty property = propertyService.getHouseablePropertyById(propertyId);
         if (property != null) {

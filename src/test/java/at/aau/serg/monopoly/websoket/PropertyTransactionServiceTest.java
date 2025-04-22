@@ -1,0 +1,177 @@
+package at.aau.serg.monopoly.websoket;
+
+import model.Player;
+import model.properties.BaseProperty;
+import model.properties.HouseableProperty; // Using a concrete subclass for testing
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.Collections;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class) // Initialize Mockito
+class PropertyTransactionServiceTest {
+
+    @Mock // Mock the dependency
+    private PropertyService propertyService;
+
+    @InjectMocks // Inject the mock into the service under test
+    private PropertyTransactionService propertyTransactionService;
+
+    private Player testPlayer;
+    private HouseableProperty testProperty; // Use a concrete type for setup
+
+    // Test constants
+    private static final int PROPERTY_ID = 1;
+    private static final int PURCHASE_PRICE = 100;
+    private static final int MORTGAGE_VALUE = 50;
+    private static final String PLAYER_ID = "player123";
+    private static final String PROPERTY_NAME = "Test Street";
+
+    @BeforeEach
+    void setUp() {
+        // Reset mocks and setup test objects before each test
+        testPlayer = new Player(PLAYER_ID, "Test Player");
+        testProperty = new HouseableProperty(
+                PROPERTY_ID, null, PROPERTY_NAME, PURCHASE_PRICE, // Initially unowned (null ownerId)
+                10, 20, 30, 40, 50, 60, 50, 50, // Rent/house prices (example values)
+                MORTGAGE_VALUE, false, "image"
+        );
+
+        // Ensure collections are empty if methods like getTrainStations are called
+        lenient().when(propertyService.getTrainStations()).thenReturn(Collections.emptyList());
+        lenient().when(propertyService.getUtilities()).thenReturn(Collections.emptyList());
+    }
+
+    // --- Tests for canBuyProperty ---
+
+    @Test
+    void canBuyProperty_SufficientFunds_Unowned_ReturnsTrue() {
+        testPlayer.setMoney(PURCHASE_PRICE + 50); // Player has more than enough
+        when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(testProperty);
+
+        assertTrue(propertyTransactionService.canBuyProperty(testPlayer, PROPERTY_ID));
+    }
+
+    @Test
+    void canBuyProperty_ExactFunds_Unowned_ReturnsTrue() {
+        testPlayer.setMoney(PURCHASE_PRICE); // Player has exact amount
+        when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(testProperty);
+
+        assertTrue(propertyTransactionService.canBuyProperty(testPlayer, PROPERTY_ID));
+    }
+
+    @Test
+    void canBuyProperty_InsufficientFunds_Unowned_ReturnsFalse() {
+        testPlayer.setMoney(PURCHASE_PRICE - 1); // Player has less than needed
+        when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(testProperty);
+
+        assertFalse(propertyTransactionService.canBuyProperty(testPlayer, PROPERTY_ID));
+    }
+
+    @Test
+    void canBuyProperty_SufficientFunds_Owned_ReturnsFalse() {
+        testPlayer.setMoney(PURCHASE_PRICE + 50);
+        testProperty.setOwnerId("anotherPlayer"); // Property is already owned
+        when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(testProperty);
+
+        assertFalse(propertyTransactionService.canBuyProperty(testPlayer, PROPERTY_ID));
+    }
+
+    @Test
+    void canBuyProperty_PropertyNotFound_ReturnsFalse() {
+        testPlayer.setMoney(PURCHASE_PRICE + 50);
+        // Mock to return null when property ID is requested
+        when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(null);
+        // Ensure other lookups also return null/empty
+        when(propertyService.getTrainStations()).thenReturn(Collections.emptyList());
+        when(propertyService.getUtilities()).thenReturn(Collections.emptyList());
+
+
+        assertFalse(propertyTransactionService.canBuyProperty(testPlayer, PROPERTY_ID));
+        // Verify that all property lookup methods were potentially called by findPropertyById
+        verify(propertyService).getHouseablePropertyById(PROPERTY_ID);
+        verify(propertyService).getTrainStations();
+        verify(propertyService).getUtilities();
+
+    }
+
+    // --- Tests for buyProperty ---
+
+    @Test
+    void buyProperty_SuccessfulPurchase() {
+        testPlayer.setMoney(PURCHASE_PRICE + 50);
+        when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(testProperty);
+
+        boolean result = propertyTransactionService.buyProperty(testPlayer, PROPERTY_ID);
+
+        assertTrue(result);
+        assertEquals(50, testPlayer.getMoney()); // Money should be deducted
+        assertEquals(PLAYER_ID, testProperty.getOwnerId()); // Owner ID should be set
+        assertFalse(testProperty.isMortgaged()); // Ensure mortgage status didn't change
+    }
+
+    @Test
+    void buyProperty_InsufficientFunds_FailsPreCheck() {
+        testPlayer.setMoney(PURCHASE_PRICE - 1);
+        when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(testProperty);
+
+        boolean result = propertyTransactionService.buyProperty(testPlayer, PROPERTY_ID);
+
+        assertFalse(result);
+        assertEquals(PURCHASE_PRICE - 1, testPlayer.getMoney()); // Money should not change
+        assertNull(testProperty.getOwnerId()); // Owner ID should remain null
+    }
+
+    @Test
+    void buyProperty_AlreadyOwned_FailsPreCheck() {
+        testPlayer.setMoney(PURCHASE_PRICE + 50);
+        testProperty.setOwnerId("anotherPlayer");
+        when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(testProperty);
+
+        boolean result = propertyTransactionService.buyProperty(testPlayer, PROPERTY_ID);
+
+        assertFalse(result);
+        assertEquals(PURCHASE_PRICE + 50, testPlayer.getMoney()); // Money should not change
+        assertEquals("anotherPlayer", testProperty.getOwnerId()); // Owner ID should not change
+    }
+
+    @Test
+    void buyProperty_PropertyNotFound_FailsPreCheck() {
+        testPlayer.setMoney(PURCHASE_PRICE + 50);
+        when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(null);
+        // Ensure other lookups also return null/empty
+        when(propertyService.getTrainStations()).thenReturn(Collections.emptyList());
+        when(propertyService.getUtilities()).thenReturn(Collections.emptyList());
+
+
+        boolean result = propertyTransactionService.buyProperty(testPlayer, PROPERTY_ID);
+
+        assertFalse(result);
+        assertEquals(PURCHASE_PRICE + 50, testPlayer.getMoney()); // Money should not change
+    }
+
+    @Test
+    void findPropertyById_FindsHouseableProperty() {
+        when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(testProperty);
+
+        BaseProperty found = propertyTransactionService.findPropertyById(PROPERTY_ID);
+
+        assertNotNull(found);
+        assertEquals(PROPERTY_ID, found.getId());
+        verify(propertyService).getHouseablePropertyById(PROPERTY_ID);
+        verify(propertyService, never()).getTrainStations(); // Should not be called if found earlier
+        verify(propertyService, never()).getUtilities();     // Should not be called if found earlier
+    }
+
+    // Add similar tests for finding TrainStations and Utilities if needed
+    // Add test case where findPropertyById finds nothing (covered by PropertyNotFound tests above)
+
+}
