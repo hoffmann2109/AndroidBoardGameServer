@@ -9,6 +9,8 @@ import lombok.NonNull;
 import org.springframework.web.socket.*;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 import org.springframework.stereotype.Component;
+
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.concurrent.CopyOnWriteArrayList;
 import model.Player;
@@ -51,7 +53,8 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         try {
             if (payload.trim().equalsIgnoreCase("Roll")){
                 int roll = diceManager.rollDices();
-                logger.info("Player " + playerId + " rolled " + roll);
+                logger.log(Level.INFO, "Player {0} rolled {1}", new Object[]{playerId, roll});
+
 
                 DiceRollMessage drm = new DiceRollMessage(playerId, roll);
                 String json;
@@ -127,11 +130,11 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         String playerId = session.getId();
         try {
             int propertyId = Integer.parseInt(payload.substring("BUY_PROPERTY:".length()));
-            logger.info("Player " + playerId + " attempts to buy property " + propertyId);
+            logger.log(Level.INFO, "Player {0} attempts to buy property {1}", new Object[]{playerId, propertyId});
 
             Optional<Player> playerOpt = game.getPlayerById(playerId);
             if (playerOpt.isEmpty()) {
-                logger.warning("Player " + playerId + " not found in game state during buy attempt.");
+                logger.log(Level.WARNING, "Player {0} not found in game state during buy attempt.", playerId);
                 sendMessageToSession(session, createJsonError("Player not found."));
                 return;
             }
@@ -140,23 +143,23 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             if (propertyTransactionService.canBuyProperty(player, propertyId)) {
                 boolean success = propertyTransactionService.buyProperty(player, propertyId);
                 if (success) {
-                    logger.info("Property " + propertyId + " bought successfully by player " + playerId);
+                    logger.log(Level.INFO, "Property {0} bought successfully by player {1}", new Object[]{propertyId, playerId});
                     broadcastMessage(createJsonMessage("Player " + playerId + " bought property " + propertyId));
                     broadcastGameState();
                 } else {
-                    logger.warning("Property purchase failed for player " + playerId + ", property " + propertyId + " after canBuy check.");
+                    logger.log(Level.WARNING, "Property purchase failed for player {0}, property {1} after canBuy check.", new Object[]{playerId, propertyId});
                     sendMessageToSession(session, createJsonError("Failed to buy property due to server error."));
                 }
             } else {
-                logger.info("Player " + playerId + " cannot buy property " + propertyId + " (insufficient funds or already owned).");
+                logger.log(Level.WARNING, "Property purchase failed for player {0}, property {1} after canBuy check.", new Object[]{playerId, propertyId});
                 sendMessageToSession(session, createJsonError("Cannot buy property (insufficient funds or already owned)."));
             }
 
         } catch (NumberFormatException e) {
-            logger.warning("Invalid property ID format received from player " + playerId + ": " + payload);
+            logger.log(Level.WARNING, "Invalid property ID in payload from player {0}: {1}", new Object[]{playerId, payload});
             sendMessageToSession(session, createJsonError("Invalid property ID format."));
         } catch (Exception e) {
-            logger.severe("Error handling BUY_PROPERTY for player " + playerId + ": " + e.getMessage());
+            logger.log(Level.SEVERE, "Error handling BUY_PROPERTY for player {0}: {1}", new Object[]{playerId, e.getMessage()});
             sendMessageToSession(session, createJsonError("Server error handling buy property request."));
         }
     }
