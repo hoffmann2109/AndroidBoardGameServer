@@ -33,7 +33,6 @@ public class PropertyTransactionService {
 
     /**
      * Executes the purchase of a property for a player.
-     * Assumes validation (canBuyProperty) has already passed.
      * @param player The player buying the property.
      * @param propertyId The ID of the property being bought.
      * @return true if the purchase was successful, false otherwise.
@@ -43,31 +42,21 @@ public class PropertyTransactionService {
 
         // Double-check conditions in case state changed
         if (property == null || property.getOwnerId() != null || player.getMoney() < property.getPurchasePrice()) {
-             logger.warning("Attempted to buy property " + propertyId + " by player " + player.getId() + " failed pre-check.");
-            return false; // Should not happen if canBuyProperty was called first, but good practice
+            logger.warning("Attempted to buy property " + propertyId + " by player " + player.getId() + " failed pre-check.");
+            return false;
         }
 
         try {
-            // Convert player ID string to Integer for ownerId
-            // THIS MIGHT FAIL if player.getId() is not a parsable integer!
-            // TODO: Confirm if player IDs are integers or if BaseProperty.ownerId needs to be String
-            Integer playerIdInt = Integer.parseInt(player.getId()); 
-
-            // Perform transaction
+            // Perform transaction - directly use player ID as owner ID
             player.subtractMoney(property.getPurchasePrice());
-            property.setOwnerId(playerIdInt);
+            property.setOwnerId(player.getId());
 
             logger.info("Player " + player.getId() + " successfully bought property " + propertyId + 
-                        ". New balance: " + player.getMoney());
+                      ". New balance: " + player.getMoney());
             return true;
 
-        } catch (NumberFormatException e) {
-            // Log error if player ID cannot be parsed to Integer
-             logger.severe("Failed to parse player ID '" + player.getId() + "' to Integer for property ownership.");
-            return false;
         } catch (Exception e) {
-             logger.severe("An unexpected error occurred during property purchase: " + e.getMessage());
-            // Potentially revert changes if partial transaction occurred, though unlikely here.
+            logger.severe("An unexpected error occurred during property purchase: " + e.getMessage());
             return false;
         }
     }
