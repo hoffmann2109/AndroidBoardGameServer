@@ -7,7 +7,6 @@ import model.DiceManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.function.Executable;
 import org.mockito.MockedConstruction;
 import org.mockito.Mockito;
 import org.springframework.web.socket.CloseStatus;
@@ -16,7 +15,7 @@ import org.springframework.web.socket.WebSocketSession;
 
 import java.io.IOException;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import static org.mockito.Mockito.*;
 
 
@@ -127,9 +126,12 @@ class GameWebSocketHandlerUnitTest {
             handler.afterConnectionEstablished(session);
 
             TextMessage rollMsg = new TextMessage("Roll");
+            handler.handleTextMessage(session, rollMsg);
 
-            Executable invocation = () -> handler.handleTextMessage(session, rollMsg);
-            assertThrows(RuntimeException.class, invocation);
+            // Verify error message was sent to the client
+            verify(session).sendMessage(argThat(message -> 
+                ((TextMessage)message).getPayload().contains("\"type\":\"ERROR\"") &&
+                ((TextMessage)message).getPayload().contains("Server error processing your request")));
         }
     }
 
@@ -302,6 +304,102 @@ class GameWebSocketHandlerUnitTest {
             ((TextMessage)msg).getPayload().startsWith("GAME_STATE:")));
         verify(session4, atLeastOnce()).sendMessage(argThat(msg -> 
             ((TextMessage)msg).getPayload().startsWith("GAME_STATE:")));
+    }
+
+    @Test
+    void testHandleBuyProperty_SuccessfulPurchase() throws Exception {
+        // Setup
+        PropertyTransactionService propertyService = mock(PropertyTransactionService.class);
+        // Use reflection to set the mocked service
+        java.lang.reflect.Field field = GameWebSocketHandler.class.getDeclaredField("propertyTransactionService");
+        field.setAccessible(true);
+        field.set(gameWebSocketHandler, propertyService);
+
+        // Setup successful purchase scenario
+        when(propertyService.canBuyProperty(any(), eq(1))).thenReturn(true);
+        when(propertyService.buyProperty(any(), eq(1))).thenReturn(true);
+
+        // Connect player and attempt purchase
+        gameWebSocketHandler.afterConnectionEstablished(session);
+        TextMessage buyMessage = new TextMessage("BUY_PROPERTY:1");
+        gameWebSocketHandler.handleTextMessage(session, buyMessage);
+
+        // Verify success message was broadcast and game state updated
+        verify(session, atLeastOnce()).sendMessage(argThat(msg ->
+                ((TextMessage)msg).getPayload().contains("PROPERTY_BOUGHT")));
+        verify(session, atLeastOnce()).sendMessage(argThat(msg ->
+                ((TextMessage)msg).getPayload().startsWith("GAME_STATE:")));
+    }
+
+    @Test
+    void testHandleBuyProperty_InsufficientFunds() throws Exception {
+        // Setup
+        PropertyTransactionService propertyService = mock(PropertyTransactionService.class);
+        java.lang.reflect.Field field = GameWebSocketHandler.class.getDeclaredField("propertyTransactionService");
+        field.setAccessible(true);
+        field.set(gameWebSocketHandler, propertyService);
+
+        // Setup insufficient funds scenario
+        when(propertyService.canBuyProperty(any(), eq(1))).thenReturn(false);
+
+        // Connect player and attempt purchase
+        gameWebSocketHandler.afterConnectionEstablished(session);
+        TextMessage buyMessage = new TextMessage("BUY_PROPERTY:1");
+        gameWebSocketHandler.handleTextMessage(session, buyMessage);
+
+        // Verify error message was sent only to the buying player
+        verify(session, atLeastOnce()).sendMessage(argThat(msg ->
+                ((TextMessage)msg).getPayload().contains("Cannot buy property")));
+    }
+
+    @Test
+    void testHandleBuyProperty_InvalidPropertyId() throws Exception {
+        // Connect player and attempt purchase with invalid ID
+        gameWebSocketHandler.afterConnectionEstablished(session);
+        TextMessage buyMessage = new TextMessage("BUY_PROPERTY:invalid");
+        gameWebSocketHandler.handleTextMessage(session, buyMessage);
+
+        // Verify error message was sent
+        verify(session, atLeastOnce()).sendMessage(argThat(msg ->
+                ((TextMessage)msg).getPayload().contains("Invalid property ID format")));
+    }
+
+    @Test
+    void testHandleBuyProperty_PlayerNotFound() throws Exception {
+        // Setup with a session ID that won't be in the game
+        WebSocketSession unknownSession = mock(WebSocketSession.class);
+        when(unknownSession.getId()).thenReturn("unknown");
+        when(unknownSession.isOpen()).thenReturn(true);
+
+        // Attempt purchase without connecting first
+        TextMessage buyMessage = new TextMessage("BUY_PROPERTY:1");
+        gameWebSocketHandler.handleTextMessage(unknownSession, buyMessage);
+
+        // Verify error message was sent
+        verify(unknownSession, atLeastOnce()).sendMessage(argThat(msg ->
+                ((TextMessage)msg).getPayload().contains("Player not found")));
+    }
+
+    @Test
+    void testHandleBuyProperty_ServiceFailure() throws Exception {
+        // Setup
+        PropertyTransactionService propertyService = mock(PropertyTransactionService.class);
+        java.lang.reflect.Field field = GameWebSocketHandler.class.getDeclaredField("propertyTransactionService");
+        field.setAccessible(true);
+        field.set(gameWebSocketHandler, propertyService);
+
+        // Setup scenario where canBuy passes but actual purchase fails
+        when(propertyService.canBuyProperty(any(), eq(1))).thenReturn(true);
+        when(propertyService.buyProperty(any(), eq(1))).thenReturn(false);
+
+        // Connect player and attempt purchase
+        gameWebSocketHandler.afterConnectionEstablished(session);
+        TextMessage buyMessage = new TextMessage("BUY_PROPERTY:1");
+        gameWebSocketHandler.handleTextMessage(session, buyMessage);
+
+        // Verify error message was sent
+        verify(session, atLeastOnce()).sendMessage(argThat(msg ->
+                ((TextMessage)msg).getPayload().contains("Failed to buy property due to server error")));
     }
 
     @AfterEach

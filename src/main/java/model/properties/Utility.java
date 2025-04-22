@@ -9,7 +9,7 @@ public class Utility extends BaseProperty {
     private int rentOneUtilityMultiplier;
     private int rentTwoUtilitiesMultiplier;
 
-    public Utility(int id, Integer ownerId, String name, int purchasePrice,
+    public Utility(int id, String ownerId, String name, int purchasePrice,
                    int rentOneUtilityMultiplier, int rentTwoUtilitiesMultiplier,
                    int mortgageValue, boolean isMortgaged, String image) {
         super(id, ownerId, name, purchasePrice, mortgageValue, image, isMortgaged);
