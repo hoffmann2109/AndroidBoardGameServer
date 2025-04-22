@@ -11,7 +11,7 @@ public class TrainStation extends BaseProperty {
     private int rent3Stations;
     private int rent4Stations;
 
-    public TrainStation(int id, Integer ownerId, String name, int purchasePrice,
+    public TrainStation(int id, String ownerId, String name, int purchasePrice,
                         int baseRent, int rent2Stations, int rent3Stations, int rent4Stations,
                         int mortgageValue, boolean isMortgaged, String image) {
         super(id, ownerId, name, purchasePrice, mortgageValue, image, isMortgaged);

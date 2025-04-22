@@ -15,7 +15,7 @@ public class HouseableProperty extends BaseProperty {
     private int housePrice;
     private int hotelPrice;
 
-    public HouseableProperty(int id, Integer ownerId, String name, int purchasePrice,
+    public HouseableProperty(int id, String ownerId, String name, int purchasePrice,
                              int baseRent, int rent1House, int rent2Houses, int rent3Houses,
                              int rent4Houses, int rentHotel, int housePrice, int hotelPrice,
                              int mortgageValue, boolean isMortgaged, String image) {
