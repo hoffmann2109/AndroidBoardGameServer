@@ -3,6 +3,8 @@ package at.aau.serg.monopoly.websoket;
 import model.Player;
 import model.properties.BaseProperty;
 import model.properties.HouseableProperty; // Using a concrete subclass for testing
+import model.properties.TrainStation;
+import model.properties.Utility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -170,7 +172,80 @@ class PropertyTransactionServiceTest {
         verify(propertyService, never()).getUtilities();     // Should not be called if found earlier
     }
 
-    // Add similar tests for finding TrainStations and Utilities if needed
-    // Add test case where findPropertyById finds nothing (covered by PropertyNotFound tests above)
+    @Test
+    void findPropertyById_FindsTrainStation() {
+        // Setup train station property
+        TrainStation trainStation = new TrainStation(
+            PROPERTY_ID,
+            null,  // unowned
+            "Test Station",
+            200,   // purchase price
+            25,    // baseRent
+            50,    // rent2Stations
+            75,    // rent3Stations
+            100,   // rent4Stations
+            MORTGAGE_VALUE,
+            false, // not mortgaged
+            "train_image"
+        );
+        
+        // Mock houseable property to return null (not found)
+        when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(null);
+        // Mock train stations to include our test station
+        when(propertyService.getTrainStations()).thenReturn(Collections.singletonList(trainStation));
 
+        BaseProperty found = propertyTransactionService.findPropertyById(PROPERTY_ID);
+
+        assertNotNull(found);
+        assertEquals(PROPERTY_ID, found.getId());
+        assertEquals("Test Station", found.getName());
+        verify(propertyService).getHouseablePropertyById(PROPERTY_ID);
+        verify(propertyService).getTrainStations();
+        verify(propertyService, never()).getUtilities(); // Should not be called if found in train stations
+    }
+
+    @Test
+    void findPropertyById_PropertyNotFound_ReturnsNull() {
+        // Mock all property lookups to return null or empty
+        when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(null);
+        when(propertyService.getTrainStations()).thenReturn(Collections.emptyList());
+        when(propertyService.getUtilities()).thenReturn(Collections.emptyList());
+
+        BaseProperty found = propertyTransactionService.findPropertyById(PROPERTY_ID);
+
+        assertNull(found);
+        verify(propertyService).getHouseablePropertyById(PROPERTY_ID);
+        verify(propertyService).getTrainStations();
+        verify(propertyService).getUtilities();
+    }
+
+    @Test
+    void findPropertyById_FindsUtility() {
+        // Setup utility property
+        Utility utility = new Utility(
+            PROPERTY_ID,
+            null,  // unowned
+            "Test Utility",
+            150,   // purchase price
+            4,     // rentOneUtilityMultiplier
+            10,    // rentTwoUtilitiesMultiplier
+            MORTGAGE_VALUE,
+            false, // not mortgaged
+            "utility_image"
+        );
+        
+        // Mock houseable property and train stations to return null/empty (not found)
+        when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(null);
+        when(propertyService.getTrainStations()).thenReturn(Collections.emptyList());
+        when(propertyService.getUtilities()).thenReturn(Collections.singletonList(utility));
+
+        BaseProperty found = propertyTransactionService.findPropertyById(PROPERTY_ID);
+
+        assertNotNull(found);
+        assertEquals(PROPERTY_ID, found.getId());
+        assertEquals("Test Utility", found.getName());
+        verify(propertyService).getHouseablePropertyById(PROPERTY_ID);
+        verify(propertyService).getTrainStations();
+        verify(propertyService).getUtilities();
+    }
 }
