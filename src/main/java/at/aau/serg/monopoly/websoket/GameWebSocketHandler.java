@@ -10,8 +10,10 @@ import org.springframework.web.socket.*;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 import org.springframework.stereotype.Component;
 import java.util.logging.Logger;
-
 import java.util.concurrent.CopyOnWriteArrayList;
+import model.Player;
+import org.springframework.beans.factory.annotation.Autowired;
+import java.util.Optional;
 
 @Component
 public class GameWebSocketHandler extends TextWebSocketHandler {
@@ -20,6 +22,9 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     private final Game game = new Game();
     private final ObjectMapper objectMapper = new ObjectMapper();
     private DiceManagerInterface diceManager;
+
+    @Autowired
+    private PropertyTransactionService propertyTransactionService;
 
     @Override
     public void afterConnectionEstablished(@NonNull WebSocketSession session) {
@@ -41,29 +46,38 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) {
         String payload = message.getPayload();
-        if (payload.trim().equalsIgnoreCase("Roll")){
-            int roll = diceManager.rollDices();
-            logger.info("Player " + session.getId() + " rolled " + roll);
+        String playerId = session.getId();
 
-            DiceRollMessage drm = new DiceRollMessage(session.getId(), roll);
-            String json = null;
-            try {
-                json = objectMapper.writeValueAsString(drm);
-            } catch (JsonProcessingException e) {
-                throw new IllegalStateException("Failed to serialize DiceRollMessage", e);
+        try {
+            if (payload.trim().equalsIgnoreCase("Roll")){
+                int roll = diceManager.rollDices();
+                logger.info("Player " + playerId + " rolled " + roll);
+
+                DiceRollMessage drm = new DiceRollMessage(playerId, roll);
+                String json = null;
+                try {
+                    json = objectMapper.writeValueAsString(drm);
+                } catch (JsonProcessingException e) {
+                    throw new IllegalStateException("Failed to serialize DiceRollMessage", e);
+                }
+                broadcastMessage(json);
+            } else if (payload.startsWith("UPDATE_MONEY:")) {
+                try {
+                    int amount = Integer.parseInt(payload.substring("UPDATE_MONEY:".length()));
+                    game.updatePlayerMoney(playerId, amount);
+                    broadcastGameState();
+                } catch (NumberFormatException e) {
+                    System.err.println("Invalid money update format: " + payload);
+                }
+            } else if (payload.startsWith("BUY_PROPERTY:")) {
+                handleBuyProperty(session, payload);
+            } else {
+                logger.info("Received unknown message format: " + payload + " from player " + playerId);
+                broadcastMessage("Player " + playerId + ": " + payload);
             }
-            broadcastMessage(json);
-        } else if (payload.startsWith("UPDATE_MONEY:")) {
-            try {
-                int amount = Integer.parseInt(payload.substring("UPDATE_MONEY:".length()));
-                game.updatePlayerMoney(session.getId(), amount);
-                broadcastGameState();
-            } catch (NumberFormatException e) {
-                System.err.println("Invalid money update format: " + payload);
-            }
-        } else {
-            System.out.println("Received: " + payload);
-            broadcastMessage("Player " + session.getId() + ": " + payload);
+        } catch (Exception e) {
+            logger.severe("Error handling message from player " + playerId + ": " + e.getMessage());
+            sendMessageToSession(session, createJsonError("Server error processing your request."));
         }
     }
 
@@ -107,6 +121,66 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         } catch (Exception e) {
             System.err.println("Error sending game state: " + e.getMessage());
         }
+    }
+
+    private void handleBuyProperty(WebSocketSession session, String payload) {
+        String playerId = session.getId();
+        try {
+            int propertyId = Integer.parseInt(payload.substring("BUY_PROPERTY:".length()));
+            logger.info("Player " + playerId + " attempts to buy property " + propertyId);
+
+            Optional<Player> playerOpt = game.getPlayerById(playerId);
+            if (playerOpt.isEmpty()) {
+                logger.warning("Player " + playerId + " not found in game state during buy attempt.");
+                sendMessageToSession(session, createJsonError("Player not found."));
+                return;
+            }
+            Player player = playerOpt.get();
+
+            if (propertyTransactionService.canBuyProperty(player, propertyId)) {
+                boolean success = propertyTransactionService.buyProperty(player, propertyId);
+                if (success) {
+                    logger.info("Property " + propertyId + " bought successfully by player " + playerId);
+                    broadcastMessage(createJsonMessage("PROPERTY_BOUGHT", "Player " + playerId + " bought property " + propertyId));
+                    broadcastGameState();
+                } else {
+                    logger.warning("Property purchase failed for player " + playerId + ", property " + propertyId + " after canBuy check.");
+                    sendMessageToSession(session, createJsonError("Failed to buy property due to server error."));
+                }
+            } else {
+                logger.info("Player " + playerId + " cannot buy property " + propertyId + " (insufficient funds or already owned).");
+                sendMessageToSession(session, createJsonError("Cannot buy property (insufficient funds or already owned)."));
+            }
+
+        } catch (NumberFormatException e) {
+            logger.warning("Invalid property ID format received from player " + playerId + ": " + payload);
+            sendMessageToSession(session, createJsonError("Invalid property ID format."));
+        } catch (Exception e) {
+            logger.severe("Error handling BUY_PROPERTY for player " + playerId + ": " + e.getMessage());
+            sendMessageToSession(session, createJsonError("Server error handling buy property request."));
+        }
+    }
+
+    private void sendMessageToSession(WebSocketSession session, String message) {
+        try {
+            if (session.isOpen()) {
+                session.sendMessage(new TextMessage(message));
+            }
+        } catch (Exception e) {
+            logger.severe("Error sending message to session " + session.getId() + ": " + e.getMessage());
+        }
+    }
+
+    private String createJsonError(String errorMessage) {
+        return "{\"type\":\"ERROR\", \"message\":\"" + escapeJson(errorMessage) + "\"}";
+    }
+
+    private String createJsonMessage(String type, String message) {
+        return "{\"type\":\""+ escapeJson(type) +"\", \"message\":\"" + escapeJson(message) + "\"}";
+    }
+
+    private String escapeJson(String value) {
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 }
 
