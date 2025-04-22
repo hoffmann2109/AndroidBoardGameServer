@@ -3,6 +3,8 @@ import model.Player;
 import model.properties.BaseProperty;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 @Service
@@ -42,7 +44,7 @@ public class PropertyTransactionService {
 
         // Double-check conditions in case state changed
         if (property == null || property.getOwnerId() != null || player.getMoney() < property.getPurchasePrice()) {
-            logger.warning("Attempted to buy property " + propertyId + " by player " + player.getId() + " failed pre-check.");
+            logger.log(Level.WARNING, "Attempted to buy property {0} by player {1} failed pre-check.", new Object[]{propertyId, player.getId()});
             return false;
         }
 
@@ -51,12 +53,12 @@ public class PropertyTransactionService {
             player.subtractMoney(property.getPurchasePrice());
             property.setOwnerId(player.getId());
 
-            logger.info("Player " + player.getId() + " successfully bought property " + propertyId + 
-                      ". New balance: " + player.getMoney());
+            logger.log(Level.INFO, "Player {0} successfully bought property {1}. New balance: {2}",
+                    new Object[]{player.getId(), propertyId, player.getMoney()});
             return true;
 
         } catch (Exception e) {
-            logger.severe("An unexpected error occurred during property purchase: " + e.getMessage());
+            logger.log(Level.SEVERE, "An unexpected error occurred during property purchase: {0}", e.getMessage());
             return false;
         }
     }
