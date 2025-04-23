@@ -11,4 +11,5 @@ public class PlayerInfo {
     private String id;
     private String name;
     private int money;
+    private int position;
 }

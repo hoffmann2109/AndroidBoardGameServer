@@ -20,6 +20,10 @@ public class Game {
         players.add(new Player(id, name));
     }
 
+    public void removePlayer(String id) {
+        players.removeIf(player -> player.getId().equals(id));
+    }
+
     public void updatePlayerMoney(String playerId, int amount) {
         for (Player player : players) {
             if (player.getId().equals(playerId)) {
@@ -44,7 +48,7 @@ public class Game {
     public List<PlayerInfo> getPlayerInfo() {
         List<PlayerInfo> info = new ArrayList<>();
         for (Player player : players) {
-            info.add(new PlayerInfo(player.getId(), player.getName(), player.getMoney()));
+            info.add(new PlayerInfo(player.getId(), player.getName(), player.getMoney(), player.getPosition()));
         }
         return info;
     }
@@ -59,4 +63,26 @@ public class Game {
                       .filter(player -> player.getId().equals(id))
                       .findFirst();
     }
+
+    /**
+     *
+     * @param roll The result of roll dice.
+     * @param id The ID of the player to find.
+     * @return If the player passes the Start field the method returns true, otherwise false.
+     */
+    public boolean updatePlayerPosition(int roll, String id){
+        for (Player player : players) {
+            if (player.getId().equals(id)) {
+                int oldPos = player.getPosition();
+                int newPos = (oldPos + roll) % 40;   // ensures 0–39
+                player.setPosition(newPos);
+
+                if (oldPos + roll >= 40) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
 }
