@@ -90,6 +90,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         sessions.remove(session);
         broadcastMessage("Player left: " + session.getId() + " (Total: " + sessions.size() + ")");
         System.out.println("Player disconnected: " + session.getId());
+        game.removePlayer(session.getId());
     }
 
     private void broadcastMessage(String message) {

@@ -20,6 +20,10 @@ public class Game {
         players.add(new Player(id, name));
     }
 
+    public void removePlayer(String id) {
+        players.removeIf(player -> player.getId().equals(id));
+    }
+
     public void updatePlayerMoney(String playerId, int amount) {
         for (Player player : players) {
             if (player.getId().equals(playerId)) {
