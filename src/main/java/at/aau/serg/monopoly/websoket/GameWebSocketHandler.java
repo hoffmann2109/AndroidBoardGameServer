@@ -59,6 +59,11 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 DiceRollMessage drm = new DiceRollMessage(playerId, roll);
                 String json = objectMapper.writeValueAsString(drm);
                 broadcastMessage(json);
+
+                // Update Position and broadcast Game-State:
+                game.updatePlayerPosition(roll, playerId);
+                broadcastGameState();
+
             } else if (payload.startsWith("UPDATE_MONEY:")) {
                 try {
                     int amount = Integer.parseInt(payload.substring("UPDATE_MONEY:".length()));
