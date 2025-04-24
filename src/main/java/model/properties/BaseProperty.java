@@ -15,6 +15,7 @@ public abstract class BaseProperty {
     protected int purchasePrice;
     protected int mortgageValue;
     protected String image;
+    protected int position;
 
     @JsonProperty("isMortgaged")
     protected boolean isMortgaged;

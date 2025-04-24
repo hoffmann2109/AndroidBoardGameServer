@@ -43,7 +43,7 @@ class PropertyTransactionServiceTest {
         testProperty = new HouseableProperty(
                 PROPERTY_ID, null, PROPERTY_NAME, PURCHASE_PRICE, // Initially unowned (null ownerId)
                 10, 20, 30, 40, 50, 60, 50, 50, // Rent/house prices (example values)
-                MORTGAGE_VALUE, false, "image"
+                MORTGAGE_VALUE, false, "image", 1 // Added position parameter
         );
 
         // Ensure collections are empty if methods like getTrainStations are called
@@ -186,7 +186,8 @@ class PropertyTransactionServiceTest {
             100,   // rent4Stations
             MORTGAGE_VALUE,
             false, // not mortgaged
-            "train_image"
+            "train_image",
+            5      // Added position parameter
         );
         
         // Mock houseable property to return null (not found)
@@ -231,7 +232,8 @@ class PropertyTransactionServiceTest {
             10,    // rentTwoUtilitiesMultiplier
             MORTGAGE_VALUE,
             false, // not mortgaged
-            "utility_image"
+            "utility_image",
+            12     // Added position parameter
         );
         
         // Mock houseable property and train stations to return null/empty (not found)
