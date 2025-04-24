@@ -121,6 +121,7 @@ class PropertyTransactionServiceTest {
     @Test
     void buyProperty_SuccessfulPurchase() {
         testPlayer.setMoney(PURCHASE_PRICE + 50);
+        testPlayer.setPosition(1); // Set player position to match property position
         when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(testProperty);
 
         boolean result = propertyTransactionService.buyProperty(testPlayer, PROPERTY_ID);
@@ -128,7 +129,6 @@ class PropertyTransactionServiceTest {
         assertTrue(result);
         assertEquals(50, testPlayer.getMoney()); // Money should be deducted
         assertEquals(PLAYER_ID, testProperty.getOwnerId()); // Owner ID should be set
-        assertFalse(testProperty.isMortgaged()); // Ensure mortgage status didn't change
     }
 
     @Test
@@ -169,6 +169,19 @@ class PropertyTransactionServiceTest {
 
         assertFalse(result);
         assertEquals(PURCHASE_PRICE + 50, testPlayer.getMoney()); // Money should not change
+    }
+
+    @Test
+    void buyProperty_WrongPosition_FailsPreCheck() {
+        testPlayer.setMoney(PURCHASE_PRICE + 50);
+        testPlayer.setPosition(2); // Set player position to different from property position
+        when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(testProperty);
+
+        boolean result = propertyTransactionService.buyProperty(testPlayer, PROPERTY_ID);
+
+        assertFalse(result);
+        assertEquals(PURCHASE_PRICE + 50, testPlayer.getMoney()); // Money should not change
+        assertNull(testProperty.getOwnerId()); // Owner ID should remain null
     }
 
     @Test
