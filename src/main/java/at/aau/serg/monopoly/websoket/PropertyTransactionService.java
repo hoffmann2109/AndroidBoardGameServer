@@ -66,8 +66,11 @@ public class PropertyTransactionService {
         BaseProperty property = findPropertyById(propertyId);
 
         // Double-check conditions in case state changed
-        if (property == null || property.getOwnerId() != null || player.getMoney() < property.getPurchasePrice()) {
-            logger.log(Level.WARNING, "Attempted to buy property {0} by player {1} failed pre-check.", new Object[]{propertyId, player.getId()});
+        if (property == null || property.getOwnerId() != null || 
+            player.getMoney() < property.getPurchasePrice() || 
+            !isPlayerOnProperty(player, property)) {
+            logger.log(Level.WARNING, "Attempted to buy property {0} by player {1} failed pre-check.", 
+                    new Object[]{propertyId, player.getId()});
             return false;
         }
 
