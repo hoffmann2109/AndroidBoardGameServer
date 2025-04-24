@@ -56,6 +56,7 @@ class PropertyTransactionServiceTest {
     @Test
     void canBuyProperty_SufficientFunds_Unowned_ReturnsTrue() {
         testPlayer.setMoney(PURCHASE_PRICE + 50); // Player has more than enough
+        testPlayer.setPosition(1); // Set player position to match property position
         when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(testProperty);
 
         assertTrue(propertyTransactionService.canBuyProperty(testPlayer, PROPERTY_ID));
@@ -64,6 +65,7 @@ class PropertyTransactionServiceTest {
     @Test
     void canBuyProperty_ExactFunds_Unowned_ReturnsTrue() {
         testPlayer.setMoney(PURCHASE_PRICE); // Player has exact amount
+        testPlayer.setPosition(1); // Set player position to match property position
         when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(testProperty);
 
         assertTrue(propertyTransactionService.canBuyProperty(testPlayer, PROPERTY_ID));
@@ -72,6 +74,7 @@ class PropertyTransactionServiceTest {
     @Test
     void canBuyProperty_InsufficientFunds_Unowned_ReturnsFalse() {
         testPlayer.setMoney(PURCHASE_PRICE - 1); // Player has less than needed
+        testPlayer.setPosition(1); // Set player position to match property position
         when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(testProperty);
 
         assertFalse(propertyTransactionService.canBuyProperty(testPlayer, PROPERTY_ID));
@@ -80,6 +83,7 @@ class PropertyTransactionServiceTest {
     @Test
     void canBuyProperty_SufficientFunds_Owned_ReturnsFalse() {
         testPlayer.setMoney(PURCHASE_PRICE + 50);
+        testPlayer.setPosition(1); // Set player position to match property position
         testProperty.setOwnerId("anotherPlayer"); // Property is already owned
         when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(testProperty);
 
@@ -89,19 +93,27 @@ class PropertyTransactionServiceTest {
     @Test
     void canBuyProperty_PropertyNotFound_ReturnsFalse() {
         testPlayer.setMoney(PURCHASE_PRICE + 50);
+        testPlayer.setPosition(1); // Set player position to match property position
         // Mock to return null when property ID is requested
         when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(null);
         // Ensure other lookups also return null/empty
         when(propertyService.getTrainStations()).thenReturn(Collections.emptyList());
         when(propertyService.getUtilities()).thenReturn(Collections.emptyList());
 
-
         assertFalse(propertyTransactionService.canBuyProperty(testPlayer, PROPERTY_ID));
         // Verify that all property lookup methods were potentially called by findPropertyById
         verify(propertyService).getHouseablePropertyById(PROPERTY_ID);
         verify(propertyService).getTrainStations();
         verify(propertyService).getUtilities();
+    }
 
+    @Test
+    void canBuyProperty_WrongPosition_ReturnsFalse() {
+        testPlayer.setMoney(PURCHASE_PRICE + 50);
+        testPlayer.setPosition(2); // Set player position to different from property position
+        when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(testProperty);
+
+        assertFalse(propertyTransactionService.canBuyProperty(testPlayer, PROPERTY_ID));
     }
 
     // --- Tests for buyProperty ---
