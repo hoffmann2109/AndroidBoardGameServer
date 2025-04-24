@@ -16,6 +16,28 @@ public class PropertyTransactionService {
     private PropertyService propertyService;
 
     /**
+     * Validates if a player is currently on the property they're trying to buy
+     * @param player The player attempting to buy
+     * @param property The property being bought
+     * @return true if the player is on the property, false otherwise
+     */
+    private boolean isPlayerOnProperty(Player player, BaseProperty property) {
+        if (player == null || property == null) {
+            logger.log(Level.WARNING, "Player or property is null in position validation");
+            return false;
+        }
+
+        boolean isOnProperty = player.getPosition() == property.getPosition();
+        
+        if (!isOnProperty) {
+            logger.log(Level.INFO, "Player {0} is not on property {1}. Player position: {2}, Property position: {3}",
+                    new Object[]{player.getId(), property.getName(), player.getPosition(), property.getPosition()});
+        }
+        
+        return isOnProperty;
+    }
+
+    /**
      * Checks if a player can buy a specific property
      * @param player The player attempting to buy
      * @param propertyId The ID of the property to buy
@@ -28,9 +50,10 @@ public class PropertyTransactionService {
             return false;
         }
 
-        // Check if property is unowned and player has enough money
+        // Check if property is unowned, player has enough money, and is on the property
         return property.getOwnerId() == null &&
-                player.getMoney() >= property.getPurchasePrice();
+                player.getMoney() >= property.getPurchasePrice() &&
+                isPlayerOnProperty(player, property);
     }
 
     /**
