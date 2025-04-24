@@ -15,7 +15,8 @@
       "hotelPrice": 50,
       "mortgageValue": 30,
       "isMortgaged": false,
-      "image": "Badstrasse_Bild"
+      "image": "Badstrasse_Bild",
+      "position": 1
     },
     {
       "id": 2,
@@ -32,7 +33,8 @@
       "hotelPrice": 50,
       "mortgageValue": 30,
       "isMortgaged": false,
-      "image": "Turmstrasse_Bild"
+      "image": "Turmstrasse_Bild",
+      "position": 3
     },
     {
       "id": 3,
@@ -49,7 +51,8 @@
       "hotelPrice": 50,
       "mortgageValue": 50,
       "isMortgaged": false,
-      "image": "Chausseestrasse_Bild"
+      "image": "Chausseestrasse_Bild",
+      "position": 6
     },
     {
       "id": 4,
@@ -66,7 +69,8 @@
       "hotelPrice": 50,
       "mortgageValue": 50,
       "isMortgaged": false,
-      "image": "Elisenstrasse_Bild"
+      "image": "Elisenstrasse_Bild",
+      "position": 8
     },
     {
       "id": 5,
@@ -83,7 +87,8 @@
       "hotelPrice": 50,
       "mortgageValue": 60,
       "isMortgaged": false,
-      "image": "Poststrasse_Bild"
+      "image": "Poststrasse_Bild",
+      "position": 9
     },
     {
       "id": 6,
@@ -100,7 +105,8 @@
       "hotelPrice": 100,
       "mortgageValue": 70,
       "isMortgaged": false,
-      "image": "Seestrasse_Bild"
+      "image": "Seestrasse_Bild",
+      "position": 11
     },
     {
       "id": 7,
@@ -117,7 +123,8 @@
       "hotelPrice": 100,
       "mortgageValue": 70,
       "isMortgaged": false,
-      "image": "Hafenstrasse_Bild"
+      "image": "Hafenstrasse_Bild",
+      "position": 13
     },
     {
       "id": 8,
@@ -134,7 +141,8 @@
       "hotelPrice": 100,
       "mortgageValue": 80,
       "isMortgaged": false,
-      "image": "Neustrasse_Bild"
+      "image": "Neustrasse_Bild",
+      "position": 14
     },
     {
       "id": 9,
@@ -151,7 +159,8 @@
       "hotelPrice": 100,
       "mortgageValue": 90,
       "isMortgaged": false,
-      "image": "Münchnerstrasse_Bild"
+      "image": "Münchnerstrasse_Bild",
+      "position": 16
     },
     {
       "id": 10,
@@ -168,7 +177,8 @@
       "hotelPrice": 100,
       "mortgageValue": 90,
       "isMortgaged": false,
-      "image": "Wienerstrasse_Bild"
+      "image": "Wienerstrasse_Bild",
+      "position": 18
     },
     {
       "id": 11,
@@ -185,7 +195,8 @@
       "hotelPrice": 100,
       "mortgageValue": 100,
       "isMortgaged": false,
-      "image": "Berlinerstrasse_Bild"
+      "image": "Berlinerstrasse_Bild",
+      "position": 19
     },
     {
       "id": 12,
@@ -202,7 +213,8 @@
       "hotelPrice": 150,
       "mortgageValue": 110,
       "isMortgaged": false,
-      "image": "Theaterstrasse_Bild"
+      "image": "Theaterstrasse_Bild",
+      "position": 21
     },
     {
       "id": 13,
@@ -219,7 +231,8 @@
       "hotelPrice": 150,
       "mortgageValue": 110,
       "isMortgaged": false,
-      "image": "Meuseumsstrasse_Bild"
+      "image": "Meuseumsstrasse_Bild",
+      "position": 23
     },
     {
       "id": 14,
@@ -236,7 +249,8 @@
       "hotelPrice": 150,
       "mortgageValue": 120,
       "isMortgaged": false,
-      "image": "Opernplatz_Bild"
+      "image": "Opernplatz_Bild",
+      "position": 24
     },
     {
       "id": 15,
@@ -253,7 +267,8 @@
       "hotelPrice": 150,
       "mortgageValue": 130,
       "isMortgaged": false,
-      "image": "Liesingstrasse_Bild"
+      "image": "Liesingstrasse_Bild",
+      "position": 26
     },
     {
       "id": 16,
@@ -270,7 +285,8 @@
       "hotelPrice": 150,
       "mortgageValue": 130,
       "isMortgaged": false,
-      "image": "Schillerstrasse_Bild"
+      "image": "Schillerstrasse_Bild",
+      "position": 27
     },
     {
       "id": 17,
@@ -287,7 +303,8 @@
       "hotelPrice": 150,
       "mortgageValue": 140,
       "isMortgaged": false,
-      "image": "Goethestrasse_Bild"
+      "image": "Goethestrasse_Bild",
+      "position": 29
     },
     {
       "id": 18,
@@ -304,7 +321,8 @@
       "hotelPrice": 200,
       "mortgageValue": 150,
       "isMortgaged": false,
-      "image": "Rathahusplatz_Bild"
+      "image": "Rathausplatz_Bild",
+      "position": 32
     },
     {
       "id": 19,
@@ -321,7 +339,8 @@
       "hotelPrice": 200,
       "mortgageValue": 150,
       "isMortgaged": false,
-      "image": "hauptstrasse_Bild"
+      "image": "Hauptstrasse_Bild",
+      "position": 34
     },
     {
       "id": 20,
@@ -338,7 +357,8 @@
       "hotelPrice": 200,
       "mortgageValue": 160,
       "isMortgaged": false,
-      "image": "Bahnhofstrasse_Bild"
+      "image": "Bahnhofstrasse_Bild",
+      "position": 35
     },
     {
       "id": 21,
@@ -355,7 +375,8 @@
       "hotelPrice": 200,
       "mortgageValue": 175,
       "isMortgaged": false,
-      "image": "Parkstrasse_Bild"
+      "image": "Parkstrasse_Bild",
+      "position": 37
     },
     {
       "id": 22,
@@ -372,7 +393,8 @@
       "hotelPrice": 200,
       "mortgageValue": 200,
       "isMortgaged": false,
-      "image": "Schlossallee_Bild"
+      "image": "Schlossallee_Bild",
+      "position": 39
     }
   ],
   "trainStations": [
@@ -381,53 +403,59 @@
       "ownerId": null,
       "name": "Südbahnhof",
       "purchasePrice": 200,
-      "baseRent": 50,
-      "rent2Stations": 100,
-      "rent3Stations": 150,
+      "baseRent": 25,
+      "rent2Stations": 50,
+      "rent3Stations": 100,
       "rent4Stations": 200,
-      "image": "Südbahnhof_Bild"
+      "mortgageValue": 100,
+      "isMortgaged": false,
+      "image": "Südbahnhof_Bild",
+      "position": 5
     },
     {
       "id": 102,
       "ownerId": null,
       "name": "Westbahnhof",
       "purchasePrice": 200,
-      "baseRent": 50,
-      "rent2Stations": 100,
-      "rent3Stations": 150,
+      "baseRent": 25,
+      "rent2Stations": 50,
+      "rent3Stations": 100,
       "rent4Stations": 200,
       "mortgageValue": 100,
       "isMortgaged": false,
-      "image": "Westbahnhof_Bild"
+      "image": "Westbahnhof_Bild",
+      "position": 15
     },
     {
       "id": 103,
       "ownerId": null,
       "name": "Nordbahnhof",
       "purchasePrice": 200,
-      "baseRent": 50,
-      "rent2Stations": 100,
-      "rent3Stations": 150,
+      "baseRent": 25,
+      "rent2Stations": 50,
+      "rent3Stations": 100,
       "rent4Stations": 200,
       "mortgageValue": 100,
       "isMortgaged": false,
-      "image": "Nordbahnhof_Bild"
+      "image": "Nordbahnhof_Bild",
+      "position": 25
     },
     {
       "id": 104,
       "ownerId": null,
-      "name": "Hauptbahnhof",
+      "name": "Franz-Josefs-Bahnhof",
       "purchasePrice": 200,
-      "baseRent": 50,
-      "rent2Stations": 100,
-      "rent3Stations": 150,
+      "baseRent": 25,
+      "rent2Stations": 50,
+      "rent3Stations": 100,
       "rent4Stations": 200,
       "mortgageValue": 100,
       "isMortgaged": false,
-      "image": "Hauptbahnhof_Bild"
+      "image": "FranzJosefsBahnhof_Bild",
+      "position": 35
     }
   ],
-   "utilities": [
+  "utilities": [
     {
       "id": 201,
       "ownerId": null,
@@ -437,18 +465,20 @@
       "rentTwoUtilitiesMultiplier": 10,
       "mortgageValue": 75,
       "isMortgaged": false,
-      "image": "Elektrizität_Bild"
+      "image": "Elektrizität_Bild",
+      "position": 12
     },
     {
       "id": 202,
       "ownerId": null,
-      "name": "Wasser Werk",
+      "name": "Wasserwerk",
       "purchasePrice": 150,
       "rentOneUtilityMultiplier": 4,
       "rentTwoUtilitiesMultiplier": 10,
       "mortgageValue": 75,
       "isMortgaged": false,
-      "image": "Wasser_Bild"
+      "image": "Wasserwerk_Bild",
+      "position": 28
     }
   ]
 }
