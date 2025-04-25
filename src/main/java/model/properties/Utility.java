@@ -11,8 +11,8 @@ public class Utility extends BaseProperty {
 
     public Utility(int id, String ownerId, String name, int purchasePrice,
                    int rentOneUtilityMultiplier, int rentTwoUtilitiesMultiplier,
-                   int mortgageValue, boolean isMortgaged, String image) {
-        super(id, ownerId, name, purchasePrice, mortgageValue, image, isMortgaged);
+                   int mortgageValue, boolean isMortgaged, String image, int position) {
+        super(id, ownerId, name, purchasePrice, mortgageValue, image, position, isMortgaged);
         this.rentOneUtilityMultiplier = rentOneUtilityMultiplier;
         this.rentTwoUtilitiesMultiplier = rentTwoUtilitiesMultiplier;
     }

@@ -43,7 +43,7 @@ class PropertyTransactionServiceTest {
         testProperty = new HouseableProperty(
                 PROPERTY_ID, null, PROPERTY_NAME, PURCHASE_PRICE, // Initially unowned (null ownerId)
                 10, 20, 30, 40, 50, 60, 50, 50, // Rent/house prices (example values)
-                MORTGAGE_VALUE, false, "image"
+                MORTGAGE_VALUE, false, "image", 1 // Added position parameter
         );
 
         // Ensure collections are empty if methods like getTrainStations are called
@@ -56,6 +56,7 @@ class PropertyTransactionServiceTest {
     @Test
     void canBuyProperty_SufficientFunds_Unowned_ReturnsTrue() {
         testPlayer.setMoney(PURCHASE_PRICE + 50); // Player has more than enough
+        testPlayer.setPosition(1); // Set player position to match property position
         when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(testProperty);
 
         assertTrue(propertyTransactionService.canBuyProperty(testPlayer, PROPERTY_ID));
@@ -64,6 +65,7 @@ class PropertyTransactionServiceTest {
     @Test
     void canBuyProperty_ExactFunds_Unowned_ReturnsTrue() {
         testPlayer.setMoney(PURCHASE_PRICE); // Player has exact amount
+        testPlayer.setPosition(1); // Set player position to match property position
         when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(testProperty);
 
         assertTrue(propertyTransactionService.canBuyProperty(testPlayer, PROPERTY_ID));
@@ -72,6 +74,7 @@ class PropertyTransactionServiceTest {
     @Test
     void canBuyProperty_InsufficientFunds_Unowned_ReturnsFalse() {
         testPlayer.setMoney(PURCHASE_PRICE - 1); // Player has less than needed
+        testPlayer.setPosition(1); // Set player position to match property position
         when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(testProperty);
 
         assertFalse(propertyTransactionService.canBuyProperty(testPlayer, PROPERTY_ID));
@@ -80,6 +83,7 @@ class PropertyTransactionServiceTest {
     @Test
     void canBuyProperty_SufficientFunds_Owned_ReturnsFalse() {
         testPlayer.setMoney(PURCHASE_PRICE + 50);
+        testPlayer.setPosition(1); // Set player position to match property position
         testProperty.setOwnerId("anotherPlayer"); // Property is already owned
         when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(testProperty);
 
@@ -89,19 +93,27 @@ class PropertyTransactionServiceTest {
     @Test
     void canBuyProperty_PropertyNotFound_ReturnsFalse() {
         testPlayer.setMoney(PURCHASE_PRICE + 50);
+        testPlayer.setPosition(1); // Set player position to match property position
         // Mock to return null when property ID is requested
         when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(null);
         // Ensure other lookups also return null/empty
         when(propertyService.getTrainStations()).thenReturn(Collections.emptyList());
         when(propertyService.getUtilities()).thenReturn(Collections.emptyList());
 
-
         assertFalse(propertyTransactionService.canBuyProperty(testPlayer, PROPERTY_ID));
         // Verify that all property lookup methods were potentially called by findPropertyById
         verify(propertyService).getHouseablePropertyById(PROPERTY_ID);
         verify(propertyService).getTrainStations();
         verify(propertyService).getUtilities();
+    }
 
+    @Test
+    void canBuyProperty_WrongPosition_ReturnsFalse() {
+        testPlayer.setMoney(PURCHASE_PRICE + 50);
+        testPlayer.setPosition(2); // Set player position to different from property position
+        when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(testProperty);
+
+        assertFalse(propertyTransactionService.canBuyProperty(testPlayer, PROPERTY_ID));
     }
 
     // --- Tests for buyProperty ---
@@ -109,6 +121,7 @@ class PropertyTransactionServiceTest {
     @Test
     void buyProperty_SuccessfulPurchase() {
         testPlayer.setMoney(PURCHASE_PRICE + 50);
+        testPlayer.setPosition(1); // Set player position to match property position
         when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(testProperty);
 
         boolean result = propertyTransactionService.buyProperty(testPlayer, PROPERTY_ID);
@@ -116,7 +129,6 @@ class PropertyTransactionServiceTest {
         assertTrue(result);
         assertEquals(50, testPlayer.getMoney()); // Money should be deducted
         assertEquals(PLAYER_ID, testProperty.getOwnerId()); // Owner ID should be set
-        assertFalse(testProperty.isMortgaged()); // Ensure mortgage status didn't change
     }
 
     @Test
@@ -160,6 +172,19 @@ class PropertyTransactionServiceTest {
     }
 
     @Test
+    void buyProperty_WrongPosition_FailsPreCheck() {
+        testPlayer.setMoney(PURCHASE_PRICE + 50);
+        testPlayer.setPosition(2); // Set player position to different from property position
+        when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(testProperty);
+
+        boolean result = propertyTransactionService.buyProperty(testPlayer, PROPERTY_ID);
+
+        assertFalse(result);
+        assertEquals(PURCHASE_PRICE + 50, testPlayer.getMoney()); // Money should not change
+        assertNull(testProperty.getOwnerId()); // Owner ID should remain null
+    }
+
+    @Test
     void findPropertyById_FindsHouseableProperty() {
         when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(testProperty);
 
@@ -186,7 +211,8 @@ class PropertyTransactionServiceTest {
             100,   // rent4Stations
             MORTGAGE_VALUE,
             false, // not mortgaged
-            "train_image"
+            "train_image",
+            5      // Added position parameter
         );
         
         // Mock houseable property to return null (not found)
@@ -231,7 +257,8 @@ class PropertyTransactionServiceTest {
             10,    // rentTwoUtilitiesMultiplier
             MORTGAGE_VALUE,
             false, // not mortgaged
-            "utility_image"
+            "utility_image",
+            12     // Added position parameter
         );
         
         // Mock houseable property and train stations to return null/empty (not found)

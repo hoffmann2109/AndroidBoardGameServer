@@ -32,7 +32,8 @@ class PropertyTest {
                 50,               // hotelPrice
                 30,               // mortgageValue
                 false,            // isMortgaged
-                "Badstrasse_Bild"
+                "Badstrasse_Bild",
+                1                 // position
         );
 
         trainStation = new TrainStation(
@@ -45,8 +46,9 @@ class PropertyTest {
                 150,              // rent3Stations
                 200,              // rent4Stations
                 100,              // mortgageValue
-                false,             // isMortgaged
-                "Südbahnhof_Bild"
+                false,            // isMortgaged
+                "Südbahnhof_Bild",
+                5                 // position
         );
 
         utility = new Utility(
@@ -57,8 +59,9 @@ class PropertyTest {
                 4,                // rentOneUtilityMultiplier
                 10,               // rentTwoUtilitiesMultiplier
                 75,               // mortgageValue
-                false,             // isMortgaged
-                "Elektrizität_Bild"
+                false,            // isMortgaged
+                "Elektrizität_Bild",
+                12                // position
         );
     }
 
