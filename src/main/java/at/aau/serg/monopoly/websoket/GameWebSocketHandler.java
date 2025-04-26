@@ -1,6 +1,5 @@
 package at.aau.serg.monopoly.websoket;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import data.DiceRollMessage;
 import lombok.NonNull;

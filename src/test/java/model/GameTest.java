@@ -7,12 +7,18 @@ import org.junit.jupiter.params.provider.ValueSource;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.lang.reflect.Field;
+
 class GameTest {
     private Game game;
+    private Player player1;
+    private Player player2;
 
     @BeforeEach
     void setUp() {
         game = new Game();
+        player1 = new Player("player1", "Player 1");
+        player2 = new Player("player2", "Player 2");
     }
 
     @Test
@@ -141,5 +147,48 @@ class GameTest {
         assertEquals(0, game.getPlayerById("1").get().getPosition());
         game.updatePlayerPosition(50, "1");
         assertEquals(10, game.getPlayerById("1").get().getPosition());
+    }
+
+    @Test
+    void givenEmptyPlayersList_whenCheckingPlayerTurn_thenShouldReturnFalse() {
+        // Arrange
+        // Game is already empty from setUp
+
+        // Act & Assert
+        assertFalse(game.isPlayerTurn("anyPlayerId"));
+    }
+
+    @Test
+    void givenCurrentPlayer_whenCheckingPlayerTurn_thenShouldReturnTrue() {
+        // Arrange
+        game.addPlayer(player1.getId(), player1.getName());
+        game.addPlayer(player2.getId(), player2.getName());
+
+        // Act & Assert
+        assertTrue(game.isPlayerTurn(player1.getId()));
+    }
+
+    @Test
+    void givenNonCurrentPlayer_whenCheckingPlayerTurn_thenShouldReturnFalse() {
+        // Arrange
+        game.addPlayer(player1.getId(), player1.getName());
+        game.addPlayer(player2.getId(), player2.getName());
+
+        // Act & Assert
+        assertFalse(game.isPlayerTurn(player2.getId()));
+    }
+
+    @Test
+    void givenInvalidCurrentPlayerIndex_whenCheckingPlayerTurn_thenShouldReturnFalse() throws Exception {
+        // Arrange
+        game.addPlayer(player1.getId(), player1.getName());
+        
+        // Use reflection to set an invalid currentPlayerIndex
+        Field currentPlayerIndexField = Game.class.getDeclaredField("currentPlayerIndex");
+        currentPlayerIndexField.setAccessible(true);
+        currentPlayerIndexField.set(game, 999); // Set to an index way beyond the players list size
+
+        // Act & Assert
+        assertFalse(game.isPlayerTurn(player1.getId()));
     }
 }
