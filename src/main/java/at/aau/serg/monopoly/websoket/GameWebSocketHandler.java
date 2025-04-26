@@ -1,6 +1,5 @@
 package at.aau.serg.monopoly.websoket;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import data.DiceRollMessage;
 import lombok.NonNull;
@@ -152,8 +151,13 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                     sendMessageToSession(session, createJsonError("Failed to buy property due to server error."));
                 }
             } else {
-                logger.log(Level.WARNING, "Property purchase failed for player {0}, property {1} after canBuy check.", new Object[]{playerId, propertyId});
-                sendMessageToSession(session, createJsonError("Cannot buy property (insufficient funds or already owned)."));
+                if (!game.isPlayerTurn(playerId)) {
+                    logger.log(Level.WARNING, "Player {0} attempted to buy property {1} when it's not their turn", new Object[]{playerId, propertyId});
+                    sendMessageToSession(session, createJsonError("Cannot buy property - it's not your turn."));
+                } else {
+                    logger.log(Level.WARNING, "Property purchase failed for player {0}, property {1} after canBuy check.", new Object[]{playerId, propertyId});
+                    sendMessageToSession(session, createJsonError("Cannot buy property (insufficient funds or already owned)."));
+                }
             }
 
         } catch (NumberFormatException e) {

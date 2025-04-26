@@ -60,8 +60,20 @@ public class Game {
      */
     public Optional<Player> getPlayerById(String id) {
         return players.stream()
-                      .filter(player -> player.getId().equals(id))
-                      .findFirst();
+                .filter(player -> player.getId().equals(id))
+                .findFirst();
+    }
+
+    /**
+     * Checks if it's the specified player's turn
+     * @param playerId The ID of the player to check
+     * @return true if it's the player's turn, false otherwise
+     */
+    public boolean isPlayerTurn(String playerId) {
+        if (players.isEmpty() || currentPlayerIndex >= players.size()) {
+            return false;
+        }
+        return players.get(currentPlayerIndex).getId().equals(playerId);
     }
 
     /**
