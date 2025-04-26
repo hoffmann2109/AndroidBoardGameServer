@@ -17,7 +17,9 @@ public class Game {
     }
 
     public void addPlayer(String id, String name) {
-        players.add(new Player(id, name));
+        if(players.stream().noneMatch(p -> p.getId().equals(id))) {
+            players.add(new Player(id, name));
+        }
     }
 
     public void removePlayer(String id) {

@@ -1,5 +1,6 @@
 package at.aau.serg.monopoly.websoket;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import data.DiceRollMessage;
 import lombok.NonNull;
@@ -12,7 +13,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.*;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
+import java.io.IOException;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -22,6 +26,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
     private final Logger logger = Logger.getLogger(GameWebSocketHandler.class.getName());
     private final CopyOnWriteArrayList<WebSocketSession> sessions = new CopyOnWriteArrayList<>();
+    private final Map<String, String> sessionToUserId = new ConcurrentHashMap<>();
     private final Game game = new Game();
     private final ObjectMapper objectMapper = new ObjectMapper();
     private DiceManagerInterface diceManager;
@@ -32,64 +37,106 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionEstablished(@NonNull WebSocketSession session) {
         sessions.add(session);
-        game.addPlayer(session.getId(), "Player " + sessions.size());
-        broadcastMessage("Player joined: " + session.getId() + " (Total: " + sessions.size() + ")");
 
         diceManager = new DiceManager();
         diceManager.initializeStandardDices();
+    }
 
-        if (sessions.size() >= 2 && sessions.size() <= 4) {
-            startGame();
+    private void handleInitMessage(WebSocketSession session, JsonNode jsonNode) {
+        try {
+            String userId = jsonNode.get("userId").asText();
+            String name = jsonNode.get("name").asText();
+
+            if (userId == null || sessionToUserId.containsValue(userId)) {
+                sendMessageToSession(session, createJsonError("Invalid user"));
+                return;
+            }
+
+            // Spieler mit Firebase-ID hinzufügen
+            game.addPlayer(userId, name);
+            sessionToUserId.put(session.getId(), userId);
+
+            System.out.println("Player connected: " + userId + " | Name: " + name);
+            broadcastMessage("SYSTEM: " + name + " (" + userId + ") joined the game");
+
+            // Spielstart-Logik anpassen
+            if (sessionToUserId.size() >= 2 && sessionToUserId.size() <= 4) {
+                startGame();
+            }
+
+            broadcastGameState();
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "Error processing INIT: {0}", e.getMessage());
         }
-
-        System.out.println("Player connected: " + session.getId());
     }
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) {
         String payload = message.getPayload();
-        String playerId = session.getId();
+        String sessionId = session.getId();
+
+        try {
+            // Zuerst INIT-Check
+            JsonNode jsonNode = objectMapper.readTree(payload);
+            if (jsonNode.has("type") && "INIT".equals(jsonNode.get("type").asText())) {
+                handleInitMessage(session, jsonNode);
+                return;
+            }
+        } catch (IOException e) {
+            // Kein JSON, normal weiter
+        }
+
+        String userId = sessionToUserId.get(sessionId);
+        if (userId == null) {
+            sendMessageToSession(session, createJsonError("Send INIT message first"));
+            return;
+        }
+
 
         try {
             if (payload.trim().equalsIgnoreCase("Roll")) {
                 int roll = diceManager.rollDices();
-                logger.log(Level.INFO, "Player {0} rolled {1}", new Object[]{playerId, roll});
+                logger.log(Level.INFO, "Player {0} rolled {1}", new Object[]{userId, roll});
 
-                DiceRollMessage drm = new DiceRollMessage(playerId, roll);
+                DiceRollMessage drm = new DiceRollMessage(userId, roll);
                 String json = objectMapper.writeValueAsString(drm);
                 broadcastMessage(json);
 
                 // Update Position and broadcast Game-State:
-                game.updatePlayerPosition(roll, playerId);
+                game.updatePlayerPosition(roll, userId);
                 broadcastGameState();
 
             } else if (payload.startsWith("UPDATE_MONEY:")) {
                 try {
                     int amount = Integer.parseInt(payload.substring("UPDATE_MONEY:".length()));
-                    game.updatePlayerMoney(playerId, amount);
+                    game.updatePlayerMoney(userId, amount);
                     broadcastGameState();
                 } catch (NumberFormatException e) {
                     System.err.println("Invalid money update format: " + sanitizeForLog(payload));
                 }
             } else if (payload.startsWith("BUY_PROPERTY:")) {
-                handleBuyProperty(session, payload);
+                handleBuyProperty(session, userId, payload);
             } else {
                 String safePayload = sanitizeForLog(payload);
-                logger.log(Level.INFO, "Received unknown message format: {0} from player {1}", new Object[]{safePayload, playerId});
-                broadcastMessage("Player " + playerId + ": " + safePayload);
+                logger.log(Level.INFO, "Received unknown message format: {0} from player {1}", new Object[]{safePayload, userId});
+                broadcastMessage("Player " + userId + ": " + safePayload);
             }
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error handling message from player {0}: {1}", new Object[]{playerId, e.getMessage()});
+            logger.log(Level.SEVERE, "Error handling message from player {0}: {1}", new Object[]{userId, e.getMessage()});
             sendMessageToSession(session, createJsonError("Server error processing your request."));
         }
     }
 
     @Override
     public void afterConnectionClosed(@NonNull WebSocketSession session, @NonNull CloseStatus status) {
+        String userId = sessionToUserId.get(session.getId());
+        if (userId != null) {
+            game.removePlayer(userId);
+            sessionToUserId.remove(session.getId());
+            broadcastMessage("Player left: " + userId + " (Total: " + sessions.size() + ")");
+            System.out.println("Player disconnected: " + userId);
+        }
         sessions.remove(session);
-        broadcastMessage("Player left: " + session.getId() + " (Total: " + sessions.size() + ")");
-        System.out.println("Player disconnected: " + session.getId());
-        game.removePlayer(session.getId());
     }
 
     private void broadcastMessage(String message) {
@@ -126,15 +173,14 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    private void handleBuyProperty(WebSocketSession session, String payload) {
-        String playerId = session.getId();
+    private void handleBuyProperty(WebSocketSession session, String userId, String payload) {
         try {
             int propertyId = Integer.parseInt(payload.substring("BUY_PROPERTY:".length()));
-            logger.log(Level.INFO, "Player {0} attempts to buy property {1}", new Object[]{playerId, propertyId});
+            logger.log(Level.INFO, "Player {0} attempts to buy property {1}", new Object[]{userId, propertyId});
 
-            Optional<Player> playerOpt = game.getPlayerById(playerId);
+            Optional<Player> playerOpt = game.getPlayerById(userId);
             if (playerOpt.isEmpty()) {
-                logger.log(Level.WARNING, "Player {0} not found in game state during buy attempt.", playerId);
+                logger.log(Level.WARNING, "Player {0} not found in game state during buy attempt.", userId);
                 sendMessageToSession(session, createJsonError("Player not found."));
                 return;
             }
@@ -143,28 +189,28 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             if (propertyTransactionService.canBuyProperty(player, propertyId)) {
                 boolean success = propertyTransactionService.buyProperty(player, propertyId);
                 if (success) {
-                    logger.log(Level.INFO, "Property {0} bought successfully by player {1}", new Object[]{propertyId, playerId});
-                    broadcastMessage(createJsonMessage("Player " + playerId + " bought property " + propertyId));
+                    logger.log(Level.INFO, "Property {0} bought successfully by player {1}", new Object[]{propertyId, userId});
+                    broadcastMessage(createJsonMessage("Player " + userId + " bought property " + propertyId));
                     broadcastGameState();
                 } else {
-                    logger.log(Level.WARNING, "Property purchase failed for player {0}, property {1} after canBuy check.", new Object[]{playerId, propertyId});
+                    logger.log(Level.WARNING, "Property purchase failed for player {0}, property {1} after canBuy check.", new Object[]{userId, propertyId});
                     sendMessageToSession(session, createJsonError("Failed to buy property due to server error."));
                 }
             } else {
-                if (!game.isPlayerTurn(playerId)) {
-                    logger.log(Level.WARNING, "Player {0} attempted to buy property {1} when it's not their turn", new Object[]{playerId, propertyId});
+                if (!game.isPlayerTurn(userId)) {
+                    logger.log(Level.WARNING, "Player {0} attempted to buy property {1} when it's not their turn", new Object[]{userId, propertyId});
                     sendMessageToSession(session, createJsonError("Cannot buy property - it's not your turn."));
                 } else {
-                    logger.log(Level.WARNING, "Property purchase failed for player {0}, property {1} after canBuy check.", new Object[]{playerId, propertyId});
+                    logger.log(Level.WARNING, "Property purchase failed for player {0}, property {1} after canBuy check.", new Object[]{userId, propertyId});
                     sendMessageToSession(session, createJsonError("Cannot buy property (insufficient funds or already owned)."));
                 }
             }
 
         } catch (NumberFormatException e) {
-            logger.log(Level.WARNING, "Invalid property ID in payload from player {0}: {1}", new Object[]{playerId, sanitizeForLog(payload)});
+            logger.log(Level.WARNING, "Invalid property ID in payload from player {0}: {1}", new Object[]{userId, sanitizeForLog(payload)});
             sendMessageToSession(session, createJsonError("Invalid property ID format."));
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error handling BUY_PROPERTY for player {0}: {1}", new Object[]{playerId, e.getMessage()});
+            logger.log(Level.SEVERE, "Error handling BUY_PROPERTY for player {0}: {1}", new Object[]{userId, e.getMessage()});
             sendMessageToSession(session, createJsonError("Server error handling buy property request."));
         }
     }
