@@ -1,13 +1,19 @@
 package at.aau.serg.monopoly.websoket;
-import model.PlayerInfo;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
+import model.PlayerInfo;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
+import org.springframework.web.socket.handler.AbstractWebSocketHandler;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -19,75 +25,78 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class GameWebSocketIntegrationTest {
     @LocalServerPort
     private int port;
+    private static StandardWebSocketClient client1;
+    private static StandardWebSocketClient client2;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    @BeforeAll
+    static void initClients() {
+        client1 = new StandardWebSocketClient();
+        client2 = new StandardWebSocketClient();
+    }
+
+    @AfterAll
+    static void cleanupClients() {
+        // no-op
+    }
 
     @Test
     void testGameStartWithTwoPlayers() throws Exception {
-        // Create two WebSocket clients
-        StandardWebSocketClient client1 = new StandardWebSocketClient();
-        StandardWebSocketClient client2 = new StandardWebSocketClient();
+        ObjectMapper mapper = new ObjectMapper();
 
-        // Create futures to store received messages
-        CompletableFuture<String> client1Future = new CompletableFuture<>();
-        CompletableFuture<String> client2Future = new CompletableFuture<>();
-        List<String> client1Messages = new ArrayList<>();
-        List<String> client2Messages = new ArrayList<>();
+        CompletableFuture<String> stateFuture1 = new CompletableFuture<>();
+        CompletableFuture<String> stateFuture2 = new CompletableFuture<>();
+        List<String> messages1 = new ArrayList<>();
+        List<String> messages2 = new ArrayList<>();
 
-        // Connect first client
-        WebSocketSession session1 = client1.doHandshake(new TestWebSocketHandler(client1Future, client1Messages),
-                "ws://localhost:" + port + "/monopoly").get(5, TimeUnit.SECONDS);
+        // Connect client1
+        WebSocketSession session1 = client1.doHandshake(
+                new TestWebSocketHandler(stateFuture1, messages1) {
+                    @Override
+                    public void afterConnectionEstablished(WebSocketSession session) throws Exception {
+                        session.sendMessage(new TextMessage("{\"type\":\"INIT\",\"userId\":\"1\",\"name\":\"Player1\"}"));
+                    }
+                }, String.valueOf(new URI("ws://localhost:" + port + "/monopoly"))).get(5, TimeUnit.SECONDS);
 
-        // Connect second client
-        WebSocketSession session2 = client2.doHandshake(new TestWebSocketHandler(client2Future, client2Messages),
-                "ws://localhost:" + port + "/monopoly").get(5, TimeUnit.SECONDS);
+        // Connect client2
+        WebSocketSession session2 = client2.doHandshake(
+                new TestWebSocketHandler(stateFuture2, messages2) {
+                    @Override
+                    public void afterConnectionEstablished(WebSocketSession session) throws Exception {
+                        session.sendMessage(new TextMessage("{\"type\":\"INIT\",\"userId\":\"2\",\"name\":\"Player2\"}"));
+                    }
+                }, String.valueOf(new URI("ws://localhost:" + port + "/monopoly"))).get(5, TimeUnit.SECONDS);
 
-        // Wait for game state messages
-        String gameState1 = client1Future.get(5, TimeUnit.SECONDS);
-        String gameState2 = client2Future.get(5, TimeUnit.SECONDS);
+        // Await first GAME_STATE for each
+        String state1 = stateFuture1.get(5, TimeUnit.SECONDS);
+        String state2 = stateFuture2.get(5, TimeUnit.SECONDS);
+        assertThat(state1).startsWith("GAME_STATE:");
+        assertThat(state2).startsWith("GAME_STATE:");
 
-        // Verify game state messages
-        assertThat(gameState1).startsWith("GAME_STATE:");
-        assertThat(gameState2).startsWith("GAME_STATE:");
+        // Parse and verify 2 players
+        String json1 = state1.substring("GAME_STATE:".length());
+        List<PlayerInfo> players1 = mapper.readValue(
+                json1, mapper.getTypeFactory().constructCollectionType(List.class, PlayerInfo.class)
+        );
+        assertThat(players1).hasSize(2);
+        players1.forEach(p -> assertThat(p.getMoney()).isEqualTo(1500));
 
-        // Parse and verify player information
-        String json1 = gameState1.substring("GAME_STATE:".length());
-        String json2 = gameState2.substring("GAME_STATE:".length());
-
-        List<PlayerInfo> players1 = objectMapper.readValue(json1,
-                objectMapper.getTypeFactory().constructCollectionType(List.class, PlayerInfo.class));
-        List<PlayerInfo> players2 = objectMapper.readValue(json2,
-                objectMapper.getTypeFactory().constructCollectionType(List.class, PlayerInfo.class));
-
-        // Verify that we have at least 2 players and at most 4 players
-        assertThat(players1.size()).isBetween(2, 4);
-        assertThat(players2.size()).isBetween(2, 4);
-
-        // Verify that all players have the correct starting money
-        for (PlayerInfo player : players1) {
-            assertThat(player.getMoney()).isEqualTo(1500);
-        }
-
-        // Clean up
-        session1.close();
-        session2.close();
+        // Cleanup
+        session1.close(CloseStatus.NORMAL);
+        session2.close(CloseStatus.NORMAL);
     }
 
-    private static class TestWebSocketHandler extends org.springframework.web.socket.handler.AbstractWebSocketHandler {
+    private static abstract class TestWebSocketHandler extends AbstractWebSocketHandler {
         private final CompletableFuture<String> future;
         private final List<String> messages;
-
         public TestWebSocketHandler(CompletableFuture<String> future, List<String> messages) {
             this.future = future;
             this.messages = messages;
         }
-
         @Override
         protected void handleTextMessage(WebSocketSession session, TextMessage message) {
-            String payload = message.getPayload();
-            messages.add(payload);
-            if (payload.startsWith("GAME_STATE:")) {
-                future.complete(payload);
+            messages.add(message.getPayload());
+            if (message.getPayload().startsWith("GAME_STATE:")) {
+                future.complete(message.getPayload());
             }
         }
     }
