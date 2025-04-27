@@ -25,7 +25,7 @@ import java.util.logging.Logger;
 public class GameWebSocketHandler extends TextWebSocketHandler {
 
     private final Logger logger = Logger.getLogger(GameWebSocketHandler.class.getName());
-    private final CopyOnWriteArrayList<WebSocketSession> sessions = new CopyOnWriteArrayList<>();
+    protected final CopyOnWriteArrayList<WebSocketSession> sessions = new CopyOnWriteArrayList<>();
     private final Map<String, String> sessionToUserId = new ConcurrentHashMap<>();
     private final Game game = new Game();
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -42,7 +42,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         diceManager.initializeStandardDices();
     }
 
-    private void handleInitMessage(WebSocketSession session, JsonNode jsonNode) {
+    protected void handleInitMessage(WebSocketSession session, JsonNode jsonNode) {
         try {
             String userId = jsonNode.get("userId").asText();
             String name = jsonNode.get("name").asText();
