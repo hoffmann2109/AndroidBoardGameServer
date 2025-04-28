@@ -8,5 +8,13 @@ public class DiceRollMessage {
         this.playerId = pid;
         this.value    = val;
     }
+
+    public String getUserId() {
+        return playerId;
+    }
+
+    public int getRoll() {
+        return value;
+    }
 }
 
