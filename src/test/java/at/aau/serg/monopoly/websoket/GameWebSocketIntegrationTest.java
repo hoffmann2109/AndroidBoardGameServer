@@ -50,7 +50,7 @@ public class GameWebSocketIntegrationTest {
 
         // Connect client1
         WebSocketSession session1 = client1.doHandshake(
-                new TestWebSocketHandler(stateFuture1, messages1) {
+                new CountingWebSocketHandler(stateFuture1, messages1, 2) {
                     @Override
                     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
                         session.sendMessage(new TextMessage("{\"type\":\"INIT\",\"userId\":\"1\",\"name\":\"Player1\"}"));
@@ -59,14 +59,14 @@ public class GameWebSocketIntegrationTest {
 
         // Connect client2
         WebSocketSession session2 = client2.doHandshake(
-                new TestWebSocketHandler(stateFuture2, messages2) {
+                new CountingWebSocketHandler(stateFuture2, messages2, 2) {
                     @Override
                     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
                         session.sendMessage(new TextMessage("{\"type\":\"INIT\",\"userId\":\"2\",\"name\":\"Player2\"}"));
                     }
                 }, String.valueOf(new URI("ws://localhost:" + port + "/monopoly"))).get(5, TimeUnit.SECONDS);
 
-        // Await first GAME_STATE for each
+        // Await the *second* GAME_STATE for each client
         String state1 = stateFuture1.get(5, TimeUnit.SECONDS);
         String state2 = stateFuture2.get(5, TimeUnit.SECONDS);
         assertThat(state1).startsWith("GAME_STATE:");
@@ -85,18 +85,31 @@ public class GameWebSocketIntegrationTest {
         session2.close(CloseStatus.NORMAL);
     }
 
-    private static abstract class TestWebSocketHandler extends AbstractWebSocketHandler {
+    /**
+     * A WebSocketHandler that only completes its future on the Nth GAME_STATE message.
+     */
+    private static abstract class CountingWebSocketHandler extends AbstractWebSocketHandler {
         private final CompletableFuture<String> future;
         private final List<String> messages;
-        public TestWebSocketHandler(CompletableFuture<String> future, List<String> messages) {
+        private final int targetCount;
+        private int seenCount = 0;
+
+        public CountingWebSocketHandler(CompletableFuture<String> future, List<String> messages, int targetCount) {
             this.future = future;
             this.messages = messages;
+            this.targetCount = targetCount;
         }
+
         @Override
         protected void handleTextMessage(WebSocketSession session, TextMessage message) {
-            messages.add(message.getPayload());
-            if (message.getPayload().startsWith("GAME_STATE:")) {
-                future.complete(message.getPayload());
+            String payload = message.getPayload();
+            messages.add(payload);
+
+            if (payload.startsWith("GAME_STATE:")) {
+                seenCount++;
+                if (seenCount == targetCount) {
+                    future.complete(payload);
+                }
             }
         }
     }
