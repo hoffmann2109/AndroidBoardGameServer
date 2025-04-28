@@ -102,6 +102,10 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 String json = objectMapper.writeValueAsString(drm);
                 broadcastMessage(json);
 
+                if (roll != 12){
+                    game.nextPlayer();
+                }
+
                 // Update Position and broadcast Game-State:
                 game.updatePlayerPosition(roll, userId);
                 broadcastGameState();
@@ -157,6 +161,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         try {
             String gameState = objectMapper.writeValueAsString(game.getPlayerInfo());
             broadcastMessage("GAME_STATE:" + gameState);
+            broadcastMessage("PLAYER_TURN:" + game.getCurrentPlayer().getId());
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Error broadcasting game state: {0}", e.getMessage());
         }
