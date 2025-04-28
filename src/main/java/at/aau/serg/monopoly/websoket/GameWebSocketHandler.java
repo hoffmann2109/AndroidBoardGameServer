@@ -102,6 +102,10 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 String json = objectMapper.writeValueAsString(drm);
                 broadcastMessage(json);
 
+                if (roll != 12){
+                    game.nextPlayer();
+                }
+
                 // Update Position and broadcast Game-State:
                 game.updatePlayerPosition(roll, userId);
                 broadcastGameState();
