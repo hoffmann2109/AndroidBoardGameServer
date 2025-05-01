@@ -112,7 +112,31 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                     broadcastMessage(PLAYER_PREFIX + userId + " passed GO and collected €200");
                 }
                 broadcastGameState();
+            } else if (payload.startsWith("MANUAL_ROLL:")) {
+                try {
+                    int manualRoll = Integer.parseInt(payload.substring("MANUAL_ROLL:".length()));
+                    if (manualRoll < 1 || manualRoll > 39) {
+                        sendMessageToSession(session, createJsonError("Invalid roll value. Must be between 1 and 39."));
+                        return;
+                    }
+                    
+                    logger.log(Level.INFO, "Player {0} manually rolled {1}", new Object[]{userId, manualRoll});
+                    
+                    DiceRollMessage drm = new DiceRollMessage(userId, manualRoll, true);
+                    String json = objectMapper.writeValueAsString(drm);
+                    broadcastMessage(json);
 
+                    if (manualRoll != 12) {
+                        game.nextPlayer();
+                    }
+
+                    if (game.updatePlayerPosition(manualRoll, userId)) {
+                        broadcastMessage(PLAYER_PREFIX + userId + " passed GO and collected €200");
+                    }
+                    broadcastGameState();
+                } catch (NumberFormatException e) {
+                    sendMessageToSession(session, createJsonError("Invalid manual roll format. Please provide a number between 1 and 39."));
+                }
             } else if (payload.startsWith("UPDATE_MONEY:")) {
                 try {
                     int amount = Integer.parseInt(payload.substring("UPDATE_MONEY:".length()));
