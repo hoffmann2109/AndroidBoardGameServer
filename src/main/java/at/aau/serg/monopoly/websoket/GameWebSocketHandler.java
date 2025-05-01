@@ -24,6 +24,7 @@ import java.util.logging.Logger;
 @Component
 public class GameWebSocketHandler extends TextWebSocketHandler {
 
+    private static final String PLAYER_PREFIX = "Player ";
     private final Logger logger = Logger.getLogger(GameWebSocketHandler.class.getName());
     protected final CopyOnWriteArrayList<WebSocketSession> sessions = new CopyOnWriteArrayList<>();
     private final Map<String, String> sessionToUserId = new ConcurrentHashMap<>();
@@ -107,7 +108,9 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 }
 
                 // Update Position and broadcast Game-State:
-                game.updatePlayerPosition(roll, userId);
+                if (game.updatePlayerPosition(roll, userId)) {
+                    broadcastMessage(PLAYER_PREFIX + userId + " passed GO and collected €200");
+                }
                 broadcastGameState();
 
             } else if (payload.startsWith("UPDATE_MONEY:")) {
@@ -123,7 +126,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             } else {
                 String safePayload = sanitizeForLog(payload);
                 logger.log(Level.INFO, "Received unknown message format: {0} from player {1}", new Object[]{safePayload, userId});
-                broadcastMessage("Player " + userId + ": " + safePayload);
+                broadcastMessage(PLAYER_PREFIX + userId + ": " + safePayload);
             }
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Error handling message from player {0}: {1}", new Object[]{userId, e.getMessage()});
@@ -195,7 +198,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 boolean success = propertyTransactionService.buyProperty(player, propertyId);
                 if (success) {
                     logger.log(Level.INFO, "Property {0} bought successfully by player {1}", new Object[]{propertyId, userId});
-                    broadcastMessage(createJsonMessage("Player " + userId + " bought property " + propertyId));
+                    broadcastMessage(createJsonMessage(PLAYER_PREFIX + userId + " bought property " + propertyId));
                     broadcastGameState();
                 } else {
                     logger.log(Level.WARNING, "Property purchase failed for player {0}, property {1} after canBuy check.", new Object[]{userId, propertyId});
