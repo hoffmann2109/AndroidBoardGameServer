@@ -1,4 +1,5 @@
 package model;
+import com.google.cloud.Date;
 import lombok.Data;
 import java.util.ArrayList;
 import java.util.List;
@@ -9,11 +10,19 @@ public class Game {
     private List<Player> players;
     private boolean isStarted;
     private int currentPlayerIndex;
+    private Date startTime;
+    private String winnerId;
+
 
     public Game() {
         this.players = new ArrayList<>();
         this.isStarted = false;
         this.currentPlayerIndex = 0;
+    }
+
+    public void start() {
+        this.isStarted = true;
+        this.startTime = new Date();
     }
 
     public void addPlayer(String id, String name) {
@@ -100,4 +109,37 @@ public class Game {
         return false;
     }
 
+    /**
+     * Beendet das Spiel und setzt den Gewinner
+     * @param winnerId Die ID des Gewinners
+     * @return Die Dauer des Spiels in Minuten
+     */
+    public int endGame(String winnerId) {
+        this.isStarted = false;
+        this.winnerId = winnerId;
+
+        if (startTime == null) {
+            return 0;
+        }
+
+        // Berechnung der Spielzeit in Minuten
+        long durationMs = new Date().getTime() - startTime.getTime();
+        return (int) (durationMs / (60 * 1000));
+    }
+
+
+    public String determineWinner() {
+        if (players.isEmpty()) {
+            return null;
+        }
+
+        Player winner = players.get(0);
+        for (Player player : players) {
+            if (player.getMoney() > winner.getMoney()) {
+                winner = player;
+            }
+        }
+
+        return winner.getId();
+    }
 }
