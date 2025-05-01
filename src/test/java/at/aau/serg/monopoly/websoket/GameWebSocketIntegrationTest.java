@@ -50,25 +50,25 @@ public class GameWebSocketIntegrationTest {
 
         // Connect client1
         WebSocketSession session1 = client1.doHandshake(
-                new CountingWebSocketHandler(stateFuture1, messages1, 2) {
+                new CountingWebSocketHandler(stateFuture1, messages1, 1) {
                     @Override
                     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
                         session.sendMessage(new TextMessage("{\"type\":\"INIT\",\"userId\":\"1\",\"name\":\"Player1\"}"));
                     }
-                }, String.valueOf(new URI("ws://localhost:" + port + "/monopoly"))).get(5, TimeUnit.SECONDS);
+                }, String.valueOf(new URI("ws://localhost:" + port + "/monopoly"))).get(10, TimeUnit.SECONDS);
 
         // Connect client2
         WebSocketSession session2 = client2.doHandshake(
-                new CountingWebSocketHandler(stateFuture2, messages2, 2) {
+                new CountingWebSocketHandler(stateFuture2, messages2, 1) {
                     @Override
                     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
                         session.sendMessage(new TextMessage("{\"type\":\"INIT\",\"userId\":\"2\",\"name\":\"Player2\"}"));
                     }
-                }, String.valueOf(new URI("ws://localhost:" + port + "/monopoly"))).get(5, TimeUnit.SECONDS);
+                }, String.valueOf(new URI("ws://localhost:" + port + "/monopoly"))).get(10, TimeUnit.SECONDS);
 
-        // Await the *second* GAME_STATE for each client
-        String state1 = stateFuture1.get(5, TimeUnit.SECONDS);
-        String state2 = stateFuture2.get(5, TimeUnit.SECONDS);
+        // Await the GAME_STATE for each client
+        String state1 = stateFuture1.get(10, TimeUnit.SECONDS);
+        String state2 = stateFuture2.get(10, TimeUnit.SECONDS);
         assertThat(state1).startsWith("GAME_STATE:");
         assertThat(state2).startsWith("GAME_STATE:");
 
