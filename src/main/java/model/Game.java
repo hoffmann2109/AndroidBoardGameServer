@@ -92,6 +92,7 @@ public class Game {
                 player.setPosition(newPos);
 
                 if (oldPos + roll >= 40) {
+                    player.addMoney(200);  // Add $200 for passing GO
                     return true;
                 }
             }
