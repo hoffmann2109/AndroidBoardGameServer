@@ -185,4 +185,78 @@ class GameWebSocketHandlerDiceTest {
         // Roll is 12, so the turn should stay
         assertEquals("PLAYER_TURN:u1", lastTurnMsg.getPayload());
     }
+
+    @Test
+    void testManualRollSuccessBroadcastsDiceRollAndGameState() throws Exception {
+        // INIT
+        handler.afterConnectionEstablished(session);
+        String initJson = mapper.createObjectNode()
+                .put("type", "INIT")
+                .put("userId", "u1")
+                .put("name", "Bob")
+                .toString();
+        handler.handleTextMessage(session, new TextMessage(initJson));
+
+        clearInvocations(session);
+
+        // Manual Roll:
+        handler.handleTextMessage(session, new TextMessage("MANUAL_ROLL:8"));
+
+        // Verify all three messages:
+        verify(session, atLeast(3)).sendMessage(msgCaptor.capture());
+        List<TextMessage> all = msgCaptor.getAllValues();
+
+        // Verify parsing and broadcasting:
+        JsonNode diceMsg = mapper.readTree(all.get(0).getPayload());
+        assertEquals("DICE_ROLL", diceMsg.get("type").asText());
+        assertEquals("u1", diceMsg.get("userId").asText());
+        assertEquals(8, diceMsg.get("value").asInt());
+        assertTrue(diceMsg.get("isManual").asBoolean());
+        assertTrue(all.stream().anyMatch(m -> m.getPayload().startsWith("GAME_STATE:")));
+        assertTrue(all.stream().anyMatch(m -> m.getPayload().startsWith("PLAYER_TURN:")));
+    }
+
+    @Test
+    void testManualRollInvalidValueReturnsError() throws Exception {
+        // INIT
+        handler.afterConnectionEstablished(session);
+        String initJson = mapper.createObjectNode()
+                .put("type", "INIT")
+                .put("userId", "u1")
+                .put("name", "Bob")
+                .toString();
+        handler.handleTextMessage(session, new TextMessage(initJson));
+
+        clearInvocations(session);
+
+        // Manual Roll with invalid value:
+        handler.handleTextMessage(session, new TextMessage("MANUAL_ROLL:40"));
+
+        // Verify error message:
+        verify(session).sendMessage(msgCaptor.capture());
+        TextMessage errorMsg = msgCaptor.getValue();
+        assertTrue(errorMsg.getPayload().contains("Invalid roll value"));
+    }
+
+    @Test
+    void testManualRollInvalidFormatReturnsError() throws Exception {
+        // INIT
+        handler.afterConnectionEstablished(session);
+        String initJson = mapper.createObjectNode()
+                .put("type", "INIT")
+                .put("userId", "u1")
+                .put("name", "Bob")
+                .toString();
+        handler.handleTextMessage(session, new TextMessage(initJson));
+
+        clearInvocations(session);
+
+        // Manual Roll with invalid format:
+        handler.handleTextMessage(session, new TextMessage("MANUAL_ROLL:abc"));
+
+        // Verify error message:
+        verify(session).sendMessage(msgCaptor.capture());
+        TextMessage errorMsg = msgCaptor.getValue();
+        assertTrue(errorMsg.getPayload().contains("Invalid manual roll format"));
+    }
 }
