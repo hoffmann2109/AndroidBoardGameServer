@@ -107,7 +107,9 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 }
 
                 // Update Position and broadcast Game-State:
-                game.updatePlayerPosition(roll, userId);
+                if (game.updatePlayerPosition(roll, userId)) {
+                    broadcastMessage("Player " + userId + " passed GO and collected €200");
+                }
                 broadcastGameState();
 
             } else if (payload.startsWith("UPDATE_MONEY:")) {
