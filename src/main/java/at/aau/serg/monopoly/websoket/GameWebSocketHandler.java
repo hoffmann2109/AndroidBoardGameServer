@@ -95,6 +95,12 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
 
         try {
+
+            if (payload.contains("\"type\":\"CHAT_MESSAGE\"")) {
+                logger.log(Level.INFO, "Received chat message from player {0}", userId);
+                broadcastMessage(payload);
+                return;
+            }
             if (payload.trim().equalsIgnoreCase("Roll")) {
                 int roll = diceManager.rollDices();
                 logger.log(Level.INFO, "Player {0} rolled {1}", new Object[]{userId, roll});
