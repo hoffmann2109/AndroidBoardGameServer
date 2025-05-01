@@ -191,4 +191,68 @@ class GameTest {
         // Act & Assert
         assertFalse(game.isPlayerTurn(player1.getId()));
     }
+
+    @Test
+    void testPassingGoAddsMoney() {
+        // Arrange
+        game.addPlayer("1", "Player 1");
+        Player player = game.getPlayers().get(0);
+        int initialMoney = player.getMoney();
+
+        // Act - Move player to position 39 (one before GO)
+        game.updatePlayerPosition(39, "1");
+        // Move player 1 step to pass GO
+        boolean passedGo = game.updatePlayerPosition(1, "1");
+
+        // Assert
+        assertTrue(passedGo);
+        assertEquals(initialMoney + 200, player.getMoney());
+    }
+
+    @Test
+    void testPassingGoMultipleTimes() {
+        // Arrange
+        game.addPlayer("1", "Player 1");
+        Player player = game.getPlayers().get(0);
+        int initialMoney = player.getMoney();
+
+        // Act - Move player around the board multiple times
+        game.updatePlayerPosition(40, "1"); // First pass
+        game.updatePlayerPosition(40, "1"); // Second pass
+        game.updatePlayerPosition(40, "1"); // Third pass
+
+        // Assert
+        assertEquals(initialMoney + (200 * 3), player.getMoney());
+    }
+
+    @Test
+    void testNotPassingGoDoesNotAddMoney() {
+        // Arrange
+        game.addPlayer("1", "Player 1");
+        Player player = game.getPlayers().get(0);
+        int initialMoney = player.getMoney();
+
+        // Act - Move player without passing GO
+        boolean passedGo = game.updatePlayerPosition(10, "1");
+
+        // Assert
+        assertFalse(passedGo);
+        assertEquals(initialMoney, player.getMoney());
+    }
+
+    @Test
+    void testPassingGoWithLargeRoll() {
+        // Arrange
+        game.addPlayer("1", "Player 1");
+        Player player = game.getPlayers().get(0);
+        int initialMoney = player.getMoney();
+
+        // Act - Move player with a large roll that passes GO
+        boolean passedGo = game.updatePlayerPosition(50, "1");
+
+        // Assert
+        assertTrue(passedGo);
+        assertEquals(initialMoney + 200, player.getMoney());
+        assertEquals(10, player.getPosition()); // Should wrap around to position 10
+    }
 }
