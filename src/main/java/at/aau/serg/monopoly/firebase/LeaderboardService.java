@@ -24,8 +24,8 @@ public class LeaderboardService {
     private static final String GAME_HISTORY_COLLECTION = "gameHistory";
     private static final String LEADERBOARD_WINS = "leaderboard_wins";
     private static final String LEADERBOARD_LEVEL = "leaderboard_level";
-    private static final String LEADERBOARD_MONEY = "leaderboard_money";
-    private static final String LEADERBOARD_HIGH_MONEY = "leaderboard_highMoney";
+    private static final String LEADERBOARD_MONEY = "leaderboard_averageMoney";
+    private static final String LEADERBOARD_HIGH_MONEY = "leaderboard_highestMoney";
     private static final String LEADERBOARD_GAMES_PLAYED = "leaderboard_gamesPlayed";
 
     private static final int LEADERBOARD_SIZE = 50;
@@ -206,10 +206,8 @@ public class LeaderboardService {
                 leaderboardEntry.put("userId", user.getId());
                 leaderboardEntry.put("name", userData.getOrDefault("name", "Unbekannt"));
                 leaderboardEntry.put("rank", rank);
-                leaderboardEntry.put("money", userData.getOrDefault(fieldName, 0));
-                leaderboardEntry.put("gamesPlayed", userData.getOrDefault("gamesPlayed", 0));
-                leaderboardEntry.put("wins", userData.getOrDefault("wins", 0));
-                leaderboardEntry.put("level", userData.getOrDefault("level", 0));
+                leaderboardEntry.put(fieldName, userData.getOrDefault(fieldName, 0));
+
 
                 // In Leaderboard-Sammlung speichern
                 firestore.collection(leaderboardCollection)

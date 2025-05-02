@@ -48,10 +48,10 @@ public class FirebaseService {
                     FirebaseApp.initializeApp(options);
                     logger.info("Firebase wurde erfolgreich initialisiert");
 
-                    // Test-Verbindung zum Firestore
+                    // lastConnection-Verbindung zum Firestore
                     try {
                         Firestore firestore = FirestoreClient.getFirestore();
-                        firestore.collection("test").document("test").set(
+                        firestore.collection("lastConnection").document("lastConnection").set(
                                 Collections.singletonMap("timestamp", new Date().toString())
                         ).get(); // Blockierend ausführen, um Fehler sofort zu erkennen
                         logger.info("Firestore-Verbindung erfolgreich getestet");
