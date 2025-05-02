@@ -1,58 +1,138 @@
 package at.aau.serg.monopoly.websoket;
 
 import com.google.api.core.ApiFuture;
-import com.google.cloud.firestore.CollectionReference;
-import com.google.cloud.firestore.DocumentReference;
-import com.google.cloud.firestore.Firestore;
-import com.google.cloud.firestore.WriteResult;
+import com.google.cloud.firestore.*;
 import com.google.firebase.cloud.FirestoreClient;
 import model.GameHistory;
+import model.Player;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.*;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class GameHistoryServiceTest {
 
-    @Mock(answer = Answers.RETURNS_DEEP_STUBS)
-    private Firestore firestore;
-
-    @InjectMocks
-    private GameHistoryService gameHistoryService;
-
     @Test
-    void testSaveGameHistory() throws Exception {
-        // Step 1: Mock Firestore chain
-        Firestore firestoreMock = mock(Firestore.class);
+    void testSaveGameHistory_successful() throws Exception {
+        Firestore firestore = mock(Firestore.class);
         CollectionReference users = mock(CollectionReference.class);
         DocumentReference userDoc = mock(DocumentReference.class);
-        CollectionReference gameHistory = mock(CollectionReference.class);
+        CollectionReference history = mock(CollectionReference.class);
         DocumentReference gameDoc = mock(DocumentReference.class);
-        ApiFuture<WriteResult> writeFuture = mock(ApiFuture.class);
+        ApiFuture<WriteResult> future = mock(ApiFuture.class);
 
-        // Step 2: Build chain
-        when(firestoreMock.collection("users")).thenReturn(users);
+        when(firestore.collection("users")).thenReturn(users);
         when(users.document("123")).thenReturn(userDoc);
-        when(userDoc.collection("gameHistory")).thenReturn(gameHistory);
-        when(gameHistory.document(anyString())).thenReturn(gameDoc);
-        when(gameDoc.set(any(GameHistory.class))).thenReturn(writeFuture);
+        when(userDoc.collection("gameHistory")).thenReturn(history);
+        when(history.document(anyString())).thenReturn(gameDoc);
+        when(gameDoc.set(any(GameHistory.class))).thenReturn(future);
+        when(future.get()).thenReturn(mock(WriteResult.class));
 
-        // Step 3: Replace static FirestoreClient.getFirestore()
-        try (MockedStatic<FirestoreClient> firestoreClient = Mockito.mockStatic(FirestoreClient.class)) {
-            firestoreClient.when(FirestoreClient::getFirestore).thenReturn(firestoreMock);
+        try (MockedStatic<FirestoreClient> client = Mockito.mockStatic(FirestoreClient.class)) {
+            client.when(FirestoreClient::getFirestore).thenReturn(firestore);
 
-            // Step 4: Execute test
             GameHistoryService service = new GameHistoryService();
-            boolean result = service.saveGameHistory("123", 30, 2500, 2, 4, true);
+            boolean result = service.saveGameHistory("123", 45, 1500, 1, 4, false);
 
-            // Step 5: Verify call
             assertTrue(result);
             verify(gameDoc).set(any(GameHistory.class));
+        }
+    }
+
+    @Test
+    void testSaveGameHistory_executionException() throws Exception {
+        Firestore firestore = mock(Firestore.class);
+        CollectionReference users = mock(CollectionReference.class);
+        DocumentReference userDoc = mock(DocumentReference.class);
+        CollectionReference history = mock(CollectionReference.class);
+        DocumentReference gameDoc = mock(DocumentReference.class);
+        ApiFuture<WriteResult> future = mock(ApiFuture.class);
+
+        when(firestore.collection("users")).thenReturn(users);
+        when(users.document("123")).thenReturn(userDoc);
+        when(userDoc.collection("gameHistory")).thenReturn(history);
+        when(history.document(anyString())).thenReturn(gameDoc);
+        when(gameDoc.set(any(GameHistory.class))).thenReturn(future);
+        when(future.get()).thenThrow(new ExecutionException("failed", new Throwable()));
+
+        try (MockedStatic<FirestoreClient> client = Mockito.mockStatic(FirestoreClient.class)) {
+            client.when(FirestoreClient::getFirestore).thenReturn(firestore);
+
+            GameHistoryService service = new GameHistoryService();
+            boolean result = service.saveGameHistory("123", 30, 1000, 1, 2, true);
+
+            assertFalse(result);
+        }
+    }
+
+    @Test
+    void testSaveGameHistory_interruptedException() throws Exception {
+        Firestore firestore = mock(Firestore.class);
+        CollectionReference users = mock(CollectionReference.class);
+        DocumentReference userDoc = mock(DocumentReference.class);
+        CollectionReference history = mock(CollectionReference.class);
+        DocumentReference gameDoc = mock(DocumentReference.class);
+        ApiFuture<WriteResult> future = mock(ApiFuture.class);
+
+        when(firestore.collection("users")).thenReturn(users);
+        when(users.document("123")).thenReturn(userDoc);
+        when(userDoc.collection("gameHistory")).thenReturn(history);
+        when(history.document(anyString())).thenReturn(gameDoc);
+        when(gameDoc.set(any(GameHistory.class))).thenReturn(future);
+        when(future.get()).thenThrow(new InterruptedException("interrupted"));
+
+        try (MockedStatic<FirestoreClient> client = Mockito.mockStatic(FirestoreClient.class)) {
+            client.when(FirestoreClient::getFirestore).thenReturn(firestore);
+
+            GameHistoryService service = new GameHistoryService();
+            boolean result = service.saveGameHistory("123", 30, 1000, 1, 2, false);
+
+            assertFalse(result);
+        }
+    }
+
+    @Test
+    void testSaveGameHistoryForAllPlayers_emptyList() {
+        GameHistoryService service = new GameHistoryService();
+        assertDoesNotThrow(() -> service.saveGameHistoryForAllPlayers(null, 30, "winnerId", 1));
+        assertDoesNotThrow(() -> service.saveGameHistoryForAllPlayers(List.of(), 30, "winnerId", 1));
+    }
+
+    @Test
+    void testSaveGameHistoryForAllPlayers_multiplePlayers() throws Exception {
+        Player p1 = new Player("p1", "Alice");
+        Player p2 = new Player("p2", "Bob");
+        p1.addMoney(100);
+        p2.addMoney(200);
+
+        Firestore firestore = mock(Firestore.class);
+        CollectionReference users = mock(CollectionReference.class);
+        DocumentReference userDoc = mock(DocumentReference.class);
+        CollectionReference history = mock(CollectionReference.class);
+        DocumentReference gameDoc = mock(DocumentReference.class);
+        ApiFuture<WriteResult> future = mock(ApiFuture.class);
+
+        when(firestore.collection(anyString())).thenReturn(users);
+        when(users.document(anyString())).thenReturn(userDoc);
+        when(userDoc.collection(anyString())).thenReturn(history);
+        when(history.document(anyString())).thenReturn(gameDoc);
+        when(gameDoc.set(any(GameHistory.class))).thenReturn(future);
+        when(future.get()).thenReturn(mock(WriteResult.class));
+
+        try (MockedStatic<FirestoreClient> client = Mockito.mockStatic(FirestoreClient.class)) {
+            client.when(FirestoreClient::getFirestore).thenReturn(firestore);
+
+            GameHistoryService service = new GameHistoryService();
+            service.saveGameHistoryForAllPlayers(List.of(p1, p2), 40, "p2", 2);
+
+            verify(gameDoc, atLeastOnce()).set(any(GameHistory.class));
         }
     }
 }

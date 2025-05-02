@@ -4,14 +4,12 @@ import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
 import com.google.firebase.cloud.FirestoreClient;
 import lombok.extern.java.Log;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.concurrent.ExecutionException;
-import java.util.stream.Collectors;
 
 @Service
 @EnableScheduling
@@ -29,7 +27,7 @@ public class LeaderboardService {
     private static final int LEADERBOARD_SIZE = 50;
 
 
-    private Firestore getFirestore() {
+    Firestore getFirestore() {
         return FirestoreClient.getFirestore();
     }
 
@@ -61,7 +59,7 @@ public class LeaderboardService {
     /**
      * Aktualisiert  Statistiken für alle Benutzer basierend auf ihrer GameHistory
      */
-    private void updateAllUserStats() {
+    void updateAllUserStats() {
         try {
             Firestore firestore = getFirestore();
             CollectionReference usersCollection = firestore.collection(USERS_COLLECTION);
@@ -147,35 +145,35 @@ public class LeaderboardService {
     /**
      * sort based on gewonnenen Spielen
      */
-    private void updateWinsLeaderboard() {
+    void updateWinsLeaderboard() {
         updateLeaderboard("wins", LEADERBOARD_WINS);
     }
 
     /**
      * sort based on erreichten Levels
      */
-    private void updateLevelLeaderboard() {
+    void updateLevelLeaderboard() {
         updateLeaderboard("level", LEADERBOARD_LEVEL);
     }
 
     /**
      * sort based on durchschnittlichem Geld
      */
-    private void updateMoneyLeaderboard() {
+    void updateMoneyLeaderboard() {
         updateLeaderboard("averageMoney", LEADERBOARD_MONEY);
     }
 
     /**
      * sort based on meistes Geld
      */
-    private void updateHighMoneyLeaderboard() {
+    void updateHighMoneyLeaderboard() {
         updateLeaderboard("highestMoney", LEADERBOARD_HIGH_MONEY);
     }
 
     /**
      * sort based on gespielten Spielen
      */
-    private void updateGamesPlayedLeaderboard() {
+    void updateGamesPlayedLeaderboard() {
         updateLeaderboard("gamesPlayed", LEADERBOARD_GAMES_PLAYED);
     }
 

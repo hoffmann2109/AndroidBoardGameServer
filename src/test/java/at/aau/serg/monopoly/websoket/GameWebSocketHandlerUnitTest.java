@@ -1,19 +1,13 @@
 package at.aau.serg.monopoly.websoket;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import data.DiceRollMessage;
-import model.DiceManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
-import java.io.UncheckedIOException;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.Map;
@@ -29,7 +23,7 @@ class GameWebSocketHandlerUnitTest {
     private GameWebSocketHandler gameWebSocketHandler;
 
     @BeforeEach
-    void setUp() throws Exception {
+    void setUp() {
         gameWebSocketHandler = new GameWebSocketHandler();
         session = mock(WebSocketSession.class);
         when(session.getId()).thenReturn("1");

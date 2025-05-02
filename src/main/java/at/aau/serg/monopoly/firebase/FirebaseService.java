@@ -59,7 +59,7 @@ public class FirebaseService {
         }
     }
 
-    private InputStream locateServiceAccountKey() throws IOException {
+    InputStream locateServiceAccountKey() throws IOException {
         // Versuche verschiedene Pfade
         InputStream stream = getClass().getClassLoader().getResourceAsStream("serviceAccountKey.json");
         if (stream == null) stream = new FileInputStream(new File("serviceAccountKey.json"));

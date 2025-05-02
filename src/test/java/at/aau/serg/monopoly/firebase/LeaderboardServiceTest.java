@@ -3,130 +3,167 @@ package at.aau.serg.monopoly.firebase;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
 import com.google.firebase.cloud.FirestoreClient;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
-import org.mockito.Mockito;
-import java.util.*;
-import java.util.concurrent.ExecutionException;
+import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.*;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-import static org.mockito.ArgumentMatchers.*;
+import java.util.*;
+
 import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class LeaderboardServiceTest {
 
     private LeaderboardService leaderboardService;
     private Firestore firestore;
 
+    private static MockedStatic<FirestoreClient> firestoreClientMock;
+
+    @BeforeAll
+    static void initStaticMock() {
+        firestoreClientMock = Mockito.mockStatic(FirestoreClient.class);
+    }
+
+    @AfterAll
+    static void closeStaticMock() {
+        firestoreClientMock.close();
+    }
+
     @BeforeEach
-    void setUp() {
+    void setup() {
         firestore = mock(Firestore.class);
         leaderboardService = new LeaderboardService();
-
-        try (MockedStatic<FirestoreClient> firestoreClient = Mockito.mockStatic(FirestoreClient.class)) {
-            firestoreClient.when(FirestoreClient::getFirestore).thenReturn(firestore);
-        }
+        firestoreClientMock.when(FirestoreClient::getFirestore).thenReturn(firestore);
     }
 
     @Test
-    void testUpdateUserStats() throws Exception {
-        // Mock Firestore-Kette
-        CollectionReference usersRef = mock(CollectionReference.class);
-        DocumentReference userDocRef = mock(DocumentReference.class);
-        CollectionReference gameHistoryRef = mock(CollectionReference.class);
-        ApiFuture<QuerySnapshot> historyFuture = mock(ApiFuture.class);
-        QuerySnapshot historySnapshot = mock(QuerySnapshot.class);
-        ApiFuture<DocumentSnapshot> userFuture = mock(ApiFuture.class);
+    void testUpdateUserStats_withValidGames() throws Exception {
+        CollectionReference users = mock(CollectionReference.class);
+        DocumentReference userDoc = mock(DocumentReference.class);
+        CollectionReference history = mock(CollectionReference.class);
+        ApiFuture<QuerySnapshot> future = mock(ApiFuture.class);
+        QuerySnapshot snapshot = mock(QuerySnapshot.class);
+        QueryDocumentSnapshot doc1 = mock(QueryDocumentSnapshot.class);
+        QueryDocumentSnapshot doc2 = mock(QueryDocumentSnapshot.class);
         DocumentSnapshot userSnapshot = mock(DocumentSnapshot.class);
+        ApiFuture<DocumentSnapshot> userFuture = mock(ApiFuture.class);
 
-        when(firestore.collection("users")).thenReturn(usersRef);
-        when(usersRef.document("123")).thenReturn(userDocRef);
-        when(userDocRef.collection("gameHistory")).thenReturn(gameHistoryRef);
-        when(gameHistoryRef.get()).thenReturn(historyFuture);
-        when(historyFuture.get()).thenReturn(historySnapshot);
-        when(userDocRef.get()).thenReturn(userFuture);
+        when(firestore.collection("users")).thenReturn(users);
+        when(users.document("uid")).thenReturn(userDoc);
+        when(userDoc.collection("gameHistory")).thenReturn(history);
+        when(history.get()).thenReturn(future);
+        when(future.get()).thenReturn(snapshot);
+        when(snapshot.getDocuments()).thenReturn(List.of(doc1, doc2));
+        when(doc1.getData()).thenReturn(Map.of("won", true, "endMoney", 2000));
+        when(doc2.getData()).thenReturn(Map.of("won", false, "endMoney", 1500));
+
+        when(userDoc.get()).thenReturn(userFuture);
         when(userFuture.get()).thenReturn(userSnapshot);
+        when(userSnapshot.exists()).thenReturn(true);
+        when(userSnapshot.contains("name")).thenReturn(true);
         when(userSnapshot.getString("name")).thenReturn("TestUser");
 
-        // Mock Spieldaten
-        List<QueryDocumentSnapshot> games = List.of(mock(QueryDocumentSnapshot.class));
-        when(historySnapshot.getDocuments()).thenReturn(games);
-        when(games.get(0).getData()).thenReturn(Map.of("won", true, "endMoney", 2000));
+        leaderboardService.updateUserStats("uid", firestore);
 
-        // Testausführung
-        leaderboardService.updateUserStats("123", firestore);
-
-        // Verifizierung
-        verify(userDocRef).set(
-                argThat(map ->
-                        map.get("wins").equals(1) &&
-                                map.get("highestMoney").equals(2000)
-                ),
-                any(SetOptions.class)
-        );
+        verify(userDoc).set(argThat((Map<String, Object> map) ->
+                map.get("wins").equals(1) &&
+                        map.get("highestMoney").equals(2000) &&
+                        map.get("averageMoney").equals(1750) &&
+                        map.get("gamesPlayed").equals(2) &&
+                        map.get("level").equals(1) &&
+                        map.get("name").equals("TestUser")
+        ), any(SetOptions.class));
     }
 
     @Test
-    void testUpdateLeaderboard() throws Exception {
-        try (MockedStatic<FirestoreClient> firestoreClient = Mockito.mockStatic(FirestoreClient.class)) {
-            firestoreClient.when(FirestoreClient::getFirestore).thenReturn(firestore);
-        CollectionReference usersRef = mock(CollectionReference.class);
-        Query userQuery = mock(Query.class);
-        ApiFuture<QuerySnapshot> queryFuture = mock(ApiFuture.class);
-        QuerySnapshot querySnapshot = mock(QuerySnapshot.class);
-        CollectionReference leaderboardRef = mock(CollectionReference.class);
-        DocumentReference docRef = mock(DocumentReference.class);
-        Query deleteQuery = mock(Query.class);
-        ApiFuture<QuerySnapshot> deleteFuture = mock(ApiFuture.class);
-        QuerySnapshot deleteSnapshot = mock(QuerySnapshot.class);
-
-        when(firestore.collection("users")).thenReturn(usersRef);
-        when(usersRef.orderBy(eq("wins"), eq(Query.Direction.DESCENDING))).thenReturn(userQuery);
-        when(userQuery.limit(50)).thenReturn(userQuery);
-        when(userQuery.get()).thenReturn(queryFuture);
-        when(queryFuture.get()).thenReturn(querySnapshot);
-
-        // Mock leaderboard collection and deletion
-        when(firestore.collection("leaderboard_wins")).thenReturn(leaderboardRef);
-        when(leaderboardRef.limit(100)).thenReturn(deleteQuery);
-        when(deleteQuery.get()).thenReturn(deleteFuture);
-        when(deleteFuture.get()).thenReturn(deleteSnapshot);
-        when(deleteSnapshot.getDocuments()).thenReturn(List.of()); // No documents to delete
-
-        when(leaderboardRef.document(anyString())).thenReturn(docRef);
-
-        // Mock user data
-        QueryDocumentSnapshot userDoc = mock(QueryDocumentSnapshot.class);
-        when(querySnapshot.getDocuments()).thenReturn(List.of(userDoc));
-        when(userDoc.getId()).thenReturn("user123");
-        when(userDoc.getData()).thenReturn(Map.of("wins", 5, "name", "TestUser"));
-
-        // Execute test
-        leaderboardService.updateLeaderboard("wins", "leaderboard_wins");
-
-        // Verify document is set
-            verify(docRef).set(argThat(entry ->
-                    entry.get("name").equals("TestUser") &&
-                            entry.get("wins").equals(5) &&
-                            entry.get("rank").equals(1)
-            ));
-        }
-    }
-
-    @Test
-    void testDeleteCollection() throws Exception {
-        CollectionReference collectionRef = mock(CollectionReference.class);
+    void testUpdateUserStatsEdgeCase_emptyHistory() throws Exception {
+        CollectionReference users = mock(CollectionReference.class);
+        DocumentReference userDoc = mock(DocumentReference.class);
+        CollectionReference history = mock(CollectionReference.class);
         ApiFuture<QuerySnapshot> future = mock(ApiFuture.class);
         QuerySnapshot snapshot = mock(QuerySnapshot.class);
 
-        when(firestore.collection("test_collection")).thenReturn(collectionRef);
-        when(collectionRef.limit(100)).thenReturn(collectionRef);
-        when(collectionRef.get()).thenReturn(future);
+        when(firestore.collection("users")).thenReturn(users);
+        when(users.document("uid")).thenReturn(userDoc);
+        when(userDoc.collection("gameHistory")).thenReturn(history);
+        when(history.get()).thenReturn(future);
         when(future.get()).thenReturn(snapshot);
-        when(snapshot.getDocuments()).thenReturn(List.of());
+        when(snapshot.getDocuments()).thenReturn(Collections.emptyList());
 
-        leaderboardService.deleteCollection(firestore, "test_collection");
+        leaderboardService.updateUserStats("uid", firestore);
+        verify(userDoc, never()).set(anyMap(), any(SetOptions.class));
+    }
 
-        verify(collectionRef).get();
+    @Test
+    void testUpdateLeaderboard_success() throws Exception {
+        CollectionReference users = mock(CollectionReference.class);
+        Query query = mock(Query.class);
+        Query limitedQuery = mock(Query.class);
+        ApiFuture<QuerySnapshot> future = mock(ApiFuture.class);
+        QuerySnapshot snapshot = mock(QuerySnapshot.class);
+        QueryDocumentSnapshot userDoc = mock(QueryDocumentSnapshot.class);
+        mock(DocumentReference.class);
+
+        Map<String, Object> userData = new HashMap<>();
+        userData.put("wins", 3);
+        userData.put("name", "Tester");
+
+        when(firestore.collection("users")).thenReturn(users);
+        when(users.orderBy(eq("wins"), any())).thenReturn(query);
+        when(query.limit(50)).thenReturn(limitedQuery);
+        when(limitedQuery.get()).thenReturn(future);
+        when(future.get()).thenReturn(snapshot);
+        when(snapshot.getDocuments()).thenReturn(List.of(userDoc));
+        when(userDoc.getId()).thenReturn("123");
+        when(userDoc.getData()).thenReturn(userData);
+
+        CollectionReference lb = mock(CollectionReference.class);
+        DocumentReference docRef = mock(DocumentReference.class);
+        Query lbLimit = mock(Query.class);
+        ApiFuture<QuerySnapshot> lbFuture = mock(ApiFuture.class);
+        QuerySnapshot lbSnapshot = mock(QuerySnapshot.class);
+
+        when(firestore.collection("leaderboard_wins")).thenReturn(lb);
+        when(lb.limit(100)).thenReturn(lbLimit);
+        when(lbLimit.get()).thenReturn(lbFuture);
+        when(lbFuture.get()).thenReturn(lbSnapshot);
+        when(lbSnapshot.getDocuments()).thenReturn(Collections.emptyList());
+
+        when(lb.document(anyString())).thenReturn(docRef);
+
+        leaderboardService.updateLeaderboard("wins", "leaderboard_wins");
+
+        verify(docRef).set(argThat((Map<String, Object> m) ->
+                m.get("name").equals("Tester") &&
+                        m.get("userId").equals("123") &&
+                        m.get("wins").equals(3) &&
+                        m.get("rank").equals(1)
+        ));
+    }
+
+    @Test
+    void testDeleteCollection_recursive() throws Exception {
+        CollectionReference collection = mock(CollectionReference.class);
+        Query limitedQuery = mock(Query.class);
+        ApiFuture<QuerySnapshot> future1 = mock(ApiFuture.class);
+        ApiFuture<QuerySnapshot> future2 = mock(ApiFuture.class);
+        QuerySnapshot snap1 = mock(QuerySnapshot.class);
+        QuerySnapshot snap2 = mock(QuerySnapshot.class);
+        QueryDocumentSnapshot doc = mock(QueryDocumentSnapshot.class);
+        DocumentReference docRef = mock(DocumentReference.class);
+
+        when(firestore.collection("some")).thenReturn(collection);
+        when(collection.limit(100)).thenReturn(limitedQuery);
+        when(limitedQuery.get()).thenReturn(future1, future2);
+        when(future1.get()).thenReturn(snap1);
+        when(future2.get()).thenReturn(snap2);
+        when(doc.getReference()).thenReturn(docRef);
+        when(snap1.getDocuments()).thenReturn(Collections.nCopies(100, doc));
+        when(snap2.getDocuments()).thenReturn(Collections.emptyList());
+
+        leaderboardService.deleteCollection(firestore, "some");
+
+        verify(docRef, times(100)).delete();
     }
 }
