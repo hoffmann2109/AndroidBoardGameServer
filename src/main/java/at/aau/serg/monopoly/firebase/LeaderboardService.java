@@ -209,6 +209,7 @@ public class LeaderboardService {
                 leaderboardEntry.put("money", userData.getOrDefault(fieldName, 0));
                 leaderboardEntry.put("gamesPlayed", userData.getOrDefault("gamesPlayed", 0));
                 leaderboardEntry.put("wins", userData.getOrDefault("wins", 0));
+                leaderboardEntry.put("level", userData.getOrDefault("level", 0));
 
                 // In Leaderboard-Sammlung speichern
                 firestore.collection(leaderboardCollection)
