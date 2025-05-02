@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - main
+      - experiment/fixIntegrationTest
   pull_request:
     types: [opened, synchronize, reopened]
 jobs:
