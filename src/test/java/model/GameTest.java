@@ -255,4 +255,27 @@ class GameTest {
         assertEquals(initialMoney + 200, player.getMoney());
         assertEquals(10, player.getPosition()); // Should wrap around to position 10
     }
+
+    @Test
+    void testEndGameDurationCalculation() {
+        Game game = new Game();
+        game.start();
+
+        int duration = game.endGame("player1");
+
+        assertTrue(duration >= 0);
+    }
+
+    @Test
+    void testDetermineWinnerWithEqualMoney() {
+        Game game = new Game();
+        game.addPlayer("1", "Player1");
+        game.addPlayer("2", "Player2");
+
+        game.updatePlayerMoney("1", -500);
+        game.updatePlayerMoney("2", -500);
+
+        String winner = game.determineWinner();
+        assertNotNull(winner);
+    }
 }

@@ -21,6 +21,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+
 @Component
 public class GameWebSocketHandler extends TextWebSocketHandler {
 
@@ -31,6 +32,8 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     private final Game game = new Game();
     private final ObjectMapper objectMapper = new ObjectMapper();
     private DiceManagerInterface diceManager;
+    @Autowired
+    private GameHistoryService gameHistoryService;
 
     @Autowired
     private PropertyTransactionService propertyTransactionService;
@@ -79,9 +82,15 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         try {
             // Zuerst INIT-Check
             JsonNode jsonNode = objectMapper.readTree(payload);
-            if (jsonNode.has("type") && "INIT".equals(jsonNode.get("type").asText())) {
-                handleInitMessage(session, jsonNode);
-                return;
+            if (jsonNode.has("type")) {
+                String type = jsonNode.get("type").asText();
+                if ("INIT".equals(type)) {
+                    handleInitMessage(session, jsonNode);
+                    return;
+                } else if ("END_GAME".equals(type)) {
+                    handleEndGame(jsonNode);
+                    return;
+                }
             }
         } catch (IOException e) {
             // Kein JSON, normal weiter
@@ -206,6 +215,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             broadcastMessage("GAME_STATE:" + gameState);
             broadcastMessage("Game started! " + sessions.size() + " players are connected.");
             System.out.println("Game started with " + sessions.size() + " players!");
+            game.start();
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Error sending game state: {0}", e.getMessage());
         }
@@ -252,6 +262,38 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             sendMessageToSession(session, createJsonError("Server error handling buy property request."));
         }
     }
+
+    /**
+     * Behandelt die Beendigung eines Spiels und speichert die Spielhistorie
+     */
+    private void handleEndGame(JsonNode jsonNode) {
+        try {
+            String winnerId = game.determineWinner();
+
+            // Beende das Spiel und erhalte die Spieldauer
+            int durationMinutes = game.endGame(winnerId);
+
+            // Standard Level-Gewinn für alle Spieler
+            int levelGained = 1;
+
+            // Speichere die Spielhistorie für alle Spieler
+            gameHistoryService.saveGameHistoryForAllPlayers(
+                    game.getPlayers(),
+                    durationMinutes,
+                    winnerId,
+                    levelGained
+            );
+
+            // Informiere alle Spieler über das Spielende
+            broadcastMessage(createJsonMessage("Das Spiel wurde beendet. Der Gewinner ist " +
+                    game.getPlayerById(winnerId).map(Player::getName).orElse("unbekannt")));
+
+            logger.info("Spiel beendet und Spielhistorie gespeichert");
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "Fehler beim Beenden des Spiels", e);
+        }
+    }
+
 
     private void sendMessageToSession(WebSocketSession session, String message) {
         try {
