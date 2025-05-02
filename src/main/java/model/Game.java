@@ -3,6 +3,7 @@ import lombok.Data;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 @Data
 public class Game {
@@ -11,7 +12,7 @@ public class Game {
     private int currentPlayerIndex;
 
     public Game() {
-        this.players = new ArrayList<>();
+        this.players = new CopyOnWriteArrayList<>();
         this.isStarted = false;
         this.currentPlayerIndex = 0;
     }
