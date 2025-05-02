@@ -38,7 +38,7 @@ class FirebaseServiceTest {
         }
     }
 
-    @Disabled
+    @Disabled ("Will be inspected later")
     @Test
     void testInitialize_successfulInit() {
         try (
@@ -65,9 +65,6 @@ class FirebaseServiceTest {
 
             // Simuliere existierende Datei
             InputStream dummyStream = new ByteArrayInputStream("{}".getBytes());
-            FirebaseOptions options = FirebaseOptions.builder()
-                    .setCredentials(creds)
-                    .setDatabaseUrl("https://monopoloyapp.firebaseio.com").build();
 
             try (MockedStatic<FirebaseOptions> opt = mockStatic(FirebaseOptions.class)) {
                 opt.when(FirebaseOptions::builder).thenCallRealMethod();
@@ -77,11 +74,7 @@ class FirebaseServiceTest {
                     testService.initialize();
                 });
             }
-        } catch (ExecutionException e) {
-            throw new RuntimeException(e);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        } catch (TimeoutException e) {
+        } catch (ExecutionException | InterruptedException | TimeoutException e) {
             throw new RuntimeException(e);
         }
     }
@@ -97,7 +90,7 @@ class FirebaseServiceTest {
         }
     }
 
-    @Disabled
+    @Disabled ("Will be inspected later")
     @Test
     void testHandleFirebaseInitialization_interrupted() throws Exception {
         FirebaseService testService = spy(service);

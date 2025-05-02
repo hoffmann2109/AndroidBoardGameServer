@@ -9,9 +9,7 @@ import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.*;
-import java.util.concurrent.ExecutionException;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -104,8 +102,7 @@ class LeaderboardServiceTest {
         ApiFuture<QuerySnapshot> future = mock(ApiFuture.class);
         QuerySnapshot snapshot = mock(QuerySnapshot.class);
         QueryDocumentSnapshot userDoc = mock(QueryDocumentSnapshot.class);
-        CollectionReference leaderboard = mock(CollectionReference.class);
-        DocumentReference leaderboardDoc = mock(DocumentReference.class);
+        mock(DocumentReference.class);
 
         Map<String, Object> userData = new HashMap<>();
         userData.put("wins", 3);

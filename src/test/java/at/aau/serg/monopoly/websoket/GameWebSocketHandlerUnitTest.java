@@ -23,7 +23,7 @@ class GameWebSocketHandlerUnitTest {
     private GameWebSocketHandler gameWebSocketHandler;
 
     @BeforeEach
-    void setUp() throws Exception {
+    void setUp() {
         gameWebSocketHandler = new GameWebSocketHandler();
         session = mock(WebSocketSession.class);
         when(session.getId()).thenReturn("1");
