@@ -21,7 +21,6 @@ class GameHistoryServiceTest {
 
     @Test
     void testSaveGameHistory_successful() throws Exception {
-        // Arrange
         Firestore firestore = mock(Firestore.class);
         CollectionReference users = mock(CollectionReference.class);
         DocumentReference userDoc = mock(DocumentReference.class);
@@ -102,10 +101,8 @@ class GameHistoryServiceTest {
     @Test
     void testSaveGameHistoryForAllPlayers_emptyList() {
         GameHistoryService service = new GameHistoryService();
-
-        // No exception should be thrown
-        service.saveGameHistoryForAllPlayers(null, 30, "winnerId", 1);
-        service.saveGameHistoryForAllPlayers(List.of(), 30, "winnerId", 1);
+        assertDoesNotThrow(() -> service.saveGameHistoryForAllPlayers(null, 30, "winnerId", 1));
+        assertDoesNotThrow(() -> service.saveGameHistoryForAllPlayers(List.of(), 30, "winnerId", 1));
     }
 
     @Test

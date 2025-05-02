@@ -63,7 +63,6 @@ class FirebaseServiceTest {
             GoogleCredentials creds = mock(GoogleCredentials.class);
             credentialsMock.when(() -> GoogleCredentials.fromStream(any())).thenReturn(creds);
 
-            // Simuliere existierende Datei
             InputStream dummyStream = new ByteArrayInputStream("{}".getBytes());
 
             try (MockedStatic<FirebaseOptions> opt = mockStatic(FirebaseOptions.class)) {
@@ -104,7 +103,7 @@ class FirebaseServiceTest {
 
 
     @Test
-    void testTestFirestoreConnection_executionFails() {
+    void testTestFirestoreConnection_executionFails() throws Exception {
         try (MockedStatic<FirestoreClient> firestoreMock = mockStatic(FirestoreClient.class)) {
             Firestore firestore = mock(Firestore.class);
             firestoreMock.when(FirestoreClient::getFirestore).thenReturn(firestore);
@@ -116,10 +115,7 @@ class FirebaseServiceTest {
             when(firestore.collection(anyString())).thenReturn(col);
             when(col.document(anyString())).thenReturn(doc);
             when(doc.set(any())).thenReturn(future);
-            try {
-                when(future.get(anyLong(), any())).thenThrow(new ExecutionException("fail", new Throwable()));
-            } catch (Exception ignored) {
-            }
+            when(future.get(anyLong(), any())).thenThrow(new ExecutionException("fail", new Throwable()));
 
             // call private method through reflection
             assertDoesNotThrow(() -> {
@@ -132,7 +128,7 @@ class FirebaseServiceTest {
     }
 
     @Test
-    void testTestFirestoreConnection_timeoutFails() {
+    void testTestFirestoreConnection_timeoutFails() throws Exception {
         try (MockedStatic<FirestoreClient> firestoreMock = mockStatic(FirestoreClient.class)) {
             Firestore firestore = mock(Firestore.class);
             firestoreMock.when(FirestoreClient::getFirestore).thenReturn(firestore);
@@ -144,10 +140,7 @@ class FirebaseServiceTest {
             when(firestore.collection(anyString())).thenReturn(col);
             when(col.document(anyString())).thenReturn(doc);
             when(doc.set(any())).thenReturn(future);
-            try {
-                when(future.get(anyLong(), any())).thenThrow(new TimeoutException("timeout"));
-            } catch (Exception ignored) {
-            }
+            when(future.get(anyLong(), any())).thenThrow(new TimeoutException("timeout"));
 
             assertDoesNotThrow(() -> {
                 FirebaseService testService = new FirebaseService();

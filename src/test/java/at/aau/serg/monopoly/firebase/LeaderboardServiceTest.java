@@ -92,6 +92,7 @@ class LeaderboardServiceTest {
         when(snapshot.getDocuments()).thenReturn(Collections.emptyList());
 
         leaderboardService.updateUserStats("uid", firestore);
+        verify(userDoc, never()).set(anyMap(), any(SetOptions.class));
     }
 
     @Test
