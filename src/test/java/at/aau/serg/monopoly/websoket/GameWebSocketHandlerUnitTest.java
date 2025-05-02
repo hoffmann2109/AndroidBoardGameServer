@@ -178,4 +178,46 @@ class GameWebSocketHandlerUnitTest {
 
         verify(s).sendMessage(argThat(msg -> ((TextMessage) msg).getPayload().contains("Invalid user")));
     }
+
+    @Test
+    void testInvalidMessageHandling() throws Exception {
+        GameWebSocketHandler handler = new GameWebSocketHandler();
+        WebSocketSession session = mock(WebSocketSession.class);
+        when(session.getId()).thenReturn("test-session-id");
+        when(session.isOpen()).thenReturn(true);
+
+        Field sessionsField = GameWebSocketHandler.class.getDeclaredField("sessions");
+        sessionsField.setAccessible(true);
+        ((CopyOnWriteArrayList<WebSocketSession>) sessionsField.get(handler)).add(session);
+
+        // Init
+        handler.handleTextMessage(session, new TextMessage("{\"type\":\"INIT\",\"userId\":\"user123\",\"name\":\"TestUser\"}"));
+
+        // Now send invalid message
+        handler.handleTextMessage(session, new TextMessage("INVALID_MESSAGE"));
+
+        // Verify broadcast fallback (not an error!)
+        verify(session).sendMessage(argThat(msg ->
+                ((TextMessage) msg).getPayload().contains("Player user123: INVALID_MESSAGE")
+        ));
+    }
+
+    @Test
+    void testPlayerDisconnect() throws Exception {
+        GameWebSocketHandler handler = new GameWebSocketHandler();
+        WebSocketSession session = mock(WebSocketSession.class);
+        when(session.getId()).thenReturn("123");
+        when(session.isOpen()).thenReturn(true);
+
+        handler.afterConnectionEstablished(session);
+        // Send INIT message to register the user
+        String initJson = "{\"type\":\"INIT\",\"userId\":\"user123\",\"name\":\"TestUser\"}";
+        handler.handleTextMessage(session, new TextMessage(initJson));
+
+        handler.afterConnectionClosed(session, CloseStatus.NORMAL);
+
+        verify(session).sendMessage(argThat(msg ->
+                ((TextMessage) msg).getPayload().contains("Player left")
+        ));
+    }
 }
