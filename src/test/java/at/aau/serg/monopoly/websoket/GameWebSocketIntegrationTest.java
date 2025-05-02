@@ -27,6 +27,7 @@ public class GameWebSocketIntegrationTest {
     private int port;
     private static StandardWebSocketClient client1;
     private static StandardWebSocketClient client2;
+    private static final ObjectMapper mapper = new ObjectMapper();
 
     @BeforeAll
     static void initClients() {
@@ -57,6 +58,9 @@ public class GameWebSocketIntegrationTest {
                     }
                 }, String.valueOf(new URI("ws://localhost:" + port + "/monopoly"))).get(10, TimeUnit.SECONDS);
 
+        // Pause to ensure the first broadcast completes before connecting the second client
+        Thread.sleep(1000);
+
         // Connect client2
         WebSocketSession session2 = client2.doHandshake(
                 new CountingWebSocketHandler(stateFuture2, messages2, 1) {
@@ -71,6 +75,8 @@ public class GameWebSocketIntegrationTest {
         String state2 = stateFuture2.get(10, TimeUnit.SECONDS);
         assertThat(state1).startsWith("GAME_STATE:");
         assertThat(state2).startsWith("GAME_STATE:");
+
+        Thread.sleep(50);
 
         // Parse and verify 2 players
         String json1 = state1.substring("GAME_STATE:".length());
@@ -101,15 +107,17 @@ public class GameWebSocketIntegrationTest {
         }
 
         @Override
-        protected void handleTextMessage(WebSocketSession session, TextMessage message) {
+        protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
             String payload = message.getPayload();
-            messages.add(payload);
+            if (!payload.startsWith("GAME_STATE:")) return;
 
-            if (payload.startsWith("GAME_STATE:")) {
-                seenCount++;
-                if (seenCount == targetCount) {
-                    future.complete(payload);
-                }
+            String json = payload.substring("GAME_STATE:".length());
+            List<PlayerInfo> players =
+                    mapper.readValue(json, mapper.getTypeFactory()
+                            .constructCollectionType(List.class, PlayerInfo.class));
+
+            if (players.size() == 2) {
+                future.complete(payload);
             }
         }
     }
