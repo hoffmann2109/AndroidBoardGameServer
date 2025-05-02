@@ -18,8 +18,6 @@ import java.util.stream.Collectors;
 @Log
 public class LeaderboardService {
 
-    @Autowired
-    private FirebaseService firebaseService;
     private static final String USERS_COLLECTION = "users";
     private static final String GAME_HISTORY_COLLECTION = "gameHistory";
     private static final String LEADERBOARD_WINS = "leaderboard_wins";
@@ -30,6 +28,11 @@ public class LeaderboardService {
 
     private static final int LEADERBOARD_SIZE = 50;
 
+
+    private Firestore getFirestore() {
+        return FirestoreClient.getFirestore();
+    }
+
     /**
      * Aktualisiert alle Leaderboards jede Minute
      */
@@ -37,8 +40,7 @@ public class LeaderboardService {
     public void updateAllLeaderboards() {
         log.info("Starte Leaderboard-Aktualisierung: " + new Date());
         try {
-            // Überprüfen, ob Firebase initialisiert ist
-            Firestore firestore = FirestoreClient.getFirestore();
+            Firestore firestore = getFirestore();
             if (firestore == null) {
                 log.severe("Firestore ist nicht initialisiert");
                 return;
@@ -62,7 +64,7 @@ public class LeaderboardService {
      */
     private void updateAllUserStats() {
         try {
-            Firestore firestore = FirestoreClient.getFirestore();
+            Firestore firestore = getFirestore();
             CollectionReference usersCollection = firestore.collection(USERS_COLLECTION);
             ApiFuture<QuerySnapshot> querySnapshot = usersCollection.get();
 
@@ -79,7 +81,7 @@ public class LeaderboardService {
     /**
      * Aktualisiert die Statistiken für einen einzelnen Benutzer
      */
-    private void updateUserStats(String userId, Firestore firestore) {
+    void updateUserStats(String userId, Firestore firestore) {
         try {
             // Spielhistorie des Benutzers abrufen
             CollectionReference historyRef = firestore.collection(USERS_COLLECTION)
@@ -181,7 +183,7 @@ public class LeaderboardService {
     /**
      * Generische Methode zum aktualisieren eines Leaderboards
      */
-    private void updateLeaderboard(String fieldName, String leaderboardCollection) {
+    void updateLeaderboard(String fieldName, String leaderboardCollection) {
         try {
             Firestore firestore = FirestoreClient.getFirestore();
 
@@ -228,7 +230,7 @@ public class LeaderboardService {
     /**
      * Löscht alle Dokumente in einer Sammlung
      */
-    private void deleteCollection(Firestore firestore, String collectionPath) throws ExecutionException, InterruptedException {
+    void deleteCollection(Firestore firestore, String collectionPath) throws ExecutionException, InterruptedException {
         CollectionReference collection = firestore.collection(collectionPath);
         ApiFuture<QuerySnapshot> future = collection.limit(100).get();
         int deleted = 0;
