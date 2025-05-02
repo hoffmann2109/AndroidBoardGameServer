@@ -56,7 +56,6 @@ public class LeaderboardService {
             log.info("Leaderboard-Aktualisierung erfolgreich abgeschlossen: " + new Date());
         } catch (Exception e) {
             log.severe("Fehler bei Leaderboard-Aktualisierung: " + e.getMessage());
-            e.printStackTrace();
         }
     }
     /**
