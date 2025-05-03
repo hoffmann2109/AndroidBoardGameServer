@@ -111,6 +111,19 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 broadcastMessage(payload);
                 return;
             }
+            if (payload.contains("\"type\":\"TAX_PAYMENT\"")) {
+                try {
+                    TaxPaymentMessage taxMsg = objectMapper.readValue(payload, TaxPaymentMessage.class);
+                    if (taxMsg.getPlayerId().equals(userId)) {
+                        game.updatePlayerMoney(userId, -taxMsg.getAmount());
+                        broadcastMessage(payload);
+                        broadcastGameState();
+                    }
+                    return;
+                } catch (Exception e) {
+                    logger.log(Level.WARNING, "Error processing tax payment message: {0}", e.getMessage());
+                }
+            }
             if (payload.trim().equalsIgnoreCase("Roll")) {
                 int roll = diceManager.rollDices();
                 logger.log(Level.INFO, "Player {0} rolled {1}", new Object[]{userId, roll});
