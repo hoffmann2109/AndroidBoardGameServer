@@ -101,13 +101,6 @@ public class Game {
                 int newPos = (oldPos + roll) % 40;   // ensures 0–39
                 player.setPosition(newPos);
 
-                // Check for tax fields
-                if (newPos == 4) {  // Einkommensteuer
-                    player.subtractMoney(200);
-                } else if (newPos == 38) {  // Zusatzsteuer
-                    player.subtractMoney(100);
-                }
-
                 if (oldPos + roll >= 40) {
                     player.addMoney(200);  // Add $200 for passing GO
                     return true;
