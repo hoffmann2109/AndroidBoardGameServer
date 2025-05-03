@@ -1,26 +1,24 @@
 package data;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Getter;
+
+@Getter
 public class TaxPaymentMessage {
-    public String type = "TAX_PAYMENT";
-    public String playerId;
-    public int amount;
-    public String taxType;  // "EINKOMMENSTEUER" or "ZUSATZSTEUER"
+    private String type = "TAX_PAYMENT";
+    private String playerId;
+    private int amount;
+    private String taxType;  // "EINKOMMENSTEUER" or "ZUSATZSTEUER"
     
-    public TaxPaymentMessage(String playerId, int amount, String taxType) {
+    @JsonCreator
+    public TaxPaymentMessage(
+            @JsonProperty("playerId") String playerId,
+            @JsonProperty("amount") int amount,
+            @JsonProperty("taxType") String taxType) {
         this.playerId = playerId;
         this.amount = amount;
         this.taxType = taxType;
     }
 
-    public String getPlayerId() {
-        return playerId;
-    }
-
-    public int getAmount() {
-        return amount;
-    }
-
-    public String getTaxType() {
-        return taxType;
-    }
-} 
+}
