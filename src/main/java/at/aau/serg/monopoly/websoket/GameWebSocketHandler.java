@@ -133,10 +133,12 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 if (player != null) {
                     int position = player.getPosition();
                     if (position == 4) {  // Einkommensteuer
+                        game.updatePlayerMoney(userId, -200);  // Deduct money first
                         TaxPaymentMessage taxMsg = new TaxPaymentMessage(userId, 200, "EINKOMMENSTEUER");
                         String jsonTax = objectMapper.writeValueAsString(taxMsg);
                         broadcastMessage(jsonTax);
                     } else if (position == 38) {  // Zusatzsteuer
+                        game.updatePlayerMoney(userId, -100);  // Deduct money first
                         TaxPaymentMessage taxMsg = new TaxPaymentMessage(userId, 100, "ZUSATZSTEUER");
                         String jsonTax = objectMapper.writeValueAsString(taxMsg);
                         broadcastMessage(jsonTax);
