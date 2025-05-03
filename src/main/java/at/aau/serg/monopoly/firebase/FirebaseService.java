@@ -69,7 +69,7 @@ public class FirebaseService {
     private void initializeFirebaseApp(InputStream serviceAccount) throws IOException {
         FirebaseOptions options = FirebaseOptions.builder()
                 .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-                .setDatabaseUrl("https://monopoloyapp.firebaseio.com").build();
+                .setDatabaseUrl("https://monopolyapp-11fb3.firebaseio.com").build();
 
         FirebaseApp.initializeApp(options);
         logger.info("Firebase wurde erfolgreich initialisiert");
