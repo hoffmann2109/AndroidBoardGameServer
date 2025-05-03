@@ -3,6 +3,7 @@ package at.aau.serg.monopoly.websoket;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import data.DiceRollMessage;
+import data.TaxPaymentMessage;
 import lombok.NonNull;
 import model.DiceManager;
 import model.DiceManagerInterface;
@@ -126,6 +127,22 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 if (game.updatePlayerPosition(roll, userId)) {
                     broadcastMessage(PLAYER_PREFIX + userId + " passed GO and collected €200");
                 }
+
+                // Check for tax fields and send appropriate messages
+                Player player = game.getPlayerById(userId).orElse(null);
+                if (player != null) {
+                    int position = player.getPosition();
+                    if (position == 4) {  // Einkommensteuer
+                        TaxPaymentMessage taxMsg = new TaxPaymentMessage(userId, 200, "EINKOMMENSTEUER");
+                        String jsonTax = objectMapper.writeValueAsString(taxMsg);
+                        broadcastMessage(jsonTax);
+                    } else if (position == 38) {  // Zusatzsteuer
+                        TaxPaymentMessage taxMsg = new TaxPaymentMessage(userId, 100, "ZUSATZSTEUER");
+                        String jsonTax = objectMapper.writeValueAsString(taxMsg);
+                        broadcastMessage(jsonTax);
+                    }
+                }
+
                 broadcastGameState();
             } else if (payload.startsWith("MANUAL_ROLL:")) {
                 try {
