@@ -278,4 +278,71 @@ class GameTest {
         String winner = game.determineWinner();
         assertNotNull(winner);
     }
+
+    @Test
+    void testLandingOnEinkommensteuerDeducts200() {
+        // Arrange
+        game.addPlayer("1", "Player 1");
+        Player player = game.getPlayers().get(0);
+        int initialMoney = player.getMoney();
+
+        // Act - Move player to position 3 (one before Einkommensteuer)
+        game.updatePlayerPosition(3, "1");
+        // Move player 1 step to land on Einkommensteuer
+        game.updatePlayerPosition(1, "1");
+
+        // Assert
+        assertEquals(initialMoney - 200, player.getMoney());
+    }
+
+    @Test
+    void testLandingOnZusatzsteuerDeducts100() {
+        // Arrange
+        game.addPlayer("1", "Player 1");
+        Player player = game.getPlayers().get(0);
+        int initialMoney = player.getMoney();
+
+        // Act - Move player to position 37 (one before Zusatzsteuer)
+        game.updatePlayerPosition(37, "1");
+        // Move player 1 step to land on Zusatzsteuer
+        game.updatePlayerPosition(1, "1");
+
+        // Assert
+        assertEquals(initialMoney - 100, player.getMoney());
+    }
+
+    @Test
+    void testTaxPaymentDoesNotAffectOtherPlayers() {
+        // Arrange
+        game.addPlayer("1", "Player 1");
+        game.addPlayer("2", "Player 2");
+        Player player1 = game.getPlayers().get(0);
+        Player player2 = game.getPlayers().get(1);
+        int initialMoneyPlayer1 = player1.getMoney();
+        int initialMoneyPlayer2 = player2.getMoney();
+
+        // Act - Move player1 to Einkommensteuer
+        game.updatePlayerPosition(4, "1");
+
+        // Assert
+        assertEquals(initialMoneyPlayer1 - 200, player1.getMoney());
+        assertEquals(initialMoneyPlayer2, player2.getMoney());
+    }
+
+    @Test
+    void testTaxPaymentAndPassingGoInSameMove() {
+        // Arrange
+        game.addPlayer("1", "Player 1");
+        Player player = game.getPlayers().get(0);
+        // Set player to position 39 (one before GO)
+        game.updatePlayerPosition(39, "1");
+
+        // Act - Move player 5 steps to pass GO and land on Einkommensteuer
+        boolean passedGo = game.updatePlayerPosition(5, "1");
+
+        // Assert
+        assertTrue(passedGo);
+        // Initial money (1500) + GO bonus (200) - Einkommensteuer (200) = 1500
+        assertEquals(1500, player.getMoney());
+    }
 }
