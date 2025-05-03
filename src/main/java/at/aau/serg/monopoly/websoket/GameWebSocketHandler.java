@@ -3,6 +3,7 @@ package at.aau.serg.monopoly.websoket;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import data.DiceRollMessage;
+import data.TaxPaymentMessage;
 import lombok.NonNull;
 import model.DiceManager;
 import model.DiceManagerInterface;
@@ -110,6 +111,19 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 broadcastMessage(payload);
                 return;
             }
+            if (payload.contains("\"type\":\"TAX_PAYMENT\"")) {
+                try {
+                    TaxPaymentMessage taxMsg = objectMapper.readValue(payload, TaxPaymentMessage.class);
+                    if (taxMsg.getPlayerId().equals(userId)) {
+                        game.updatePlayerMoney(userId, -taxMsg.getAmount());
+                        broadcastMessage(payload);
+                        broadcastGameState();
+                    }
+                    return;
+                } catch (Exception e) {
+                    logger.log(Level.WARNING, "Error processing tax payment message: {0}", e.getMessage());
+                }
+            }
             if (payload.trim().equalsIgnoreCase("Roll")) {
                 int roll = diceManager.rollDices();
                 logger.log(Level.INFO, "Player {0} rolled {1}", new Object[]{userId, roll});
@@ -126,6 +140,24 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 if (game.updatePlayerPosition(roll, userId)) {
                     broadcastMessage(PLAYER_PREFIX + userId + " passed GO and collected €200");
                 }
+
+                // Check for tax fields and send appropriate messages
+                Player player = game.getPlayerById(userId).orElse(null);
+                if (player != null) {
+                    int position = player.getPosition();
+                    if (position == 4) {  // Einkommensteuer
+                        game.updatePlayerMoney(userId, -200);  // Deduct money first
+                        TaxPaymentMessage taxMsg = new TaxPaymentMessage(userId, 200, "EINKOMMENSTEUER");
+                        String jsonTax = objectMapper.writeValueAsString(taxMsg);
+                        broadcastMessage(jsonTax);
+                    } else if (position == 38) {  // Zusatzsteuer
+                        game.updatePlayerMoney(userId, -100);  // Deduct money first
+                        TaxPaymentMessage taxMsg = new TaxPaymentMessage(userId, 100, "ZUSATZSTEUER");
+                        String jsonTax = objectMapper.writeValueAsString(taxMsg);
+                        broadcastMessage(jsonTax);
+                    }
+                }
+
                 broadcastGameState();
             } else if (payload.startsWith("MANUAL_ROLL:")) {
                 try {
