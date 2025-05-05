@@ -14,7 +14,6 @@ public class MoneyCard extends Card {
 
     @Override
     public void apply(Game game, String playerId) {
-        System.out.println("I have been called");
         List<Player> all = game.getPlayers();
 
         // Each player pays some amount to me
