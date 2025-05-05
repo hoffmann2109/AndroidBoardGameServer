@@ -9,6 +9,17 @@ public class MoveCard extends Card {
 
     @Override
     public void apply(Game game, Player player) {
+        String playerId = player.getId();
+        int oldPos = player.getPosition();
 
+        if (spaces != null) { // Move by some amount
+            game.updatePlayerPosition(spaces, playerId);
+
+        } else if (field != null) { // Move to a specific field
+            if (field < oldPos) {
+                game.updatePlayerMoney(playerId, 200);
+            }
+            player.setPosition(field);
+        }
     }
 }
