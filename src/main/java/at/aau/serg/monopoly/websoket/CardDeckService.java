@@ -1,20 +1,22 @@
-package model.cards;
+package at.aau.serg.monopoly.websoket;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
+import model.cards.Card;
+import model.cards.CardType;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.util.*;
 
 @Component
-public class CardDecks {
+public class CardDeckService {
     private final ObjectMapper mapper;
     private final Map<CardType, Deque<Card>> decks = new EnumMap<>(CardType.class);
     private final Map<CardType, List<Card>> discards = new EnumMap<>(CardType.class);
 
-    public CardDecks(ObjectMapper mapper) {
+    public CardDeckService(ObjectMapper mapper) {
         this.mapper = mapper;
     }
 
