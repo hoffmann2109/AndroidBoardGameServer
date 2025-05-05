@@ -16,10 +16,14 @@ public class MoveCard extends Card {
             game.updatePlayerPosition(spaces, playerId);
 
         } else if (field != null) { // Move to a specific field
-            if (field < oldPos) {
-                game.updatePlayerMoney(playerId, 200);
+            if (field == 30) { // If you land in Jail -> not allowed to collect
+                player.setPosition(30);
+            } else {
+                if (field < oldPos) {
+                    game.updatePlayerMoney(playerId, 200);
+                }
+                player.setPosition(field);
             }
-            player.setPosition(field);
         }
     }
 }
