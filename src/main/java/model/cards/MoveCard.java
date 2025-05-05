@@ -2,6 +2,9 @@ package model.cards;
 
 import lombok.Data;
 import model.Game;
+import model.Player;
+
+import java.util.Optional;
 
 @Data
 public class MoveCard extends Card {
@@ -10,20 +13,25 @@ public class MoveCard extends Card {
 
     @Override
     public void apply(Game game, String playerId) {
-        int oldPos = game.getPlayerById(playerId).get().getPosition();
+        Optional<Player> optPlayer = game.getPlayerById(playerId);
+        if (!optPlayer.isPresent()) {
+            throw new IllegalArgumentException("No player with id: " + playerId);
+        }
+        Player player = optPlayer.get();
+        int oldPos = player.getPosition();
 
-        if (spaces != null) { // Move by some amount
+        if (spaces != null) {
             game.updatePlayerPosition(spaces, playerId);
-
-        } else if (field != null) { // Move to a specific field
-            if (field == 30) { // If you land in Jail -> not allowed to collect
-                game.getPlayerById(playerId).get().setPosition(30);
+        } else if (field != null) {
+            if (field == 30) {
+                player.setPosition(30);
             } else {
                 if (field < oldPos) {
                     game.updatePlayerMoney(playerId, 200);
                 }
-                game.getPlayerById(playerId).get().setPosition(field);
+                player.setPosition(field);
             }
         }
     }
+
 }
