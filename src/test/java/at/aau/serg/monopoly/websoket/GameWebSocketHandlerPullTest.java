@@ -17,7 +17,7 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
 @ExtendWith(MockitoExtension.class)
-class GameWebSocketHandlerPullCardTest {
+class GameWebSocketHandlerPullTest {
 
     @Mock WebSocketSession session;
     @Mock CardDeckService cardDeckService;
