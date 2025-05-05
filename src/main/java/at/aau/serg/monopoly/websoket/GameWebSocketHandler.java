@@ -259,7 +259,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    private void broadcastGameState() {
+    void broadcastGameState() {
         try {
             String gameState = objectMapper.writeValueAsString(game.getPlayerInfo());
             broadcastMessage("GAME_STATE:" + gameState);
