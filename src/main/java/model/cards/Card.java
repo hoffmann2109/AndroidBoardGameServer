@@ -5,7 +5,6 @@ import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import lombok.Data;
 import model.Game;
-import model.Player;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonTypeInfo(

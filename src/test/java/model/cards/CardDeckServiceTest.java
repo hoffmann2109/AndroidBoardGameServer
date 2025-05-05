@@ -3,14 +3,9 @@ package model.cards;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import at.aau.serg.monopoly.websoket.CardDeckService;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import model.cards.Card;
-import model.cards.CardType;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.*;
 

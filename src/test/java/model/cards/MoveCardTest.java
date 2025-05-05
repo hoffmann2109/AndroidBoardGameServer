@@ -1,7 +1,6 @@
 package model.cards;
 
 import static org.mockito.Mockito.*;
-import static org.junit.jupiter.api.Assertions.*;
 import java.util.Optional;
 import model.Game;
 import model.Player;

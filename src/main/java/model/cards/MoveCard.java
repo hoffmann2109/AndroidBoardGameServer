@@ -2,7 +2,6 @@ package model.cards;
 
 import lombok.Data;
 import model.Game;
-import model.Player;
 
 @Data
 public class MoveCard extends Card {

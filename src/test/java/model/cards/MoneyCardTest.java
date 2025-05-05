@@ -1,9 +1,7 @@
 package model.cards;
 
 import static org.mockito.Mockito.*;
-import static org.junit.jupiter.api.Assertions.*;
 import java.util.Arrays;
-import java.util.List;
 import model.Game;
 import model.Player;
 import org.junit.jupiter.api.BeforeEach;
