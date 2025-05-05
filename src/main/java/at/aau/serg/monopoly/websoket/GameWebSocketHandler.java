@@ -3,6 +3,7 @@ package at.aau.serg.monopoly.websoket;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import data.DiceRollMessage;
+import data.DrawnCardMessage;
 import data.PullCardMessage;
 import data.TaxPaymentMessage;
 import lombok.NonNull;
@@ -14,7 +15,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.*;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
-
 import java.io.IOException;
 import java.util.Map;
 import java.util.Optional;
@@ -36,7 +36,8 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     private DiceManagerInterface diceManager;
     @Autowired
     private GameHistoryService gameHistoryService;
-
+    @Autowired
+    private CardDeckService cardDeckService;
     @Autowired
     private PropertyTransactionService propertyTransactionService;
 
@@ -126,16 +127,27 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 }
             }
             if (payload.contains("\"type\":\"PULL_CARD\"")) {
-                try {
-                    JsonNode node = objectMapper.readTree(payload);
-                    PullCardMessage pull = objectMapper.treeToValue(node, PullCardMessage.class);
-                    logger.info("Player " + pull.getPlayerId()
-                            + " requested a " + pull.getCardType() + " card");
-                    sendMessageToSession(session, payload);
-                    return;
-                } catch (IOException e) {
-                    // message was not JSON
-                }
+                PullCardMessage pull = objectMapper.readValue(payload, PullCardMessage.class);
+                logger.info("Player " + pull.getPlayerId()
+                        + " requested a " + pull.getCardType() + " card");
+
+                model.cards.CardType deckType = model.cards.CardType.valueOf(pull.getCardType());
+                model.cards.Card card = cardDeckService.drawCard(deckType);
+
+                game.getPlayerById(pull.getPlayerId())
+                        .ifPresent(p -> card.apply(game, p));
+
+                DrawnCardMessage reply = new DrawnCardMessage(
+                        pull.getPlayerId(),
+                        pull.getCardType(),
+                        card
+                );
+                String jsonReply = objectMapper.writeValueAsString(reply);
+                sendMessageToSession(session, jsonReply);
+
+                broadcastGameState();
+
+                return;
             }
             if (payload.trim().equalsIgnoreCase("Roll")) {
                 int roll = diceManager.rollDices();
