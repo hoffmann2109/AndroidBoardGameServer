@@ -24,14 +24,13 @@ public class CardDeckService {
     @PostConstruct
     public void init() {
         try {
-            // 1. Read the JSON file into a Map<String,List<Card>>
+            // ReadJSON file in a Map
             var resource = new ClassPathResource("ChanceAndChestCards.json");
             TypeReference<Map<String, List<Card>>> typeRef = new TypeReference<>() {};
             Map<String, List<Card>> raw =
                     mapper.readValue(resource.getInputStream(), typeRef);
 
-            // 2. For each entry (e.g. "CHANCE" → [Card,...])
-            //    convert key to CardType, shuffle, wrap in Deque
+            // For each entry: convert, shuffle and wrap in Deque
             for (var entry : raw.entrySet()) {
                 CardType type = CardType.valueOf(entry.getKey());
                 List<Card> list = new ArrayList<>(entry.getValue());
@@ -45,7 +44,7 @@ public class CardDeckService {
         }
     }
 
-    /** Draws the next card from the given deck, reshuffling discards if empty. */
+    // Method to draw the next card:
     public synchronized Card drawCard(CardType type) {
         Deque<Card> deck = decks.get(type);
         if (deck.isEmpty()) {
