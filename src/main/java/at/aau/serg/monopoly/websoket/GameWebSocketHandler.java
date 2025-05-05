@@ -116,6 +116,9 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             if (payload.contains("\"type\":\"TAX_PAYMENT\"")) {
                 try {
                     TaxPaymentMessage taxMsg = objectMapper.readValue(payload, TaxPaymentMessage.class);
+                    logger.info("Player " + taxMsg.getPlayerId()
+                            + " has to pay taxes");
+
                     if (taxMsg.getPlayerId().equals(userId)) {
                         game.updatePlayerMoney(userId, -taxMsg.getAmount());
                         broadcastMessage(payload);
@@ -134,19 +137,19 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 model.cards.CardType deckType = model.cards.CardType.valueOf(pull.getCardType());
                 model.cards.Card card = cardDeckService.drawCard(deckType);
 
-                game.getPlayerById(pull.getPlayerId())
-                        .ifPresent(p -> card.apply(game, p));
+                if (pull.getPlayerId().equals(userId)) {
+                    card.apply(game, pull.getPlayerId());
 
-                DrawnCardMessage reply = new DrawnCardMessage(
-                        pull.getPlayerId(),
-                        pull.getCardType(),
-                        card
-                );
-                String jsonReply = objectMapper.writeValueAsString(reply);
-                sendMessageToSession(session, jsonReply);
-
-                broadcastGameState();
-
+                    DrawnCardMessage reply = new DrawnCardMessage(
+                            pull.getPlayerId(),
+                            pull.getCardType(),
+                            card
+                    );
+                    String jsonReply = objectMapper.writeValueAsString(reply);
+                    sendMessageToSession(session, jsonReply);
+                    logger.info("Player " + pull.getPlayerId() + " received a drawn card");
+                    broadcastGameState();
+                }
                 return;
             }
             if (payload.trim().equalsIgnoreCase("Roll")) {

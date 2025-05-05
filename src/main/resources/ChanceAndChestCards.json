@@ -17,7 +17,7 @@
       "id": 3,
       "description": "Gehe 3 Felder zurück!",
       "action": "MOVE",
-      "spaces": 3
+      "spaces": -3
     },
     {
       "id": 4,
@@ -43,13 +43,6 @@
       "description": "Dein Nebengeschäft zahlt sich aus. Ziehe €75 ein!",
       "action": "GET_MONEY",
       "amount": 75
-    },
-    {
-      "id": 8,
-      "description": "Würfle erneut. Zahle die Summe der Würfel mal 5 an die Bank!",
-      "action": "PAY",
-      "amount": "variable",
-      "othersGet": false
     }
   ],
   "COMMUNITY_CHEST": [
