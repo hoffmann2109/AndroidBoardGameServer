@@ -3,6 +3,7 @@ package at.aau.serg.monopoly.websoket;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import data.DiceRollMessage;
+import data.PullCardMessage;
 import data.TaxPaymentMessage;
 import lombok.NonNull;
 import model.DiceManager;
@@ -122,6 +123,18 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                     return;
                 } catch (Exception e) {
                     logger.log(Level.WARNING, "Error processing tax payment message: {0}", e.getMessage());
+                }
+            }
+            if (payload.contains("\"type\":\"PULL_CARD\"")) {
+                try {
+                    JsonNode node = objectMapper.readTree(payload);
+                    PullCardMessage pull = objectMapper.treeToValue(node, PullCardMessage.class);
+                    logger.info("Player " + pull.getPlayerId()
+                            + " requested a " + pull.getCardType() + " card");
+                    sendMessageToSession(session, payload);
+                    return;
+                } catch (IOException e) {
+                    // not JSON, fall through to text commands
                 }
             }
             if (payload.trim().equalsIgnoreCase("Roll")) {
