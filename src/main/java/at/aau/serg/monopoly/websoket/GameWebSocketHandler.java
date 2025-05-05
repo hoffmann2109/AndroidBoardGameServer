@@ -134,7 +134,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                     sendMessageToSession(session, payload);
                     return;
                 } catch (IOException e) {
-                    // not JSON, fall through to text commands
+                    // message was not JSON
                 }
             }
             if (payload.trim().equalsIgnoreCase("Roll")) {

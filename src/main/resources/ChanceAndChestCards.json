@@ -1,0 +1,138 @@
+{
+  "CHANCE": [
+    {
+      "id": 1,
+      "description": "Heute ist dein Geburtstag! Jeder Spieler schenkt dir €50!",
+      "action": "gift",
+      "from": "all_others",
+      "to": "drawer",
+      "amount": 50
+    },
+    {
+      "id": 2,
+      "description": "Gehe direkt ins Gefängnis! Gehe nicht über Los! Ziehe nicht €200 ein",
+      "action": "jail"
+    },
+    {
+      "id": 3,
+      "description": "Gehe 3 Felder zurück!",
+      "action": "move",
+      "direction": "backward",
+      "spaces": 3
+    },
+    {
+      "id": 4,
+      "description": "Du kommst aus dem Gefängnis frei. Diese Karte darf behalten werden, bis du sie brauchst",
+      "action": "get_out_of_jail",
+      "keepable": true,
+      "singleUse": true,
+      "sellable": true
+    },
+    {
+      "id": 5,
+      "description": "Gehe zu Rathausplatz. Falls du über Los gehst, ziehe €200 ein!",
+      "action": "move",
+      "target": "Rathausplatz",
+      "collectOnPassGo": true,
+      "amount": 200
+    },
+    {
+      "id": 6,
+      "description": "Großer Tag! Die Bank zahlt dir Dividende in Höhe von €75!",
+      "action": "credit",
+      "amount": 75
+    },
+    {
+      "id": 7,
+      "description": "Gehe zu Hafenstrasse. Falls du über Los gehst, ziehe €200 ein!",
+      "action": "move",
+      "target": "Hafenstrasse",
+      "collectOnPassGo": true,
+      "amount": 200
+    },
+     {
+      "id": 8,
+      "description": "Dein Nebengeschäft zahlt sich aus. Ziehe €75 ein!",
+      "action": "debit",
+      "amount": 75
+    },
+    {
+      "id": 9,
+      "description": "Rücke 5 Felder vor!",
+      "action": "move",
+      "direction": "forward",
+      "spaces": 5
+    },
+    {
+      "id": 10,
+      "description": "Würfle erneut. Zahle die Summe der Würfel mal 5 an die Bank!",
+      "action": "debit_dice_multiplier",
+      "multiplier": 5,
+      "target": "Bank"
+    }
+  ],
+  "COMMUNITY_CHEST": [
+    {
+      "id": 1,
+      "description": "Gehe direkt ins Gefängnis! Gehe nicht über Los! Ziehe nicht €200 ein",
+      "action": "jail"
+    },
+    {
+      "id": 2,
+      "description": "Du kommst aus dem Gefängnis frei. Diese Karte darf behalten werden, bis du sie brauchst",
+      "action": "get_out_of_jail",
+      "keepable": true,
+      "singleUse": true,
+      "sellable": true
+    },
+    {
+      "id": 3,
+      "description": "Straßenreparatur! Zahle €35 pro Haus und €70 pro Hotel!",
+      "action": "pay_per_property",
+      "amountPerHouse": 35,
+      "amountPerHotel": 70
+    },
+    {
+      "id": 4,
+      "description": "Bankirrtum zu deinen Gunsten. Ziehe €200 ein!",
+      "action": "credit",
+      "amount": 200
+    },
+    {
+      "id": 5,
+      "description": "Einkommensteuerrückzahlung! Ziehe €50 ein!",
+      "action": "credit",
+      "amount": 50
+    },
+    {
+     "id": 6,
+     "description": "Du wurdest zum Vorstandsvorsitzenden gewählt. Zahle jedem Spieler €50!",
+     "action": "pay_each_player",
+     "amount": 50
+    },
+    {
+     "id": 7,
+     "description": "Deine Lebensversicherung wird fällig. Ziehe €125 ein!",
+     "action": "credit",
+     "amount": 125
+    },
+    {
+     "id": 8,
+     "description": "Dein Baukredit wird fällig. Ziehe €50 ein!",
+     "action": "credit",
+     "amount": 50
+    },
+    {
+     "id": 9,
+     "description": "Gehe zu einer deiner Immobilien. Du darfst ein Haus oder Hotel mit 50 % Rabatt kaufen!",
+     "action": "teleport_to_own_property_and_discount_building",
+     "discount": 0.5
+    },
+    {
+     "id": 10,
+     "description": "Du erbst €150!",
+     "action": "credit",
+     "amount": 150
+    }
+  ]
+}
