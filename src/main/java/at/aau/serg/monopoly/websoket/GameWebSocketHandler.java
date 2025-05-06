@@ -31,7 +31,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     private static final String PLAYER_PREFIX = "Player ";
     private final Logger logger = Logger.getLogger(GameWebSocketHandler.class.getName());
     protected final CopyOnWriteArrayList<WebSocketSession> sessions = new CopyOnWriteArrayList<>();
-    private final Map<String, String> sessionToUserId = new ConcurrentHashMap<>();
+    final Map<String, String> sessionToUserId = new ConcurrentHashMap<>();
     private final Game game = new Game();
     private final ObjectMapper objectMapper = new ObjectMapper();
     private DiceManagerInterface diceManager;
