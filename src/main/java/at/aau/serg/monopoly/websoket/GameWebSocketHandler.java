@@ -153,7 +153,20 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 return;
             }
             if (payload.trim().equalsIgnoreCase("Roll")) {
+                if (!game.isPlayerTurn(userId)) {
+                    sendMessageToSession(session, createJsonError("Not your turn!"));
+                    return;
+                }
+                Player player = game.getPlayerById(userId).orElse(null);
+                if (player == null) return;
+
+                if (player.hasRolledThisTurn()) {
+                    sendMessageToSession(session, createJsonError("You already rolled this turn."));
+                    return;
+                }
+
                 int roll = diceManager.rollDices();
+                player.setHasRolledThisTurn(true);
                 logger.log(Level.INFO, "Player {0} rolled {1}", new Object[]{userId, roll});
 
                 DiceRollMessage drm = new DiceRollMessage(userId, roll);
@@ -166,7 +179,6 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 }
 
                 // Check for tax fields and send appropriate messages
-                Player player = game.getPlayerById(userId).orElse(null);
                 if (player != null) {
                     int position = player.getPosition();
                     if (position == 4) {  // Einkommensteuer
