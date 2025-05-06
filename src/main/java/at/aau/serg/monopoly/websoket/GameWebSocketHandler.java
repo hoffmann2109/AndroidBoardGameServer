@@ -160,10 +160,6 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 String json = objectMapper.writeValueAsString(drm);
                 broadcastMessage(json);
 
-                if (roll != 12){
-                    game.nextPlayer();
-                }
-
                 // Update Position and broadcast Game-State:
                 if (game.updatePlayerPosition(roll, userId)) {
                     broadcastMessage(PLAYER_PREFIX + userId + " passed GO and collected €200");
@@ -187,7 +183,19 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 }
 
                 broadcastGameState();
-            } else if (payload.startsWith("MANUAL_ROLL:")) {
+
+            } else if (payload.equals("NEXT_TURN")) {
+                    logger.info("Received NEXT_TURN from " + userId);
+
+                    if (!game.isPlayerTurn(userId)) {
+                        sendMessageToSession(session, createJsonError("Not your turn!"));
+                        return;
+                    }
+
+                    game.nextPlayer();
+                    broadcastGameState();
+                }
+            else if (payload.startsWith("MANUAL_ROLL:")) {
                 try {
                     int manualRoll = Integer.parseInt(payload.substring("MANUAL_ROLL:".length()));
                     if (manualRoll < 1 || manualRoll > 39) {
@@ -201,9 +209,6 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                     String json = objectMapper.writeValueAsString(drm);
                     broadcastMessage(json);
 
-                    if (manualRoll != 12) {
-                        game.nextPlayer();
-                    }
 
                     if (game.updatePlayerPosition(manualRoll, userId)) {
                         broadcastMessage(PLAYER_PREFIX + userId + " passed GO and collected €200");
