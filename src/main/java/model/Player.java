@@ -1,5 +1,6 @@
 package model;
 import lombok.Data;
+import lombok.Setter;
 
 @Data
 public class Player {
@@ -8,6 +9,8 @@ public class Player {
     private int money;
     private static final int STARTING_MONEY = 1500; // Standard Monopoly starting money
     private int position = 0; // Starting position
+    @Setter
+    private boolean hasRolledThisTurn = false;
 
     public Player(String id, String name) {
         this.id = id;
@@ -21,5 +24,9 @@ public class Player {
 
     public void subtractMoney(int amount) {
         this.money -= amount;
+    }
+
+    public boolean hasRolledThisTurn() {
+        return hasRolledThisTurn;
     }
 }

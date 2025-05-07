@@ -55,6 +55,7 @@ public class Game {
 
     public void nextPlayer() {
         currentPlayerIndex = (currentPlayerIndex + 1) % players.size();
+        players.get(currentPlayerIndex).setHasRolledThisTurn(false);
     }
 
     public List<PlayerInfo> getPlayerInfo() {

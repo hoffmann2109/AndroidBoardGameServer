@@ -6,6 +6,7 @@ import static org.mockito.Mockito.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import model.DiceManagerInterface;
+import model.Game;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
@@ -258,5 +259,147 @@ class GameWebSocketHandlerDiceTest {
         verify(session).sendMessage(msgCaptor.capture());
         TextMessage errorMsg = msgCaptor.getValue();
         assertTrue(errorMsg.getPayload().contains("Invalid manual roll format"));
+    }
+    @Test
+    void testNextTurnReturnsErrorIfNotYourTurn() throws Exception {
+        handler.afterConnectionEstablished(session);
+
+        String initJson = mapper.createObjectNode()
+                .put("type", "INIT")
+                .put("userId", "u1")
+                .put("name", "Alice")
+                .toString();
+        handler.handleTextMessage(session, new TextMessage(initJson));
+
+        // Manipuliert Spiellogik, damit Spieler nicht dran ist
+        Game spyGame = spy(new Game());
+        spyGame.addPlayer("u1", "Alice");
+        ReflectionTestUtils.setField(handler, "game", spyGame);
+
+        doReturn(false).when(spyGame).isPlayerTurn("u1");
+
+        clearInvocations(session);
+
+        handler.handleTextMessage(session, new TextMessage("NEXT_TURN"));
+
+        verify(session).sendMessage(msgCaptor.capture());
+        String msg = msgCaptor.getValue().getPayload();
+        assertTrue(msg.contains("Not your turn"));
+    }
+
+
+    @Test
+    void testNextTurnAdvancesPlayerIfValid() {
+        handler.afterConnectionEstablished(session);
+
+        String initJson = mapper.createObjectNode()
+                .put("type", "INIT")
+                .put("userId", "u1")
+                .put("name", "Alice")
+                .toString();
+        handler.handleTextMessage(session, new TextMessage(initJson));
+
+        Game spyGame = spy(new Game());
+        spyGame.addPlayer("u1", "Alice");
+        ReflectionTestUtils.setField(handler, "game", spyGame);
+
+        doReturn(true).when(spyGame).isPlayerTurn("u1");
+
+        clearInvocations(session);
+
+        handler.handleTextMessage(session, new TextMessage("NEXT_TURN"));
+
+        verify(spyGame).nextPlayer();
+    }
+
+
+    @Test
+    void testRollTwelveAllowsSecondRoll() throws Exception {
+        handler.afterConnectionEstablished(session);
+
+        // INIT
+        String initJson = mapper.createObjectNode()
+                .put("type", "INIT")
+                .put("userId", "u1")
+                .put("name", "Alice")
+                .toString();
+        handler.handleTextMessage(session, new TextMessage(initJson));
+
+        // Würfeln: zuerst 12, dann z.B. 4
+        DiceManagerInterface mockDice = mock(DiceManagerInterface.class);
+        when(mockDice.rollDices()).thenReturn(12).thenReturn(4); // zweimal würfeln erlaubt
+        ReflectionTestUtils.setField(handler, "diceManager", mockDice);
+
+        clearInvocations(session);
+
+        // Roll #1 = 12
+        handler.handleTextMessage(session, new TextMessage("Roll"));
+
+        // Roll #2 = 4 (immer noch erlaubt)
+        handler.handleTextMessage(session, new TextMessage("Roll"));
+
+        // Check ob beide Rolls gesendet wurden
+        verify(session, atLeast(2)).sendMessage(msgCaptor.capture());
+        List<TextMessage> sent = msgCaptor.getAllValues();
+
+        long diceRolls = sent.stream().filter(m -> m.getPayload().contains("DICE_ROLL")).count();
+        assertEquals(2, diceRolls); // zwei gültige Würfe erlaubt
+    }
+
+    @Test
+    void testNextTurnFromWrongPlayer_returnsError() throws Exception {
+        WebSocketSession s1 = mock(WebSocketSession.class);
+        WebSocketSession s2 = mock(WebSocketSession.class);
+        when(s1.getId()).thenReturn("s1");
+        when(s2.getId()).thenReturn("s2");
+        when(s1.isOpen()).thenReturn(true);
+        when(s2.isOpen()).thenReturn(true);
+
+        handler.afterConnectionEstablished(s1);
+        handler.afterConnectionEstablished(s2);
+
+        handler.handleTextMessage(s1, new TextMessage(mapper.createObjectNode()
+                .put("type", "INIT").put("userId", "u1").put("name", "Alice").toString()));
+        handler.handleTextMessage(s2, new TextMessage(mapper.createObjectNode()
+                .put("type", "INIT").put("userId", "u2").put("name", "Bob").toString()));
+
+        // u2 versucht Zug zu enden obwohl u1 dran ist
+        handler.handleTextMessage(s2, new TextMessage("NEXT_TURN"));
+
+        verify(s2, atLeastOnce()).sendMessage(msgCaptor.capture());
+        String payload = msgCaptor.getValue().getPayload();
+        assertTrue(payload.contains("Not your turn!"));
+    }
+
+    @Test
+    void testRollTwiceWithoutTwelveReturnsError() throws Exception {
+        handler.afterConnectionEstablished(session);
+
+        // INIT
+        String initJson = mapper.createObjectNode()
+                .put("type", "INIT")
+                .put("userId", "u1")
+                .put("name", "Alice")
+                .toString();
+        handler.handleTextMessage(session, new TextMessage(initJson));
+
+        // roll ≠ 12
+        DiceManagerInterface mockDice = mock(DiceManagerInterface.class);
+        when(mockDice.rollDices()).thenReturn(5);
+        ReflectionTestUtils.setField(handler, "diceManager", mockDice);
+
+        clearInvocations(session);
+
+        // roll 1
+        handler.handleTextMessage(session, new TextMessage("Roll"));
+
+        // roll 2 (ungültig)
+        clearInvocations(session);
+        handler.handleTextMessage(session, new TextMessage("Roll"));
+
+        // error
+        verify(session).sendMessage(msgCaptor.capture());
+        TextMessage errorMsg = msgCaptor.getValue();
+        assertTrue(errorMsg.getPayload().contains("already rolled"));
     }
 }

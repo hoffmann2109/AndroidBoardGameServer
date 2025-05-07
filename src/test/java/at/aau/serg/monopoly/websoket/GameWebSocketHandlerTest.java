@@ -5,15 +5,21 @@ import model.Player;
 import model.DiceManagerInterface;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.*;
@@ -101,26 +107,55 @@ class GameWebSocketHandlerTest {
     void givenPlayerPassesGo_whenRollingDice_thenShouldBroadcastGoPassingMessage() throws Exception {
         // Arrange
         int roll = 5;
-        when(diceManager.rollDices()).thenReturn(roll);
+        // Mock Session
+        when(session.getId()).thenReturn("session1");
+        when(session.isOpen()).thenReturn(true);
+
+        // Mock Spieler & Game Setup
+        when(player.getId()).thenReturn("player1");
+        when(player.hasRolledThisTurn()).thenReturn(false);
+
+        when(game.isPlayerTurn("player1")).thenReturn(true);
+        when(game.getPlayerById("player1")).thenReturn(Optional.of(player));
         when(game.updatePlayerPosition(roll, "player1")).thenReturn(true);
         when(game.getCurrentPlayer()).thenReturn(player);
-        when(player.getId()).thenReturn("player1");
         when(game.getPlayerInfo()).thenReturn(new ArrayList<>());
-        
-        // Add session to handler's sessions list
-        var sessionsField = GameWebSocketHandler.class.getDeclaredField("sessions");
+
+        // Dice Manager
+        when(diceManager.rollDices()).thenReturn(roll);
+
+        // Reflect diceManager und game in Handler setzen
+        ReflectionTestUtils.setField(handler, "diceManager", diceManager);
+        ReflectionTestUtils.setField(handler, "game", game);
+
+        // Füge Session zur sessions-Liste hinzu
+        Field sessionsField = GameWebSocketHandler.class.getDeclaredField("sessions");
         sessionsField.setAccessible(true);
         @SuppressWarnings("unchecked")
-        var sessions = (CopyOnWriteArrayList<WebSocketSession>) sessionsField.get(handler);
+        CopyOnWriteArrayList<WebSocketSession> sessions =
+                (CopyOnWriteArrayList<WebSocketSession>) sessionsField.get(handler);
         sessions.add(session);
+
+        // Setze sessionToUserId-Eintrag
+        Field sessionToUserIdField = GameWebSocketHandler.class.getDeclaredField("sessionToUserId");
+        sessionToUserIdField.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<String, String> sessionToUserId =
+                (Map<String, String>) sessionToUserIdField.get(handler);
+        sessionToUserId.put("session1", "player1");
 
         // Act
         handler.handleTextMessage(session, new TextMessage("Roll"));
 
         // Assert
-        verify(session).sendMessage(argThat((TextMessage msg) ->
-                msg.getPayload().contains("Player player1 passed GO and collected €200")
-        ));
+        ArgumentCaptor<TextMessage> captor = ArgumentCaptor.forClass(TextMessage.class);
+        verify(session, atLeastOnce()).sendMessage(captor.capture());
+
+        List<TextMessage> allMessages = captor.getAllValues();
+        assertTrue(
+                allMessages.stream()
+                        .anyMatch(msg -> msg.getPayload().contains("passed GO and collected €200"))
+        );
     }
 
     @Test

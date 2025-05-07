@@ -158,16 +158,25 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 return;
             }
             if (payload.trim().equalsIgnoreCase("Roll")) {
+                if (!game.isPlayerTurn(userId)) {
+                    sendMessageToSession(session, createJsonError("Not your turn!"));
+                    return;
+                }
+                Player player = game.getPlayerById(userId).orElse(null);
+                if (player == null) return;
+
+                if (player.hasRolledThisTurn()) {
+                    sendMessageToSession(session, createJsonError("You already rolled this turn."));
+                    return;
+                }
+
                 int roll = diceManager.rollDices();
+                player.setHasRolledThisTurn(roll != 12);
                 logger.log(Level.INFO, "Player {0} rolled {1}", new Object[]{userId, roll});
 
                 DiceRollMessage drm = new DiceRollMessage(userId, roll);
                 String json = objectMapper.writeValueAsString(drm);
                 broadcastMessage(json);
-
-                if (roll != 12) {
-                    game.nextPlayer();
-                }
 
                 // Update Position and broadcast Game-State:
                 if (game.updatePlayerPosition(roll, userId)) {
@@ -175,7 +184,6 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 }
 
                 // Check for tax fields and send appropriate messages
-                Player player = game.getPlayerById(userId).orElse(null);
                 if (player != null) {
                     int position = player.getPosition();
                     if (position == 4) {  // Einkommensteuer
@@ -192,7 +200,19 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 }
 
                 broadcastGameState();
-            } else if (payload.startsWith("MANUAL_ROLL:")) {
+
+            } else if ("NEXT_TURN".equals(payload)) {
+                    logger.info("Received NEXT_TURN from " + userId);
+
+                    if (!game.isPlayerTurn(userId)) {
+                        sendMessageToSession(session, createJsonError("Not your turn!"));
+                        return;
+                    }
+
+                    game.nextPlayer();
+                    broadcastGameState();
+                }
+            else if (payload.startsWith("MANUAL_ROLL:")) {
                 try {
                     int manualRoll = Integer.parseInt(payload.substring("MANUAL_ROLL:".length()));
                     if (manualRoll < 1 || manualRoll > 39) {
@@ -206,9 +226,6 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                     String json = objectMapper.writeValueAsString(drm);
                     broadcastMessage(json);
 
-                    if (manualRoll != 12) {
-                        game.nextPlayer();
-                    }
 
                     if (game.updatePlayerPosition(manualRoll, userId)) {
                         broadcastMessage(PLAYER_PREFIX + userId + " passed GO and collected €200");
