@@ -7,7 +7,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import model.DiceManagerInterface;
 import model.Game;
-import model.Player;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
@@ -290,7 +289,7 @@ class GameWebSocketHandlerDiceTest {
 
 
     @Test
-    void testNextTurnAdvancesPlayerIfValid() throws Exception {
+    void testNextTurnAdvancesPlayerIfValid() {
         handler.afterConnectionEstablished(session);
 
         String initJson = mapper.createObjectNode()
