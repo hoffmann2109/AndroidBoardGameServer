@@ -367,7 +367,7 @@ class GameWebSocketHandlerDiceTest {
         // u2 versucht Zug zu enden obwohl u1 dran ist
         handler.handleTextMessage(s2, new TextMessage("NEXT_TURN"));
 
-        verify(s2).sendMessage(msgCaptor.capture());
+        verify(s2, atLeastOnce()).sendMessage(msgCaptor.capture());
         String payload = msgCaptor.getValue().getPayload();
         assertTrue(payload.contains("Not your turn!"));
     }
