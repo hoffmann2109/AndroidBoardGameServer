@@ -166,7 +166,11 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 }
 
                 int roll = diceManager.rollDices();
-                player.setHasRolledThisTurn(true);
+                if (roll == 12) {
+                    player.setHasRolledThisTurn(false);
+                } else {
+                    player.setHasRolledThisTurn(true);
+                }
                 logger.log(Level.INFO, "Player {0} rolled {1}", new Object[]{userId, roll});
 
                 DiceRollMessage drm = new DiceRollMessage(userId, roll);
