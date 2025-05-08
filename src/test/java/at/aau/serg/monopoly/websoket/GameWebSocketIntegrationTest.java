@@ -94,7 +94,7 @@ public class GameWebSocketIntegrationTest {
     /**
      * A WebSocketHandler that only completes its future on the Nth GAME_STATE message.
      */
-    private static abstract class CountingWebSocketHandler extends AbstractWebSocketHandler {
+    private abstract static class CountingWebSocketHandler extends AbstractWebSocketHandler {
         private final CompletableFuture<String> future;
         private final List<String> messages;
         private final int targetCount;
