@@ -183,4 +183,61 @@ class GameWebSocketHandlerTest {
                 msg.getPayload().contains("passed GO and collected €200")
         ));
     }
+    @Test
+    void givenInvalidPropertyIdFormat_whenBuyingProperty_thenShouldSendFormatError() throws Exception {
+        handler.handleTextMessage(session, new TextMessage("BUY_PROPERTY:invalid"));
+
+        verify(session).sendMessage(argThat(msg ->
+                ((TextMessage) msg).getPayload().contains("Invalid property ID format")
+        ));
+    }
+
+    @Test
+    void givenExceptionDuringBuyPropertyHandling_thenShouldSendServerError() throws Exception {
+        when(game.getPlayerById("player1")).thenThrow(new RuntimeException("unexpected"));
+
+        handler.handleTextMessage(session, new TextMessage("BUY_PROPERTY:1"));
+
+        verify(session).sendMessage(argThat(msg ->
+                ((TextMessage) msg).getPayload().contains("Server error handling buy property request")
+        ));
+    }
+
+    @Test
+    void givenCanBuyTrueButBuyFails_whenBuyingProperty_thenShouldSendPurchaseFailedError() throws Exception {
+        when(game.getPlayerById("player1")).thenReturn(Optional.of(player));
+        when(game.isPlayerTurn("player1")).thenReturn(true);
+        when(propertyTransactionService.canBuyProperty(player, 1)).thenReturn(true);
+        when(propertyTransactionService.buyProperty(player, 1)).thenReturn(false);
+
+        handler.handleTextMessage(session, new TextMessage("BUY_PROPERTY:1"));
+
+        verify(session).sendMessage(argThat(msg ->
+                ((TextMessage) msg).getPayload().contains("Failed to buy property due to server error")
+        ));
+    }
+
+    @Test
+    void givenValidPurchase_whenBuyingProperty_thenShouldBroadcastSuccess() throws Exception {
+
+        when(game.getPlayerById("player1")).thenReturn(Optional.of(player));
+        when(game.isPlayerTurn("player1")).thenReturn(true);
+        when(propertyTransactionService.canBuyProperty(player, 1)).thenReturn(true);
+        when(propertyTransactionService.buyProperty(player, 1)).thenReturn(true);
+
+        Field sessionsField = GameWebSocketHandler.class.getDeclaredField("sessions");
+        sessionsField.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        CopyOnWriteArrayList<WebSocketSession> sessions =
+                (CopyOnWriteArrayList<WebSocketSession>) sessionsField.get(handler);
+        sessions.add(session);
+
+        handler.handleTextMessage(session, new TextMessage("BUY_PROPERTY:1"));
+
+        verify(session).sendMessage(argThat(msg ->
+                ((TextMessage) msg).getPayload().contains("bought property")
+        ));
+    }
+
+
 }
