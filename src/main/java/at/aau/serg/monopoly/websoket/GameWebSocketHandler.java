@@ -1,5 +1,6 @@
 package at.aau.serg.monopoly.websoket;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import data.DiceRollMessage;
@@ -35,6 +36,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     private final Game game = new Game();
     private final ObjectMapper objectMapper = new ObjectMapper();
     private DiceManagerInterface diceManager;
+
     @Autowired
     private GameHistoryService gameHistoryService;
     @Autowired
@@ -64,7 +66,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             game.addPlayer(userId, name);
             sessionToUserId.put(session.getId(), userId);
 
-            System.out.println("Player connected: " + userId + " | Name: " + name);
+            logger.info("Player connected: " + userId + " | Name: " + name);
             broadcastMessage("SYSTEM: " + name + " (" + userId + ") joined the game");
 
             // Spielstart-Logik anpassen
@@ -77,6 +79,59 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             logger.log(Level.SEVERE, "Error processing INIT: {0}", e.getMessage());
         }
     }
+
+    private void handleTaxPayment(String payload, String userId) {
+        try {
+            TaxPaymentMessage taxMsg = objectMapper.readValue(payload, TaxPaymentMessage.class);
+            logger.info("Player " + taxMsg.getPlayerId()
+                    + " has to pay taxes");
+
+            if (taxMsg.getPlayerId().equals(userId)) {
+                game.updatePlayerMoney(userId, -taxMsg.getAmount());
+                broadcastMessage(payload);
+                broadcastGameState();
+            }
+        } catch (Exception e) {
+            logger.log(Level.WARNING, "Error processing tax payment message: {0}", e.getMessage());
+        }
+    }
+
+    private void handleManualRoll(String payload, String userId, WebSocketSession session) {
+        try {
+            int manualRoll = Integer.parseInt(payload.substring("MANUAL_ROLL:".length()));
+            if (manualRoll < 1 || manualRoll > 39) {
+                sendMessageToSession(session, createJsonError("Invalid roll value. Must be between 1 and 39."));
+                return;
+            }
+
+            logger.log(Level.INFO, "Player {0} manually rolled {1}", new Object[]{userId, manualRoll});
+
+            DiceRollMessage drm = new DiceRollMessage(userId, manualRoll, true);
+            String json = objectMapper.writeValueAsString(drm);
+            broadcastMessage(json);
+
+
+            if (game.updatePlayerPosition(manualRoll, userId)) {
+                broadcastMessage(PLAYER_PREFIX + userId + " passed GO and collected €200");
+            }
+            broadcastGameState();
+        } catch (NumberFormatException e) {
+            sendMessageToSession(session, createJsonError("Invalid manual roll format. Please provide a number between 1 and 39."));
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void handleUpdateMoney(String payload, String userId) {
+        try {
+            int amount = Integer.parseInt(payload.substring("UPDATE_MONEY:".length()));
+            game.updatePlayerMoney(userId, amount);
+            broadcastGameState();
+        } catch (NumberFormatException e) {
+            logger.log(Level.SEVERE, "Invalid money update format: {0}", sanitizeForLog(payload));
+        }
+    }
+
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) {
@@ -92,7 +147,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                     handleInitMessage(session, jsonNode);
                     return;
                 } else if ("END_GAME".equals(type)) {
-                    handleEndGame(jsonNode);
+                    handleEndGame();
                     return;
                 } else if ("GIVE_UP".equals(type)) {
                     handleGiveUp(session, jsonNode);
@@ -119,20 +174,8 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 return;
             }
             if (payload.contains("\"type\":\"TAX_PAYMENT\"")) {
-                try {
-                    TaxPaymentMessage taxMsg = objectMapper.readValue(payload, TaxPaymentMessage.class);
-                    logger.info("Player " + taxMsg.getPlayerId()
-                            + " has to pay taxes");
-
-                    if (taxMsg.getPlayerId().equals(userId)) {
-                        game.updatePlayerMoney(userId, -taxMsg.getAmount());
-                        broadcastMessage(payload);
-                        broadcastGameState();
-                    }
-                    return;
-                } catch (Exception e) {
-                    logger.log(Level.WARNING, "Error processing tax payment message: {0}", e.getMessage());
-                }
+                handleTaxPayment(payload, userId);
+                return;
             }
             if (payload.contains("\"type\":\"PULL_CARD\"")) {
                 PullCardMessage pull = objectMapper.readValue(payload, PullCardMessage.class);
@@ -202,7 +245,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 broadcastGameState();
 
             } else if ("NEXT_TURN".equals(payload)) {
-                    logger.info("Received NEXT_TURN from " + userId);
+                    logger.log(Level.INFO, "Received NEXT_TURN from {0}", userId);
 
                     if (!game.isPlayerTurn(userId)) {
                         sendMessageToSession(session, createJsonError("Not your turn!"));
@@ -213,35 +256,9 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                     broadcastGameState();
                 }
             else if (payload.startsWith("MANUAL_ROLL:")) {
-                try {
-                    int manualRoll = Integer.parseInt(payload.substring("MANUAL_ROLL:".length()));
-                    if (manualRoll < 1 || manualRoll > 39) {
-                        sendMessageToSession(session, createJsonError("Invalid roll value. Must be between 1 and 39."));
-                        return;
-                    }
-
-                    logger.log(Level.INFO, "Player {0} manually rolled {1}", new Object[]{userId, manualRoll});
-
-                    DiceRollMessage drm = new DiceRollMessage(userId, manualRoll, true);
-                    String json = objectMapper.writeValueAsString(drm);
-                    broadcastMessage(json);
-
-
-                    if (game.updatePlayerPosition(manualRoll, userId)) {
-                        broadcastMessage(PLAYER_PREFIX + userId + " passed GO and collected €200");
-                    }
-                    broadcastGameState();
-                } catch (NumberFormatException e) {
-                    sendMessageToSession(session, createJsonError("Invalid manual roll format. Please provide a number between 1 and 39."));
-                }
+                handleManualRoll(payload, userId, session);
             } else if (payload.startsWith("UPDATE_MONEY:")) {
-                try {
-                    int amount = Integer.parseInt(payload.substring("UPDATE_MONEY:".length()));
-                    game.updatePlayerMoney(userId, amount);
-                    broadcastGameState();
-                } catch (NumberFormatException e) {
-                    System.err.println("Invalid money update format: " + sanitizeForLog(payload));
-                }
+                handleUpdateMoney(payload, userId);
             } else if (payload.startsWith("BUY_PROPERTY:")) {
                 handleBuyProperty(session, userId, payload);
             } else {
@@ -262,7 +279,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             game.removePlayer(userId);
             sessionToUserId.remove(session.getId());
             broadcastMessage("Player left: " + userId + " (Total: " + sessions.size() + ")");
-            System.out.println("Player disconnected: " + userId);
+            logger.log(Level.INFO, "Player disconnected: {0}", userId);
         }
         sessions.remove(session);
     }
@@ -296,7 +313,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             String gameState = objectMapper.writeValueAsString(game.getPlayerInfo());
             broadcastMessage("GAME_STATE:" + gameState);
             broadcastMessage("Game started! " + sessions.size() + " players are connected.");
-            System.out.println("Game started with " + sessions.size() + " players!");
+            logger.log(Level.INFO, "Game started with {0} players!", sessions.size());
             game.start();
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Error sending game state: {0}", e.getMessage());
@@ -328,7 +345,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 }
             } else {
                 if (!game.isPlayerTurn(userId)) {
-                    logger.log(Level.WARNING, "Player {0} attempted to buy property {1} when it's not their turn", new Object[]{userId, propertyId});
+                    logger.log(Level.WARNING, "Player {0} attempted to buy property {1} when it is not their turn", new Object[]{userId, propertyId});
                     sendMessageToSession(session, createJsonError("Cannot buy property - it's not your turn."));
                 } else {
                     logger.log(Level.WARNING, "Property purchase failed for player {0}, property {1} after canBuy check.", new Object[]{userId, propertyId});
@@ -348,7 +365,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     /**
      * Behandelt die Beendigung eines Spiels und speichert die Spielhistorie
      */
-    private void handleEndGame(JsonNode jsonNode) {
+    private void handleEndGame() {
         try {
             String winnerId = game.determineWinner();
 
@@ -415,8 +432,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             game.removePlayer(userId);
             sessionToUserId.remove(session.getId());
             broadcastMessage("Player gave up: " + userId);
-            System.out.println("Player gave up: " + userId);
-
+            logger.log(Level.INFO, "Player gave up: {0}", userId);
             // Optional: Trage in Datenbank als "verloren" ein
             gameHistoryService.markPlayerAsLoser(userId); // ← wenn du das hast
 
