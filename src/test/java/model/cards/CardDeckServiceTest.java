@@ -83,7 +83,7 @@ class CardDeckServiceTest {
         Card reshuffled = realService.drawCard(someType);
         assertNotNull(reshuffled);
         // after pop from reshuffled deck, exactly (originalDiscardCount - 1) remain in deck
-        assertEquals(discards.get(someType).size(), 1,
+        assertEquals(1, discards.get(someType).size(),
                 "after reshuffle+draw, discards should have only the drawn card");
         // make sure the drawn card is now in discards
         assertSame(reshuffled, discards.get(someType).get(0));
