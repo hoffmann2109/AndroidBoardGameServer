@@ -176,7 +176,6 @@ class GameWebSocketHandlerUnitTest {
     @Test
     void testInvalidMessageHandling() throws Exception {
         GameWebSocketHandler handler = new GameWebSocketHandler();
-        WebSocketSession session = mock(WebSocketSession.class);
         when(session.getId()).thenReturn("test-session-id");
         when(session.isOpen()).thenReturn(true);
 
@@ -199,7 +198,6 @@ class GameWebSocketHandlerUnitTest {
     @Test
     void testPlayerDisconnect() throws Exception {
         GameWebSocketHandler handler = new GameWebSocketHandler();
-        WebSocketSession session = mock(WebSocketSession.class);
         when(session.getId()).thenReturn("123");
         when(session.isOpen()).thenReturn(true);
 
