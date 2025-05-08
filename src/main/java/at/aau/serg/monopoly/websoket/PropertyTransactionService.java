@@ -2,7 +2,6 @@ package at.aau.serg.monopoly.websoket;
 
 import model.Player;
 import model.properties.BaseProperty;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.logging.Level;
@@ -13,8 +12,12 @@ public class PropertyTransactionService {
 
     private static final Logger logger = Logger.getLogger(PropertyTransactionService.class.getName());
 
-    @Autowired
-    private PropertyService propertyService;
+    private final PropertyService propertyService;
+
+    public PropertyTransactionService(PropertyService propertyService) {
+        this.propertyService = propertyService;
+    }
+
 
     /**
      * Validates if a player is currently on the property they're trying to buy
