@@ -24,7 +24,7 @@ public class CardTest {
         mv.setSpaces(5);
 
         assertEquals(7, mv.getId());
-        assertTrue(mv.getSpaces() == 5);
+        assertEquals(5, (int) mv.getSpaces());
         assertEquals("Go forward", mv.getDescription());
         assertSame(ActionType.MOVE, mv.getAction());
     }
