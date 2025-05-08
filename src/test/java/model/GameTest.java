@@ -258,24 +258,24 @@ class GameTest {
 
     @Test
     void testEndGameDurationCalculation() {
-        Game game = new Game();
-        game.start();
+        Game gameDurationCalc = new Game();
+        gameDurationCalc.start();
 
-        int duration = game.endGame("player1");
+        int duration = gameDurationCalc.endGame("player1");
 
         assertTrue(duration >= 0);
     }
 
     @Test
     void testDetermineWinnerWithEqualMoney() {
-        Game game = new Game();
-        game.addPlayer("1", "Player1");
-        game.addPlayer("2", "Player2");
+        Game gameWinnerEqualMoney = new Game();
+        gameWinnerEqualMoney.addPlayer("1", "Player1");
+        gameWinnerEqualMoney.addPlayer("2", "Player2");
 
-        game.updatePlayerMoney("1", -500);
-        game.updatePlayerMoney("2", -500);
+        gameWinnerEqualMoney.updatePlayerMoney("1", -500);
+        gameWinnerEqualMoney.updatePlayerMoney("2", -500);
 
-        String winner = game.determineWinner();
+        String winner = gameWinnerEqualMoney.determineWinner();
         assertNotNull(winner);
     }
 }

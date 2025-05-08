@@ -33,15 +33,12 @@ public class FirebaseService {
             if (FirebaseApp.getApps().isEmpty()) {
                 handleFirebaseInitialization();
             }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            logger.log(Level.SEVERE, "Firebase-Initialisierung wurde unterbrochen", e);
-        } catch (Exception e) {
+        }  catch (Exception e) {
             logger.log(Level.SEVERE, "Kritischer Fehler bei der Firebase-Initialisierung", e);
         }
     }
 
-    private void handleFirebaseInitialization() throws IOException, InterruptedException {
+    private void handleFirebaseInitialization() throws IOException {
         InputStream serviceAccount = null;
         try {
             serviceAccount = locateServiceAccountKey();

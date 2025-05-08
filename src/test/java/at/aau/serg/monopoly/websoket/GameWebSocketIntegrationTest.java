@@ -14,7 +14,6 @@ import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.handler.AbstractWebSocketHandler;
 
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -42,16 +41,13 @@ public class GameWebSocketIntegrationTest {
 
     @Test
     void testGameStartWithTwoPlayers() throws Exception {
-        ObjectMapper mapper = new ObjectMapper();
 
         CompletableFuture<String> stateFuture1 = new CompletableFuture<>();
         CompletableFuture<String> stateFuture2 = new CompletableFuture<>();
-        List<String> messages1 = new ArrayList<>();
-        List<String> messages2 = new ArrayList<>();
 
         // Connect client1
         WebSocketSession session1 = client1.doHandshake(
-                new CountingWebSocketHandler(stateFuture1, messages1, 1) {
+                new CountingWebSocketHandler(stateFuture1) {
                     @Override
                     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
                         session.sendMessage(new TextMessage("{\"type\":\"INIT\",\"userId\":\"1\",\"name\":\"Player1\"}"));
@@ -63,7 +59,7 @@ public class GameWebSocketIntegrationTest {
 
         // Connect client2
         WebSocketSession session2 = client2.doHandshake(
-                new CountingWebSocketHandler(stateFuture2, messages2, 1) {
+                new CountingWebSocketHandler(stateFuture2) {
                     @Override
                     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
                         session.sendMessage(new TextMessage("{\"type\":\"INIT\",\"userId\":\"2\",\"name\":\"Player2\"}"));
@@ -76,7 +72,6 @@ public class GameWebSocketIntegrationTest {
         assertThat(state1).startsWith("GAME_STATE:");
         assertThat(state2).startsWith("GAME_STATE:");
 
-        Thread.sleep(50);
 
         // Parse and verify 2 players
         String json1 = state1.substring("GAME_STATE:".length());
@@ -94,16 +89,11 @@ public class GameWebSocketIntegrationTest {
     /**
      * A WebSocketHandler that only completes its future on the Nth GAME_STATE message.
      */
-    private static abstract class CountingWebSocketHandler extends AbstractWebSocketHandler {
+    private abstract static class CountingWebSocketHandler extends AbstractWebSocketHandler {
         private final CompletableFuture<String> future;
-        private final List<String> messages;
-        private final int targetCount;
-        private int seenCount = 0;
 
-        public CountingWebSocketHandler(CompletableFuture<String> future, List<String> messages, int targetCount) {
+        public CountingWebSocketHandler(CompletableFuture<String> future) {
             this.future = future;
-            this.messages = messages;
-            this.targetCount = targetCount;
         }
 
         @Override

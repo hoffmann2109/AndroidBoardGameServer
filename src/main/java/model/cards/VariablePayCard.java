@@ -4,9 +4,6 @@ package model.cards;
 
 import lombok.Data;
 import model.Game;
-import model.Player;
-
-import java.util.List;
 
 @Data
 public class VariablePayCard extends Card {

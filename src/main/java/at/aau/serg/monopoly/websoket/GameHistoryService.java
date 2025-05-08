@@ -55,10 +55,10 @@ public class GameHistoryService {
                     .set(gameHistory);
 
             result.get(); // Warten auf das Ergebnis
-            logger.info("Spielhistorie für Benutzer " + userId + " erfolgreich gespeichert");
+            logger.log(Level.INFO, "Spielhistorie für Benutzer {0} erfolgreich gespeichert", userId);
             return true;
         } catch (InterruptedException | ExecutionException e) {
-            logger.log(Level.SEVERE, "Fehler beim Speichern der Spielhistorie für Benutzer " + userId, e);
+            logger.log(Level.SEVERE, "Fehler beim Speichern der Spielhistorie für Benutzer {0}", userId);
             Thread.currentThread().interrupt(); // Guter Umgang mit InterruptedException
             return false;
         }
