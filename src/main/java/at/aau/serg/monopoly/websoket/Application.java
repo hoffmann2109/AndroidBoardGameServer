@@ -5,7 +5,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.context.annotation.ComponentScan;
 import java.util.logging.Logger;
-import java.util.logging.Level;
 
 @SpringBootApplication
 @EnableScheduling

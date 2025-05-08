@@ -66,8 +66,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             game.addPlayer(userId, name);
             sessionToUserId.put(session.getId(), userId);
 
-            logger.info("Player connected: " + userId + " | Name: " + name);
-            broadcastMessage("SYSTEM: " + name + " (" + userId + ") joined the game");
+            logger.log(Level.INFO, "Player connected: {0} | Name: {1}", new Object[]{userId, name});            broadcastMessage("SYSTEM: " + name + " (" + userId + ") joined the game");
 
             // Spielstart-Logik anpassen
             if (sessionToUserId.size() >= 2 && sessionToUserId.size() <= 4) {
@@ -96,6 +95,17 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
+    public class JsonDeserializationException extends RuntimeException {
+
+        public JsonDeserializationException(String message, Throwable cause) {
+            super(message, cause);
+        }
+
+        public JsonDeserializationException(String message) {
+            super(message);
+        }
+    }
+
     private void handleManualRoll(String payload, String userId, WebSocketSession session) {
         try {
             int manualRoll = Integer.parseInt(payload.substring("MANUAL_ROLL:".length()));
@@ -118,7 +128,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         } catch (NumberFormatException e) {
             sendMessageToSession(session, createJsonError("Invalid manual roll format. Please provide a number between 1 and 39."));
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            throw new JsonDeserializationException("Fehler beim Deserialisieren des JSON-Objekts", e);
         }
     }
 
@@ -227,20 +237,19 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 }
 
                 // Check for tax fields and send appropriate messages
-                if (player != null) {
-                    int position = player.getPosition();
-                    if (position == 4) {  // Einkommensteuer
-                        game.updatePlayerMoney(userId, -200);  // Deduct money first
-                        TaxPaymentMessage taxMsg = new TaxPaymentMessage(userId, 200, "EINKOMMENSTEUER");
-                        String jsonTax = objectMapper.writeValueAsString(taxMsg);
-                        broadcastMessage(jsonTax);
-                    } else if (position == 38) {  // Zusatzsteuer
-                        game.updatePlayerMoney(userId, -100);  // Deduct money first
-                        TaxPaymentMessage taxMsg = new TaxPaymentMessage(userId, 100, "ZUSATZSTEUER");
-                        String jsonTax = objectMapper.writeValueAsString(taxMsg);
-                        broadcastMessage(jsonTax);
-                    }
+                int position = player.getPosition();
+                if (position == 4) {  // Einkommensteuer
+                    game.updatePlayerMoney(userId, -200);  // Deduct money first
+                    TaxPaymentMessage taxMsg = new TaxPaymentMessage(userId, 200, "EINKOMMENSTEUER");
+                    String jsonTax = objectMapper.writeValueAsString(taxMsg);
+                    broadcastMessage(jsonTax);
+                } else if (position == 38) {  // Zusatzsteuer
+                    game.updatePlayerMoney(userId, -100);  // Deduct money first
+                    TaxPaymentMessage taxMsg = new TaxPaymentMessage(userId, 100, "ZUSATZSTEUER");
+                    String jsonTax = objectMapper.writeValueAsString(taxMsg);
+                    broadcastMessage(jsonTax);
                 }
+
 
                 broadcastGameState();
 
