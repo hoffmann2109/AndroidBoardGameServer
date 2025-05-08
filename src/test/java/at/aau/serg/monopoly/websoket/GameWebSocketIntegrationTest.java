@@ -42,7 +42,6 @@ public class GameWebSocketIntegrationTest {
 
     @Test
     void testGameStartWithTwoPlayers() throws Exception {
-        ObjectMapper mapper = new ObjectMapper();
 
         CompletableFuture<String> stateFuture1 = new CompletableFuture<>();
         CompletableFuture<String> stateFuture2 = new CompletableFuture<>();
@@ -76,7 +75,6 @@ public class GameWebSocketIntegrationTest {
         assertThat(state1).startsWith("GAME_STATE:");
         assertThat(state2).startsWith("GAME_STATE:");
 
-        Thread.sleep(50);
 
         // Parse and verify 2 players
         String json1 = state1.substring("GAME_STATE:".length());
@@ -95,15 +93,10 @@ public class GameWebSocketIntegrationTest {
      * A WebSocketHandler that only completes its future on the Nth GAME_STATE message.
      */
     private abstract static class CountingWebSocketHandler extends AbstractWebSocketHandler {
-        private final CompletableFuture<String> future;
-        private final List<String> messages;
-        private final int targetCount;
-        private int seenCount = 0;
+        private CompletableFuture<String> future;
 
         public CountingWebSocketHandler(CompletableFuture<String> future, List<String> messages, int targetCount) {
             this.future = future;
-            this.messages = messages;
-            this.targetCount = targetCount;
         }
 
         @Override
