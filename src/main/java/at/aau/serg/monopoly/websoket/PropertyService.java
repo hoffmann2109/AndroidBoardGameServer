@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import model.Game;
 import model.Player;
+import model.properties.BaseProperty;
 import model.properties.HouseableProperty;
 import model.properties.TrainStation;
 import model.properties.Utility;
@@ -74,6 +75,39 @@ public class PropertyService {
         }
         return game.getPlayers().stream()
                 .filter(player -> player.getId().equals(playerId))
+                .findFirst()
+                .orElse(null);
+    }
+
+    /**
+     * Gets a property by its position on the board
+     * @param position The position to find the property at
+     * @return The property if found, null otherwise
+     */
+    public BaseProperty getPropertyByPosition(int position) {
+        // Check houseable properties
+        BaseProperty property = houseableProperties.stream()
+                .filter(p -> p.getPosition() == position)
+                .findFirst()
+                .orElse(null);
+        
+        if (property != null) {
+            return property;
+        }
+
+        // Check train stations
+        property = trainStations.stream()
+                .filter(p -> p.getPosition() == position)
+                .findFirst()
+                .orElse(null);
+        
+        if (property != null) {
+            return property;
+        }
+
+        // Check utilities
+        return utilities.stream()
+                .filter(p -> p.getPosition() == position)
                 .findFirst()
                 .orElse(null);
     }
