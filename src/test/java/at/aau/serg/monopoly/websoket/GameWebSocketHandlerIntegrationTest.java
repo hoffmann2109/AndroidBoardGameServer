@@ -31,7 +31,7 @@ public class GameWebSocketHandlerIntegrationTest {
         client.doHandshake(new AbstractWebSocketHandler() {
             @Override
             protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-                System.out.println("message received " + message.getPayload());
+                System.out.println("message received " + message.getPayload()); //bewusst geloggt aktuell
                 future.complete(message.getPayload());
             }
 

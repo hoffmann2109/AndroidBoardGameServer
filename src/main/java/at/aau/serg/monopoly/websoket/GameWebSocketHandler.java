@@ -74,7 +74,8 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             game.addPlayer(userId, name);
             sessionToUserId.put(session.getId(), userId);
 
-            logger.log(Level.INFO, "Player connected: {0} | Name: {1}", new Object[]{userId, name});            broadcastMessage("SYSTEM: " + name + " (" + userId + ") joined the game");
+            logger.log(Level.INFO, "Player connected: {0} | Name: {1}", new Object[]{userId, name}); //bewusst geloggt aktuell
+            broadcastMessage("SYSTEM: " + name + " (" + userId + ") joined the game");
 
             // Spielstart-Logik anpassen
             if (sessionToUserId.size() >= 2 && sessionToUserId.size() <= 4) {
@@ -83,7 +84,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
             broadcastGameState();
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error processing INIT: {0}", e.getMessage());
+            logger.log(Level.SEVERE, "Error processing INIT: {0}", e.getMessage()); //bewusst geloggt aktuell
         }
     }
 
@@ -91,7 +92,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         try {
             TaxPaymentMessage taxMsg = objectMapper.readValue(payload, TaxPaymentMessage.class);
             logger.info("Player " + taxMsg.getPlayerId()
-                    + " has to pay taxes");
+                    + " has to pay taxes"); //bewusst geloggt aktuell
 
             if (taxMsg.getPlayerId().equals(userId)) {
                 game.updatePlayerMoney(userId, -taxMsg.getAmount());
@@ -99,7 +100,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 broadcastGameState();
             }
         } catch (Exception e) {
-            logger.log(Level.WARNING, "Error processing tax payment message: {0}", e.getMessage());
+            logger.log(Level.WARNING, "Error processing tax payment message: {0}", e.getMessage());//bewusst geloggt aktuell
         }
     }
 
@@ -122,7 +123,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 return;
             }
 
-            logger.log(Level.INFO, "Player {0} manually rolled {1}", new Object[]{userId, manualRoll});
+            logger.log(Level.INFO, "Player {0} manually rolled {1}", new Object[]{userId, manualRoll});//bewusst geloggt aktuell
 
             DiceRollMessage drm = new DiceRollMessage(userId, manualRoll, true);
             String json = objectMapper.writeValueAsString(drm);
@@ -146,7 +147,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             game.updatePlayerMoney(userId, amount);
             broadcastGameState();
         } catch (NumberFormatException e) {
-            logger.log(Level.SEVERE, "Invalid money update format: {0}", sanitizeForLog(payload));
+            logger.log(Level.SEVERE, "Invalid money update format: {0}", sanitizeForLog(payload));//bewusst geloggt aktuell
         }
     }
 
@@ -187,7 +188,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         try {
 
             if (payload.contains("\"type\":\"CHAT_MESSAGE\"")) {
-                logger.log(Level.INFO, "Received chat message from player {0}", userId);
+                logger.log(Level.INFO, "Received chat message from player {0}", userId);//bewusst geloggt aktuell
                 broadcastMessage(payload);
                 return;
             }
@@ -198,7 +199,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             if (payload.contains("\"type\":\"PULL_CARD\"")) {
                 PullCardMessage pull = objectMapper.readValue(payload, PullCardMessage.class);
                 logger.info("Player " + pull.getPlayerId()
-                        + " requested a " + pull.getCardType() + " card");
+                        + " requested a " + pull.getCardType() + " card");//bewusst geloggt aktuell
 
                 model.cards.CardType deckType = model.cards.CardType.valueOf(pull.getCardType());
                 model.cards.Card card = cardDeckService.drawCard(deckType);
@@ -213,7 +214,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                     );
                     String jsonReply = objectMapper.writeValueAsString(reply);
                     sendMessageToSession(session, jsonReply);
-                    logger.info("Player " + pull.getPlayerId() + " received a drawn card");
+                    logger.info("Player " + pull.getPlayerId() + " received a drawn card");//bewusst geloggt aktuell
                     broadcastGameState();
                 }
                 return;
@@ -233,7 +234,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
                 int roll = diceManager.rollDices();
                 player.setHasRolledThisTurn(roll != 12);
-                logger.log(Level.INFO, "Player {0} rolled {1}", new Object[]{userId, roll});
+                logger.log(Level.INFO, "Player {0} rolled {1}", new Object[]{userId, roll});//bewusst geloggt aktuell
 
                 DiceRollMessage drm = new DiceRollMessage(userId, roll);
                 String json = objectMapper.writeValueAsString(drm);
@@ -249,7 +250,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 handlePlayerLanding(player, position);
 
             } else if ("NEXT_TURN".equals(payload)) {
-                    logger.log(Level.INFO, "Received NEXT_TURN from {0}", userId);
+                    logger.log(Level.INFO, "Received NEXT_TURN from {0}", userId);//bewusst geloggt aktuell
 
                     if (!game.isPlayerTurn(userId)) {
                         sendMessageToSession(session, createJsonError("Not your turn!"));
@@ -267,11 +268,11 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 handleBuyProperty(session, userId, payload);
             } else {
                 String safePayload = sanitizeForLog(payload);
-                logger.log(Level.INFO, "Received unknown message format: {0} from player {1}", new Object[]{safePayload, userId});
+                logger.log(Level.INFO, "Received unknown message format: {0} from player {1}", new Object[]{safePayload, userId});//bewusst geloggt aktuell
                 broadcastMessage(PLAYER_PREFIX + userId + ": " + safePayload);
             }
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error handling message from player {0}: {1}", new Object[]{userId, e.getMessage()});
+            logger.log(Level.SEVERE, "Error handling message from player {0}: {1}", new Object[]{userId, e.getMessage()});//bewusst geloggt aktuell
             sendMessageToSession(session, createJsonError("Server error processing your request."));
         }
     }
@@ -283,7 +284,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             game.removePlayer(userId);
             sessionToUserId.remove(session.getId());
             broadcastMessage("Player left: " + userId + " (Total: " + sessions.size() + ")");
-            logger.log(Level.INFO, "Player disconnected: {0}", userId);
+            logger.log(Level.INFO, "Player disconnected: {0}", userId);//bewusst geloggt aktuell
         }
         sessions.remove(session);
     }
@@ -297,7 +298,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                     sessions.remove(session);
                 }
             } catch (Exception e) {
-                logger.log(Level.SEVERE, "Error sending message: {0}", e.getMessage());
+                logger.log(Level.SEVERE, "Error sending message: {0}", e.getMessage());//bewusst geloggt aktuell
             }
         }
     }
@@ -308,7 +309,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             broadcastMessage("GAME_STATE:" + gameState);
             broadcastMessage("PLAYER_TURN:" + game.getCurrentPlayer().getId());
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error broadcasting game state: {0}", e.getMessage());
+            logger.log(Level.SEVERE, "Error broadcasting game state: {0}", e.getMessage());//bewusst geloggt aktuell
         }
     }
 
@@ -317,21 +318,21 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             String gameState = objectMapper.writeValueAsString(game.getPlayerInfo());
             broadcastMessage("GAME_STATE:" + gameState);
             broadcastMessage("Game started! " + sessions.size() + " players are connected.");
-            logger.log(Level.INFO, "Game started with {0} players!", sessions.size());
+            logger.log(Level.INFO, "Game started with {0} players!", sessions.size());//bewusst geloggt aktuell
             game.start();
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error sending game state: {0}", e.getMessage());
+            logger.log(Level.SEVERE, "Error sending game state: {0}", e.getMessage());//bewusst geloggt aktuell
         }
     }
 
     private void handleBuyProperty(WebSocketSession session, String userId, String payload) {
         try {
             int propertyId = Integer.parseInt(payload.substring("BUY_PROPERTY:".length()));
-            logger.log(Level.INFO, "Player {0} attempts to buy property {1}", new Object[]{userId, propertyId});
+            logger.log(Level.INFO, "Player {0} attempts to buy property {1}", new Object[]{userId, propertyId});//bewusst geloggt aktuell
 
             Optional<Player> playerOpt = game.getPlayerById(userId);
             if (playerOpt.isEmpty()) {
-                logger.log(Level.WARNING, "Player {0} not found in game state during buy attempt.", userId);
+                logger.log(Level.WARNING, "Player {0} not found in game state during buy attempt.", userId);//bewusst geloggt aktuell
                 sendMessageToSession(session, createJsonError("Player not found."));
                 return;
             }
@@ -340,28 +341,28 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             if (propertyTransactionService.canBuyProperty(player, propertyId)) {
                 boolean success = propertyTransactionService.buyProperty(player, propertyId);
                 if (success) {
-                    logger.log(Level.INFO, "Property {0} bought successfully by player {1}", new Object[]{propertyId, userId});
+                    logger.log(Level.INFO, "Property {0} bought successfully by player {1}", new Object[]{propertyId, userId});//bewusst geloggt aktuell
                     broadcastMessage(createJsonMessage(PLAYER_PREFIX + userId + " bought property " + propertyId));
                     broadcastGameState();
                 } else {
-                    logger.log(Level.WARNING, "Property purchase failed for player {0}, property {1} after canBuy check.", new Object[]{userId, propertyId});
+                    logger.log(Level.WARNING, "Property purchase failed for player {0}, property {1} after canBuy check.", new Object[]{userId, propertyId});//bewusst geloggt aktuell
                     sendMessageToSession(session, createJsonError("Failed to buy property due to server error."));
                 }
             } else {
                 if (!game.isPlayerTurn(userId)) {
-                    logger.log(Level.WARNING, "Player {0} attempted to buy property {1} when it is not their turn", new Object[]{userId, propertyId});
+                    logger.log(Level.WARNING, "Player {0} attempted to buy property {1} when it is not their turn", new Object[]{userId, propertyId});//bewusst geloggt aktuell
                     sendMessageToSession(session, createJsonError("Cannot buy property - it's not your turn."));
                 } else {
-                    logger.log(Level.WARNING, "Property purchase failed for player {0}, property {1} after canBuy check.", new Object[]{userId, propertyId});
+                    logger.log(Level.WARNING, "Property purchase failed for player {0}, property {1} after canBuy check.", new Object[]{userId, propertyId});//bewusst geloggt aktuell
                     sendMessageToSession(session, createJsonError("Cannot buy property (insufficient funds or already owned)."));
                 }
             }
 
         } catch (NumberFormatException e) {
-            logger.log(Level.WARNING, "Invalid property ID in payload from player {0}: {1}", new Object[]{userId, sanitizeForLog(payload)});
+            logger.log(Level.WARNING, "Invalid property ID in payload from player {0}: {1}", new Object[]{userId, sanitizeForLog(payload)});//bewusst geloggt aktuell
             sendMessageToSession(session, createJsonError("Invalid property ID format."));
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error handling BUY_PROPERTY for player {0}: {1}", new Object[]{userId, e.getMessage()});
+            logger.log(Level.SEVERE, "Error handling BUY_PROPERTY for player {0}: {1}", new Object[]{userId, e.getMessage()});//bewusst geloggt aktuell
             sendMessageToSession(session, createJsonError("Server error handling buy property request."));
         }
     }
@@ -391,9 +392,9 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             broadcastMessage(createJsonMessage("Das Spiel wurde beendet. Der Gewinner ist " +
                     game.getPlayerById(winnerId).map(Player::getName).orElse("unbekannt")));
 
-            logger.info("Spiel beendet und Spielhistorie gespeichert");
+            logger.info("Spiel beendet und Spielhistorie gespeichert");//bewusst geloggt aktuell
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Fehler beim Beenden des Spiels", e);
+            logger.log(Level.SEVERE, "Fehler beim Beenden des Spiels", e);//bewusst geloggt aktuell
         }
     }
 
@@ -404,7 +405,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 session.sendMessage(new TextMessage(message));
             }
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error sending message to session {0}: {1}", new Object[]{session.getId(), e.getMessage()});
+            logger.log(Level.SEVERE, "Error sending message to session {0}: {1}", new Object[]{session.getId(), e.getMessage()});//bewusst geloggt aktuell
         }
     }
 
@@ -436,13 +437,13 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             game.removePlayer(userId);
             sessionToUserId.remove(session.getId());
             broadcastMessage("Player gave up: " + userId);
-            logger.log(Level.INFO, "Player gave up: {0}", userId);
+            logger.log(Level.INFO, "Player gave up: {0}", userId);//bewusst geloggt aktuell
             // Optional: Trage in Datenbank als "verloren" ein
             gameHistoryService.markPlayerAsLoser(userId); // ← wenn du das hast
 
             session.close();
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error processing GIVE_UP message", e);
+            logger.log(Level.SEVERE, "Error processing GIVE_UP message", e);//bewusst geloggt aktuell
             sendMessageToSession(session, createJsonError("Error processing give up."));
         }
     }
@@ -484,7 +485,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
             broadcastGameState();
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error handling player landing: {0}", e.getMessage());
+            logger.log(Level.SEVERE, "Error handling player landing: {0}", e.getMessage());//bewusst geloggt aktuell
         }
     }
 }
