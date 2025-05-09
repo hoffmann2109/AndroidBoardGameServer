@@ -20,6 +20,11 @@ class GameWebSocketHandlerDiceTest {
 
     @Mock WebSocketSession session;
     @Mock PropertyTransactionService propertyTransactionService;
+    @Mock PropertyService propertyService;
+    @Mock RentCollectionService rentCollectionService;
+    @Mock RentCalculationService rentCalculationService;
+    @Mock GameHistoryService gameHistoryService;
+    @Mock CardDeckService cardDeckService;
 
     @Captor ArgumentCaptor<TextMessage> msgCaptor;
 
@@ -32,6 +37,11 @@ class GameWebSocketHandlerDiceTest {
         handler = new GameWebSocketHandler();
 
         ReflectionTestUtils.setField(handler, "propertyTransactionService", propertyTransactionService);
+        ReflectionTestUtils.setField(handler, "propertyService", propertyService);
+        ReflectionTestUtils.setField(handler, "rentCollectionService", rentCollectionService);
+        ReflectionTestUtils.setField(handler, "rentCalculationService", rentCalculationService);
+        ReflectionTestUtils.setField(handler, "gameHistoryService", gameHistoryService);
+        ReflectionTestUtils.setField(handler, "cardDeckService", cardDeckService);
 
         when(session.getId()).thenReturn("session-1");
         when(session.isOpen()).thenReturn(true);
@@ -149,6 +159,11 @@ class GameWebSocketHandlerDiceTest {
 
         handler = new GameWebSocketHandler();
         ReflectionTestUtils.setField(handler, "propertyTransactionService", propertyTransactionService);
+        ReflectionTestUtils.setField(handler, "propertyService", propertyService);
+        ReflectionTestUtils.setField(handler, "rentCollectionService", rentCollectionService);
+        ReflectionTestUtils.setField(handler, "rentCalculationService", rentCalculationService);
+        ReflectionTestUtils.setField(handler, "gameHistoryService", gameHistoryService);
+        ReflectionTestUtils.setField(handler, "cardDeckService", cardDeckService);
 
         handler.afterConnectionEstablished(s1);
         handler.afterConnectionEstablished(s2);

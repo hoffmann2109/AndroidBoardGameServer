@@ -7,11 +7,13 @@ import data.DiceRollMessage;
 import data.DrawnCardMessage;
 import data.PullCardMessage;
 import data.TaxPaymentMessage;
+import data.RentPaymentMessage;
 import lombok.NonNull;
 import model.DiceManager;
 import model.DiceManagerInterface;
 import model.Game;
 import model.Player;
+import model.properties.BaseProperty;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.*;
@@ -43,6 +45,12 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     private CardDeckService cardDeckService;
     @Autowired
     private PropertyTransactionService propertyTransactionService;
+    @Autowired
+    private PropertyService propertyService;
+    @Autowired
+    private RentCollectionService rentCollectionService;
+    @Autowired
+    private RentCalculationService rentCalculationService;
 
     @Override
     public void afterConnectionEstablished(@NonNull WebSocketSession session) {
@@ -238,20 +246,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
                 // Check for tax fields and send appropriate messages
                 int position = player.getPosition();
-                if (position == 4) {  // Einkommensteuer
-                    game.updatePlayerMoney(userId, -200);  // Deduct money first
-                    TaxPaymentMessage taxMsg = new TaxPaymentMessage(userId, 200, "EINKOMMENSTEUER");
-                    String jsonTax = objectMapper.writeValueAsString(taxMsg);
-                    broadcastMessage(jsonTax);
-                } else if (position == 38) {  // Zusatzsteuer
-                    game.updatePlayerMoney(userId, -100);  // Deduct money first
-                    TaxPaymentMessage taxMsg = new TaxPaymentMessage(userId, 100, "ZUSATZSTEUER");
-                    String jsonTax = objectMapper.writeValueAsString(taxMsg);
-                    broadcastMessage(jsonTax);
-                }
-
-
-                broadcastGameState();
+                handlePlayerLanding(player, position);
 
             } else if ("NEXT_TURN".equals(payload)) {
                     logger.log(Level.INFO, "Received NEXT_TURN from {0}", userId);
@@ -449,6 +444,47 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Error processing GIVE_UP message", e);
             sendMessageToSession(session, createJsonError("Error processing give up."));
+        }
+    }
+
+    private void handlePlayerLanding(Player player, int position) {
+        try {
+            // Check for tax squares
+            if (position == 4) {  // Einkommensteuer
+                game.updatePlayerMoney(player.getId(), -200);  // Deduct money first
+                TaxPaymentMessage taxMsg = new TaxPaymentMessage(player.getId(), 200, "EINKOMMENSTEUER");
+                String jsonTax = objectMapper.writeValueAsString(taxMsg);
+                broadcastMessage(jsonTax);
+            } else if (position == 38) {  // Zusatzsteuer
+                game.updatePlayerMoney(player.getId(), -100);  // Deduct money first
+                TaxPaymentMessage taxMsg = new TaxPaymentMessage(player.getId(), 100, "ZUSATZSTEUER");
+                String jsonTax = objectMapper.writeValueAsString(taxMsg);
+                broadcastMessage(jsonTax);
+            }
+
+            // Check for property and collect rent if applicable
+            BaseProperty property = propertyService.getPropertyByPosition(position);
+            if (property != null) {
+                boolean rentCollected = rentCollectionService.collectRent(player, property);
+                if (rentCollected) {
+                    // Create and broadcast rent payment message
+                    RentPaymentMessage rentMsg = new RentPaymentMessage(
+                        player.getId(),
+                        property.getOwnerId(),
+                        property.getId(),
+                        property.getName(),
+                        rentCalculationService.calculateRent(property, 
+                            propertyService.getPlayerById(property.getOwnerId()), 
+                            player)
+                    );
+                    String jsonRent = objectMapper.writeValueAsString(rentMsg);
+                    broadcastMessage(jsonRent);
+                }
+            }
+
+            broadcastGameState();
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "Error handling player landing: {0}", e.getMessage());
         }
     }
 }
