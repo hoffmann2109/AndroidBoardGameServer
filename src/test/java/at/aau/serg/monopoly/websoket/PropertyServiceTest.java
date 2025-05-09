@@ -1,4 +1,7 @@
 package at.aau.serg.monopoly.websoket;
+import model.Game;
+import model.Player;
+import model.properties.BaseProperty;
 import model.properties.HouseableProperty;
 import model.properties.TrainStation;
 import model.properties.Utility;
@@ -15,8 +18,6 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import model.Game;
-import model.Player;
 import java.util.Arrays;
 import java.util.Collections;
 
@@ -147,5 +148,147 @@ public class PropertyServiceTest {
 
         // Assert
         assertNull(result, "Should return null when players list is empty");
+    }
+
+    @Test
+    void getPropertyByPosition_WithHouseableProperty_ReturnsProperty() {
+        // Arrange
+        HouseableProperty houseableProperty = new HouseableProperty(
+            1,                // id
+            null,            // ownerId
+            "Test Street",    // name
+            100,             // purchasePrice
+            10,              // baseRent
+            50,              // rent1House
+            150,             // rent2Houses
+            450,             // rent3Houses
+            625,             // rent4Houses
+            750,             // rentHotel
+            50,              // housePrice
+            50,              // hotelPrice
+            50,              // mortgageValue
+            false,           // isMortgaged
+            "test_image",    // image
+            5                // position
+        );
+        propertyService.getHouseableProperties().add(houseableProperty);
+
+        // Act
+        BaseProperty result = propertyService.getPropertyByPosition(5);
+
+        // Assert
+        assertNotNull(result, "Should find houseable property at position 5");
+        assertTrue(result instanceof HouseableProperty, "Should return HouseableProperty");
+        assertEquals(5, result.getPosition(), "Should return property at correct position");
+    }
+
+    @Test
+    void getPropertyByPosition_WithTrainStation_ReturnsProperty() {
+        // Arrange
+        TrainStation trainStation = new TrainStation(
+            1,                // id
+            null,            // ownerId
+            "Test Station",   // name
+            200,             // purchasePrice
+            25,              // baseRent
+            50,              // rent2Stations
+            100,             // rent3Stations
+            200,             // rent4Stations
+            100,             // mortgageValue
+            false,           // isMortgaged
+            "test_image",    // image
+            15               // position
+        );
+        propertyService.getTrainStations().add(trainStation);
+
+        // Act
+        BaseProperty result = propertyService.getPropertyByPosition(15);
+
+        // Assert
+        assertNotNull(result, "Should find train station at position 15");
+        assertTrue(result instanceof TrainStation, "Should return TrainStation");
+        assertEquals(15, result.getPosition(), "Should return property at correct position");
+    }
+
+    @Test
+    void getPropertyByPosition_WithUtility_ReturnsProperty() {
+        // Arrange
+        Utility utility = new Utility(
+            1,                // id
+            null,            // ownerId
+            "Test Utility",   // name
+            150,             // purchasePrice
+            4,               // rentOneUtilityMultiplier
+            10,              // rentTwoUtilitiesMultiplier
+            75,              // mortgageValue
+            false,           // isMortgaged
+            "test_image",    // image
+            28               // position
+        );
+        propertyService.getUtilities().add(utility);
+
+        // Act
+        BaseProperty result = propertyService.getPropertyByPosition(28);
+
+        // Assert
+        assertNotNull(result, "Should find utility at position 28");
+        assertTrue(result instanceof Utility, "Should return Utility");
+        assertEquals(28, result.getPosition(), "Should return property at correct position");
+    }
+
+    @Test
+    void getPropertyByPosition_WithNonExistentPosition_ReturnsNull() {
+        // Act
+        BaseProperty result = propertyService.getPropertyByPosition(999);
+
+        // Assert
+        assertNull(result, "Should return null for non-existent position");
+    }
+
+    @Test
+    void getPropertyByPosition_WithMultiplePropertiesAtSamePosition_ReturnsFirstFound() {
+        // Arrange
+        HouseableProperty houseableProperty = new HouseableProperty(
+            1,                // id
+            null,            // ownerId
+            "Test Street",    // name
+            100,             // purchasePrice
+            10,              // baseRent
+            50,              // rent1House
+            150,             // rent2Houses
+            450,             // rent3Houses
+            625,             // rent4Houses
+            750,             // rentHotel
+            50,              // housePrice
+            50,              // hotelPrice
+            50,              // mortgageValue
+            false,           // isMortgaged
+            "test_image",    // image
+            5                // position
+        );
+        TrainStation trainStation = new TrainStation(
+            2,                // id
+            null,            // ownerId
+            "Test Station",   // name
+            200,             // purchasePrice
+            25,              // baseRent
+            50,              // rent2Stations
+            100,             // rent3Stations
+            200,             // rent4Stations
+            100,             // mortgageValue
+            false,           // isMortgaged
+            "test_image",    // image
+            5                // position
+        );
+        propertyService.getHouseableProperties().add(houseableProperty);
+        propertyService.getTrainStations().add(trainStation);
+
+        // Act
+        BaseProperty result = propertyService.getPropertyByPosition(5);
+
+        // Assert
+        assertNotNull(result, "Should find property at position 5");
+        assertTrue(result instanceof HouseableProperty, "Should return first found property (HouseableProperty)");
+        assertEquals(5, result.getPosition(), "Should return property at correct position");
     }
 }
