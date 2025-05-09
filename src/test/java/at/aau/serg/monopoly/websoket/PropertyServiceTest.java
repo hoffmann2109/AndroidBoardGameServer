@@ -4,20 +4,40 @@ import model.properties.TrainStation;
 import model.properties.Utility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.IOException;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
+import model.Game;
+import model.Player;
+import java.util.Arrays;
+import java.util.Collections;
+
+@ExtendWith(MockitoExtension.class)
 public class PropertyServiceTest {
 
+    @Mock
+    private Game game;
+
+    @InjectMocks
     private PropertyService propertyService;
+
+    private Player player1;
+    private Player player2;
 
     @BeforeEach
     void setUp() {
-        propertyService = new PropertyService();
+        propertyService = new PropertyService(game);
         propertyService.init();
+        player1 = new Player("player1", "Player One");
+        player2 = new Player("player2", "Player Two");
     }
 
     @Test
@@ -70,4 +90,62 @@ public class PropertyServiceTest {
         assertTrue(exception.getMessage().contains("Failed to initialize property data"));
     }
 
+    @Test
+    void getPlayerById_WithValidId_ReturnsPlayer() {
+        // Arrange
+        when(game.getPlayers()).thenReturn(Arrays.asList(player1, player2));
+
+        // Act
+        Player result = propertyService.getPlayerById("player1");
+
+        // Assert
+        assertNotNull(result, "Should return player when ID exists");
+        assertEquals("player1", result.getId(), "Should return correct player");
+    }
+
+    @Test
+    void getPlayerById_WithNonExistentId_ReturnsNull() {
+        // Arrange
+        when(game.getPlayers()).thenReturn(Arrays.asList(player1, player2));
+
+        // Act
+        Player result = propertyService.getPlayerById("nonexistent");
+
+        // Assert
+        assertNull(result, "Should return null when ID doesn't exist");
+    }
+
+    @Test
+    void getPlayerById_WithNullId_ReturnsNull() {
+        // Act
+        Player result = propertyService.getPlayerById(null);
+
+        // Assert
+        assertNull(result, "Should return null when ID is null");
+        verify(game, never()).getPlayers();
+    }
+
+    @Test
+    void getPlayerById_WithNullGame_ReturnsNull() {
+        // Arrange
+        PropertyService service = new PropertyService(null);
+
+        // Act
+        Player result = service.getPlayerById("player1");
+
+        // Assert
+        assertNull(result, "Should return null when game is null");
+    }
+
+    @Test
+    void getPlayerById_WithEmptyPlayersList_ReturnsNull() {
+        // Arrange
+        when(game.getPlayers()).thenReturn(Collections.emptyList());
+
+        // Act
+        Player result = propertyService.getPlayerById("player1");
+
+        // Assert
+        assertNull(result, "Should return null when players list is empty");
+    }
 }
