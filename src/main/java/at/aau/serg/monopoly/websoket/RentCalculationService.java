@@ -13,6 +13,7 @@ import java.util.logging.Logger;
 @Service
 public class RentCalculationService {
     private static final Logger logger = Logger.getLogger(RentCalculationService.class.getName());
+
     private final PropertyService propertyService;
 
     public RentCalculationService(PropertyService propertyService) {
@@ -20,7 +21,7 @@ public class RentCalculationService {
     }
 
     /**
-     * Calculates the rent amount for a property based on its type and owner's holdings
+     * Calculates the rent for a property based on its type and owner
      * @param property The property to calculate rent for
      * @param owner The owner of the property
      * @param renter The player who landed on the property
@@ -32,33 +33,11 @@ public class RentCalculationService {
             return 0;
         }
 
-        try {
-            if (property instanceof HouseableProperty) {
-                return calculateHouseablePropertyRent((HouseableProperty) property, owner);
-            } else if (property instanceof TrainStation) {
-                return calculateTrainStationRent((TrainStation) property, owner);
-            } else if (property instanceof Utility) {
-                return calculateUtilityRent((Utility) property, owner, renter);
-            }
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error calculating rent: " + e.getMessage());
+        // For now, just return base rent for houseable properties
+        if (property instanceof HouseableProperty) {
+            return ((HouseableProperty) property).getBaseRent();
         }
 
-        return 0;
-    }
-
-    private int calculateHouseablePropertyRent(HouseableProperty property, Player owner) {
-        // TODO: Implement houseable property rent calculation
-        return 0;
-    }
-
-    private int calculateTrainStationRent(TrainStation property, Player owner) {
-        // TODO: Implement train station rent calculation
-        return 0;
-    }
-
-    private int calculateUtilityRent(Utility property, Player owner, Player renter) {
-        // TODO: Implement utility rent calculation
         return 0;
     }
 } 
