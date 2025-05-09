@@ -7,6 +7,7 @@ import data.DiceRollMessage;
 import data.DrawnCardMessage;
 import data.PullCardMessage;
 import data.TaxPaymentMessage;
+import data.RentPaymentMessage;
 import lombok.NonNull;
 import model.DiceManager;
 import model.DiceManagerInterface;
@@ -466,8 +467,18 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             if (property != null) {
                 boolean rentCollected = rentCollectionService.collectRent(player, property);
                 if (rentCollected) {
-                    String rentMsg = String.format("Player %s paid rent for %s", player.getName(), property.getName());
-                    broadcastMessage(rentMsg);
+                    // Create and broadcast rent payment message
+                    RentPaymentMessage rentMsg = new RentPaymentMessage(
+                        player.getId(),
+                        property.getOwnerId(),
+                        property.getId(),
+                        property.getName(),
+                        rentCalculationService.calculateRent(property, 
+                            propertyService.getPlayerById(property.getOwnerId()), 
+                            player)
+                    );
+                    String jsonRent = objectMapper.writeValueAsString(rentMsg);
+                    broadcastMessage(jsonRent);
                 }
             }
 
