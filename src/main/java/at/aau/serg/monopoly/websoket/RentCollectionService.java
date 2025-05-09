@@ -25,7 +25,7 @@ public class RentCollectionService {
      * @param property The property to collect rent for
      * @return true if rent can be collected, false otherwise
      */
-    private boolean canCollectRent(Player renter, BaseProperty property) {
+    boolean canCollectRent(Player renter, BaseProperty property) {
         if (renter == null || property == null) {
             logger.log(Level.WARNING, "Invalid parameters for rent collection validation");
             return false;
