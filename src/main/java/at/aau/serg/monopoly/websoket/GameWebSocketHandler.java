@@ -250,17 +250,16 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 handlePlayerLanding(player, position);
 
             } else if ("NEXT_TURN".equals(payload)) {
-                    logger.log(Level.INFO, "Received NEXT_TURN from {0}", userId);//bewusst geloggt aktuell
+                logger.log(Level.INFO, "Received NEXT_TURN from {0}", userId);//bewusst geloggt aktuell
 
-                    if (!game.isPlayerTurn(userId)) {
-                        sendMessageToSession(session, createJsonError("Not your turn!"));
-                        return;
-                    }
-
-                    game.nextPlayer();
-                    broadcastGameState();
+                if (!game.isPlayerTurn(userId)) {
+                    sendMessageToSession(session, createJsonError("Not your turn!"));
+                    return;
                 }
-            else if (payload.startsWith("MANUAL_ROLL:")) {
+
+                game.nextPlayer();
+                broadcastGameState();
+            } else if (payload.startsWith("MANUAL_ROLL:")) {
                 handleManualRoll(payload, userId, session);
             } else if (payload.startsWith("UPDATE_MONEY:")) {
                 handleUpdateMoney(payload, userId);
@@ -429,24 +428,41 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     private void handleGiveUp(WebSocketSession session, JsonNode jsonNode) {
         try {
             String userId = jsonNode.get("userId").asText();
+
             if (userId == null || !sessionToUserId.containsValue(userId)) {
                 sendMessageToSession(session, createJsonError("Invalid user"));
                 return;
             }
 
+            String currentId = null;
+            if (game.getPlayers().size() > 0) {
+                currentId = game.getCurrentPlayer().getId();
+            }
+
+            // Entferne Spieler
             game.removePlayer(userId);
             sessionToUserId.remove(session.getId());
-            broadcastMessage("Player gave up: " + userId);
-            logger.log(Level.INFO, "Player gave up: {0}", userId);//bewusst geloggt aktuell
-            // Optional: Trage in Datenbank als "verloren" ein
-            gameHistoryService.markPlayerAsLoser(userId); // ← wenn du das hast
-
+            sessions.remove(session);
             session.close();
+
+            broadcastMessage("Player gave up: " + userId);
+            logger.log(Level.INFO, "Player gave up: {0}", userId);
+
+            // Optional: Spieler als Verlierer markieren
+            gameHistoryService.markPlayerAsLoser(userId);
+
+            // Nur wenn der aktuelle Spieler aufgegeben hat, weiterschalten
+            if (userId.equals(currentId) && game.getPlayers().size() > 0) {
+                game.nextPlayer();
+                broadcastMessage("PLAYER_TURN:" + game.getCurrentPlayer().getId());
+            }
+
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error processing GIVE_UP message", e);//bewusst geloggt aktuell
+            logger.log(Level.SEVERE, "Error processing GIVE_UP message", e);
             sendMessageToSession(session, createJsonError("Error processing give up."));
         }
     }
+
 
     private void handlePlayerLanding(Player player, int position) {
         try {
@@ -470,13 +486,13 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 if (rentCollected) {
                     // Create and broadcast rent payment message
                     RentPaymentMessage rentMsg = new RentPaymentMessage(
-                        player.getId(),
-                        property.getOwnerId(),
-                        property.getId(),
-                        property.getName(),
-                        rentCalculationService.calculateRent(property, 
-                            propertyService.getPlayerById(property.getOwnerId()), 
-                            player)
+                            player.getId(),
+                            property.getOwnerId(),
+                            property.getId(),
+                            property.getName(),
+                            rentCalculationService.calculateRent(property,
+                                    propertyService.getPlayerById(property.getOwnerId()),
+                                    player)
                     );
                     String jsonRent = objectMapper.writeValueAsString(rentMsg);
                     broadcastMessage(jsonRent);
