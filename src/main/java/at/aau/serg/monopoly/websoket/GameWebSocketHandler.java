@@ -186,7 +186,11 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
 
         try {
-
+            if (payload.contains("\"type\":\"CHEAT_MESSAGE\"")) {
+                logger.log(Level.INFO, "Received cheat message from player {0}", userId);//bewusst geloggt aktuell
+                broadcastMessage(payload);
+                return;
+            }
             if (payload.contains("\"type\":\"CHAT_MESSAGE\"")) {
                 logger.log(Level.INFO, "Received chat message from player {0}", userId);//bewusst geloggt aktuell
                 broadcastMessage(payload);
