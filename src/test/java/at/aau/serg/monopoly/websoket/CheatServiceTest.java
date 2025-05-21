@@ -15,11 +15,11 @@ public class CheatServiceTest {
     private CheatService cheatService;
     private CheatService trueCheatService;
     private CheatService falseCheatService;
-    private final static int FIXEDMONEYDELTA = 250;
-    private final static int RANDOMMONEYCEILING = 1000;
-    private final static int RANDOMMONEYSTEP = 50;
-    private final static int COINFLIPAMOUNT = 500;
-    private final static int STARTINGMONEY = 1000;
+    private static final int FIXEDMONEYDELTA = 250;
+    private static final int RANDOMMONEYCEILING = 1000;
+    private static final int RANDOMMONEYSTEP = 50;
+    private static final int COINFLIPAMOUNT = 500;
+    private static final int STARTINGMONEY = 1000;
 
     @BeforeEach
     void setUp(){
