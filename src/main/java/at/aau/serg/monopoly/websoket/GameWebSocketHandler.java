@@ -3,11 +3,7 @@ package at.aau.serg.monopoly.websoket;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import data.DiceRollMessage;
-import data.DrawnCardMessage;
-import data.PullCardMessage;
-import data.TaxPaymentMessage;
-import data.RentPaymentMessage;
+import data.*;
 import lombok.NonNull;
 import model.DiceManager;
 import model.DiceManagerInterface;
@@ -51,6 +47,8 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     private RentCollectionService rentCollectionService;
     @Autowired
     private RentCalculationService rentCalculationService;
+    @Autowired
+    private CheatService cheatService;
 
     @Override
     public void afterConnectionEstablished(@NonNull WebSocketSession session) {
@@ -189,6 +187,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             if (payload.contains("\"type\":\"CHEAT_MESSAGE\"")) {
                 logger.log(Level.INFO, "Received cheat message from player {0}", userId);//bewusst geloggt aktuell
                 broadcastMessage(payload);
+                handleCheatMessage(payload, userId);
                 return;
             }
             if (payload.contains("\"type\":\"CHAT_MESSAGE\"")) {
@@ -367,6 +366,18 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Error handling BUY_PROPERTY for player {0}: {1}", new Object[]{userId, e.getMessage()});//bewusst geloggt aktuell
             sendMessageToSession(session, createJsonError("Server error handling buy property request."));
+        }
+    }
+
+    void handleCheatMessage(String payload, String userId) throws JsonProcessingException {
+        CheatCodeMessage cheatCodeMessage = objectMapper.readValue(payload, CheatCodeMessage.class);
+        String cheatCode = cheatCodeMessage.getMessage();
+        try {
+            int amount = cheatService.getAmount(cheatCode);
+            game.updatePlayerMoney(userId, amount);
+            broadcastGameState();
+        } catch (NumberFormatException e) {
+            logger.log(Level.SEVERE, "Invalid money update format: {0}", sanitizeForLog(payload));//bewusst geloggt aktuell
         }
     }
 
