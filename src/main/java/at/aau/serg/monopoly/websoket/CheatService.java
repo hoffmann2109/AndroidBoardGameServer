@@ -33,31 +33,30 @@ public class CheatService {
                 .trim()
                 .toLowerCase(Locale.ROOT)
                 .replaceAll("\\s+", "");
-
-        switch (cheatCodeTypeSafe){
-            case "fixedExtraMoney": return fixedExtraMoney();
-            case "randomMoney": return randomMoney();
-            case "coinFlip": return coinflip();
-            case "doubleOrHalf": return doubleOrHalf(currentMoney);
-            default: return 0;
-        }
     }
 
-    // Info: Every method returns a delta and not the new amount!
-
     private int fixedExtraMoney(){
-        return 500;
+        return FIXED_MONEY_DELTA;
     }
 
     private int randomMoney(){
-        return 1000;
+        int maxValue = RANDOM_MONEY_CEILING;
+        double raw = rnd.nextDouble() * maxValue;   // [0.0, maxValue)
+        int step = RANDOM_MONEY_STEP;
+        return (int) (Math.round(raw / step) * step);
     }
 
     private int coinflip(){
-        return 1500;
+        boolean won = rnd.nextBoolean();
+        return won? COINFLIP_AMOUNT: -COINFLIP_AMOUNT;
     }
 
-    private int doubleOrHalf(int currentMoney){
-        return 2000;
+    private int doubleOrHalf(int currentMoney) {
+        boolean win = rnd.nextBoolean();
+        if (win) {
+            return currentMoney;
+        } else {
+            return - (currentMoney / 2);
+        }
     }
 }
