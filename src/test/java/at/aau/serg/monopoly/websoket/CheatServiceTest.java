@@ -15,24 +15,24 @@ public class CheatServiceTest {
     private CheatService cheatService;
     private CheatService trueCheatService;
     private CheatService falseCheatService;
-    private final int FIXED_MONEY_DELTA = 250;
-    private final int RANDOM_MONEY_CEILING = 1000;
-    private final int RANDOM_MONEY_STEP = 50;
-    private final int COINFLIP_AMOUNT = 500;
-    private final int STARTING_MONEY = 1000;
+    private final static int FIXEDMONEYDELTA = 250;
+    private final static int RANDOMMONEYCEILING = 1000;
+    private final static int RANDOMMONEYSTEP = 50;
+    private final static int COINFLIPAMOUNT = 500;
+    private final static int STARTINGMONEY = 1000;
 
     @BeforeEach
-    public void setUp(){
+    void setUp(){
         cheatService = new CheatService();
         trueCheatService = mock(CheatService.class);
         falseCheatService = mock(CheatService.class);
-        when(trueCheatService.getAmount("yolo", STARTING_MONEY)).thenReturn(STARTING_MONEY);
-        when(falseCheatService.getAmount("yolo", STARTING_MONEY)).thenReturn(-STARTING_MONEY/2);
+        when(trueCheatService.getAmount("yolo", STARTINGMONEY)).thenReturn(STARTINGMONEY);
+        when(falseCheatService.getAmount("yolo", STARTINGMONEY)).thenReturn(-STARTINGMONEY /2);
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"Never gonna give you up?", "Never    gonna let you down", "    GAMBLING ADDICTION", "y o l o"})
-    public void testNormalizeInput(String input){
+    void testNormalizeInput(String input){
         String norm = cheatService.normalizeInput(input);
 
         // No spaces
@@ -45,75 +45,73 @@ public class CheatServiceTest {
     }
 
     @Test
-    public void testFixedExtraMoney(){
-        assertEquals(FIXED_MONEY_DELTA, cheatService.getAmount("nevergonnagiveyouup", 0));
+    void testFixedExtraMoney(){
+        assertEquals(FIXEDMONEYDELTA, cheatService.getAmount("nevergonnagiveyouup", 0));
     }
 
     @RepeatedTest(50)
-    public void testRandomMoney(){
+    void testRandomMoney(){
         int delta = cheatService.getAmount("nevergonnaletyoudown", 0);
 
         // Assert multiple of Step
-        assertEquals(0, delta % RANDOM_MONEY_STEP,
-                "Should always be a multiple of " + RANDOM_MONEY_STEP);
+        assertEquals(0, delta % RANDOMMONEYSTEP,
+                "Should always be a multiple of " + RANDOMMONEYSTEP);
 
         // Assert in bounds
-        assertTrue(delta >= 0 && delta <= RANDOM_MONEY_CEILING,
-                "Should be between 0 and " + RANDOM_MONEY_CEILING);
+        assertTrue(delta >= 0 && delta <= RANDOMMONEYCEILING,
+                "Should be between 0 and " + RANDOMMONEYCEILING);
     }
 
     @RepeatedTest(50)
-    public void testCoinflipAlwaysPlusOrMinus500(){
+    void testCoinflipAlwaysPlusOrMinus500(){
         int delta = cheatService.getAmount("gamblingaddiction", 0);
         assertTrue(
-                delta ==  COINFLIP_AMOUNT ||
-                        delta == -COINFLIP_AMOUNT,
-                () -> "Expected ±" + COINFLIP_AMOUNT + " but got " + delta
+                delta == COINFLIPAMOUNT ||
+                        delta == -COINFLIPAMOUNT,
+                () -> "Expected ±" + COINFLIPAMOUNT + " but got " + delta
         );
     }
 
     @Test
-    public void testCoinflipProducesBothOutcomes(){
+    void testCoinflipProducesBothOutcomes(){
         boolean sawWin = false, sawLoss = false;
         for(int i = 0; i < 100; i++){
             int delta = cheatService.getAmount("gamblingaddiction", 0);
-            if (delta ==  COINFLIP_AMOUNT) sawWin  = true;
-            if (delta == -COINFLIP_AMOUNT) sawLoss = true;
+            if (delta == COINFLIPAMOUNT) sawWin  = true;
+            if (delta == -COINFLIPAMOUNT) sawLoss = true;
             if (sawWin && sawLoss) break;
         }
-        assertTrue(sawWin,  "coinflip() never returned +"  + COINFLIP_AMOUNT);
-        assertTrue(sawLoss, "coinflip() never returned -"  + COINFLIP_AMOUNT);
+        assertTrue(sawWin,  "coinflip() never returned +"  + COINFLIPAMOUNT);
+        assertTrue(sawLoss, "coinflip() never returned -"  + COINFLIPAMOUNT);
     }
 
     @Test
-    public void testDoubleOfHalfProducesBothIncomes(){
+    void testDoubleOfHalfProducesBothIncomes(){
         boolean sawWin = false, sawLoss = false;
         for (int i = 0; i < 100; i++){
-            int delta = cheatService.getAmount("yolo", STARTING_MONEY);
-            if (delta ==  STARTING_MONEY) sawWin  = true;
-            if (delta == -STARTING_MONEY/2) sawLoss = true;
+            int delta = cheatService.getAmount("yolo", STARTINGMONEY);
+            if (delta == STARTINGMONEY) sawWin  = true;
+            if (delta == -STARTINGMONEY /2) sawLoss = true;
             if (sawWin && sawLoss) break;
         }
-        assertTrue(sawWin,  "doubleOrHalf() never returned +"  + STARTING_MONEY);
-        assertTrue(sawLoss, "doubleOrHalf() never returned -"  + -STARTING_MONEY/2);
+        assertTrue(sawWin,  "doubleOrHalf() never returned +"  + STARTINGMONEY);
+        assertTrue(sawLoss, "doubleOrHalf() never returned -"  + -STARTINGMONEY /2);
     }
 
     @Test
-    public void testDoubleOrHalf_DoublePart(){
-        boolean win = true;
-
-        int delta = trueCheatService.getAmount("yolo", STARTING_MONEY);
+    void testDoubleOrHalf_DoublePart(){
+        int delta = trueCheatService.getAmount("yolo", STARTINGMONEY);
         assertEquals(1000, delta);
     }
 
     @Test
-    public void testDoubleOrHalf_HalfPart(){
-        int delta = falseCheatService.getAmount("yolo", STARTING_MONEY);
+    void testDoubleOrHalf_HalfPart(){
+        int delta = falseCheatService.getAmount("yolo", STARTINGMONEY);
         assertEquals(-500, delta);
     }
 
     @AfterEach
-    public void tearDown(){
+    void tearDown(){
         cheatService = null;
         trueCheatService = null;
         falseCheatService = null;
