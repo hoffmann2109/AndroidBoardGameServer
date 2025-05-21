@@ -373,8 +373,8 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         CheatCodeMessage cheatCodeMessage = objectMapper.readValue(payload, CheatCodeMessage.class);
         String cheatCode = cheatCodeMessage.getMessage();
         try {
-            int amount = cheatService.getAmount(cheatCode);
-            game.updatePlayerMoney(userId, amount);
+            int amount = cheatService.getAmount(cheatCode, game.getPlayerById(userId).get().getMoney());
+            game.updatePlayerMoney(userId, amount); // method DOES NOT set the total - it adds or subtracts money to/from the balance
             broadcastGameState();
         } catch (NumberFormatException e) {
             logger.log(Level.SEVERE, "Invalid money update format: {0}", sanitizeForLog(payload));//bewusst geloggt aktuell

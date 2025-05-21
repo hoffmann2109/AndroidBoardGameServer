@@ -13,8 +13,12 @@ import org.mockito.quality.Strictness;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
+
 import java.util.Collections;
+import java.util.Optional;
+
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -24,20 +28,15 @@ class GameWebSocketHandlerCheatingTest {
     @InjectMocks
     private GameWebSocketHandler handler;
 
-    @Mock
-    private Game game;
-    @Mock
-    private CheatService cheatService;
-    @Mock
-    private WebSocketSession session;
-    @Mock
-    private Player player;
-    @Captor
-    private ArgumentCaptor<TextMessage> messageCaptor;
+    @Mock private Game game;
+    @Mock private CheatService cheatService;
+    @Mock private WebSocketSession session;
+    @Mock private Player player;
+    @Captor private ArgumentCaptor<TextMessage> messageCaptor;
 
     @BeforeEach
     void setUp() {
-        // inject our mocks:
+        // inject our mocks
         ReflectionTestUtils.setField(handler, "game",         game);
         ReflectionTestUtils.setField(handler, "cheatService", cheatService);
 
@@ -48,6 +47,10 @@ class GameWebSocketHandlerCheatingTest {
         lenient().when(game.getCurrentPlayer()).thenReturn(player);
         lenient().when(player.getId()).thenReturn("session1");
 
+        lenient().when(game.getPlayerById("session1"))
+                .thenReturn(Optional.of(player));
+        lenient().when(player.getMoney()).thenReturn(1000); // Random amount
+
         handler.sessions.add(session);
         handler.sessionToUserId.put("session1", "session1");
     }
@@ -56,13 +59,13 @@ class GameWebSocketHandlerCheatingTest {
     void handleCheatMessage_successfulParsingAndUpdate() throws JsonProcessingException {
         // Arrange
         String payload = "{\"type\":\"CHEAT_MESSAGE\",\"message\":\"100\"}";
-        when(cheatService.getAmount("100")).thenReturn(100);
+        when(cheatService.getAmount(eq("100"), eq(1000))).thenReturn(100);
 
         // Act
         handler.handleCheatMessage(payload, "session1");
 
         // Assert
-        verify(cheatService).getAmount("100");
+        verify(cheatService).getAmount("100", 1000);
         verify(game).updatePlayerMoney("session1", 100);
     }
 
@@ -70,7 +73,7 @@ class GameWebSocketHandlerCheatingTest {
     void handleCheatMessage_invalidNumber_doesNotUpdate() throws JsonProcessingException {
         // Arrange
         String payload = "{\"type\":\"CHEAT_MESSAGE\",\"message\":\"NaN\"}";
-        when(cheatService.getAmount("NaN"))
+        when(cheatService.getAmount(eq("NaN"), eq(1000)))
                 .thenThrow(new NumberFormatException("bad"));
 
         // Act
@@ -84,13 +87,14 @@ class GameWebSocketHandlerCheatingTest {
     void handleTextMessage_onCheatMessage_callsCheatAndBroadcastsState() throws Exception {
         // Arrange
         String payload = "{\"type\":\"CHEAT_MESSAGE\",\"message\":\"42\"}";
-        when(cheatService.getAmount("42")).thenReturn(42);
+        when(cheatService.getAmount(eq("42"), eq(1000))).thenReturn(42);
 
         // Act
         handler.handleTextMessage(session, new TextMessage(payload));
 
-        // Assert
+        // Assert: money updated
         verify(game).updatePlayerMoney("session1", 42);
+        // Assert: at least one GAME_STATE broadcast
         verify(session, atLeastOnce()).sendMessage(messageCaptor.capture());
         boolean sawState = messageCaptor.getAllValues().stream()
                 .anyMatch(tm -> tm.getPayload().startsWith("GAME_STATE:"));
