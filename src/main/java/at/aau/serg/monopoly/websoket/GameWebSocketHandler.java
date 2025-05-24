@@ -378,12 +378,18 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     void handleCheatMessage(String payload, String userId) throws JsonProcessingException {
         CheatCodeMessage cheatCodeMessage = objectMapper.readValue(payload, CheatCodeMessage.class);
         String cheatCode = cheatCodeMessage.getMessage();
-        try {
-            int amount = cheatService.getAmount(cheatCode, game.getPlayerById(userId).get().getMoney());
-            game.updatePlayerMoney(userId, amount); // method DOES NOT set the total - it adds or subtracts money to/from the balance
-            broadcastGameState();
-        } catch (NumberFormatException e) {
-            logger.log(Level.SEVERE, "Invalid money update format: {0}", sanitizeForLog(payload));//bewusst geloggt aktuell
+        Optional<Player> optionalPlayer = game.getPlayerById(userId);
+        if (optionalPlayer.isPresent()) {
+            Player player = optionalPlayer.get();
+            try {
+                int amount = cheatService.getAmount(cheatCode, player.getMoney());
+                game.updatePlayerMoney(userId, amount);
+                broadcastGameState();
+            } catch (NumberFormatException e) {
+                logger.log(Level.SEVERE, "Invalid money update format: {0}", sanitizeForLog(payload));
+            }
+        } else {
+            logger.log(Level.WARNING, "Player not found for cheat code handling (userId={0})", userId);
         }
     }
 
