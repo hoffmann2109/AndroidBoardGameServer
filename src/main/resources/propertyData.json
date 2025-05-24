@@ -5,6 +5,7 @@
       "ownerId": null,
       "name": "Badstrasse",
       "purchasePrice": 60,
+      "position": 1,
       "baseRent": 2,
       "rent1House": 10,
       "rent2Houses": 30,
@@ -15,14 +16,14 @@
       "hotelPrice": 50,
       "mortgageValue": 30,
       "isMortgaged": false,
-      "image": "Badstrasse_Bild",
-      "position": 1
+      "image": "badstrasse_bild"
     },
     {
       "id": 2,
       "ownerId": null,
       "name": "Turmstraße",
       "purchasePrice": 60,
+      "position": 3,
       "baseRent": 4,
       "rent1House": 20,
       "rent2Houses": 60,
@@ -33,14 +34,14 @@
       "hotelPrice": 50,
       "mortgageValue": 30,
       "isMortgaged": false,
-      "image": "Turmstrasse_Bild",
-      "position": 3
+      "image": "turmstrasse_bild"
     },
     {
       "id": 3,
       "ownerId": null,
       "name": "Chausseestrasse",
       "purchasePrice": 100,
+      "position": 6,
       "baseRent": 6,
       "rent1House": 30,
       "rent2Houses": 90,
@@ -51,8 +52,7 @@
       "hotelPrice": 50,
       "mortgageValue": 50,
       "isMortgaged": false,
-      "image": "Chausseestrasse_Bild",
-      "position": 6
+      "image": "chausseestrasse_bild"
     },
     {
       "id": 4,
@@ -60,6 +60,7 @@
       "name": "Elisenstrasse",
       "purchasePrice": 100,
       "baseRent": 6,
+      "position": 8,
       "rent1House": 30,
       "rent2Houses": 90,
       "rent3Houses": 270,
@@ -69,8 +70,7 @@
       "hotelPrice": 50,
       "mortgageValue": 50,
       "isMortgaged": false,
-      "image": "Elisenstrasse_Bild",
-      "position": 8
+      "image": "elisenstrasse_bild"
     },
     {
       "id": 5,
@@ -78,6 +78,7 @@
       "name": "Poststrasse",
       "purchasePrice": 120,
       "baseRent": 8,
+      "position": 9,
       "rent1House": 40,
       "rent2Houses": 100,
       "rent3Houses": 300,
@@ -87,14 +88,14 @@
       "hotelPrice": 50,
       "mortgageValue": 60,
       "isMortgaged": false,
-      "image": "Poststrasse_Bild",
-      "position": 9
+      "image": "poststrasse_bild"
     },
     {
       "id": 6,
       "ownerId": null,
       "name": "Seestrasse",
       "purchasePrice": 140,
+      "position": 11,
       "baseRent": 10,
       "rent1House": 50,
       "rent2Houses": 150,
@@ -105,14 +106,14 @@
       "hotelPrice": 100,
       "mortgageValue": 70,
       "isMortgaged": false,
-      "image": "Seestrasse_Bild",
-      "position": 11
+      "image": "seestrasse_bild"
     },
     {
       "id": 7,
       "ownerId": null,
       "name": "Hafenstrasse",
       "purchasePrice": 140,
+      "position": 13,
       "baseRent": 10,
       "rent1House": 50,
       "rent2Houses": 150,
@@ -123,14 +124,14 @@
       "hotelPrice": 100,
       "mortgageValue": 70,
       "isMortgaged": false,
-      "image": "Hafenstrasse_Bild",
-      "position": 13
+      "image": "hafenstrasse_bild"
     },
     {
       "id": 8,
       "ownerId": null,
       "name": "Neustrasse",
       "purchasePrice": 160,
+      "position": 14,
       "baseRent": 12,
       "rent1House": 60,
       "rent2Houses": 180,
@@ -141,14 +142,14 @@
       "hotelPrice": 100,
       "mortgageValue": 80,
       "isMortgaged": false,
-      "image": "Neustrasse_Bild",
-      "position": 14
+      "image": "neustrasse_bild"
     },
     {
       "id": 9,
       "ownerId": null,
       "name": "Münchnerstrasse",
       "purchasePrice": 180,
+      "position": 16,
       "baseRent": 14,
       "rent1House": 70,
       "rent2Houses": 200,
@@ -159,14 +160,14 @@
       "hotelPrice": 100,
       "mortgageValue": 90,
       "isMortgaged": false,
-      "image": "Münchnerstrasse_Bild",
-      "position": 16
+      "image": "muenchnerstrasse_bild"
     },
     {
       "id": 10,
       "ownerId": null,
       "name": "Wienerstrasse",
       "purchasePrice": 180,
+      "position": 18,
       "baseRent": 14,
       "rent1House": 70,
       "rent2Houses": 200,
@@ -177,14 +178,14 @@
       "hotelPrice": 100,
       "mortgageValue": 90,
       "isMortgaged": false,
-      "image": "Wienerstrasse_Bild",
-      "position": 18
+      "image": "wienerstrasse_bild"
     },
     {
       "id": 11,
       "ownerId": null,
       "name": "Berlinerstrasse",
       "purchasePrice": 200,
+      "position": 19,
       "baseRent": 16,
       "rent1House": 80,
       "rent2Houses": 220,
@@ -195,14 +196,14 @@
       "hotelPrice": 100,
       "mortgageValue": 100,
       "isMortgaged": false,
-      "image": "Berlinerstrasse_Bild",
-      "position": 19
+      "image": "berlinerstrasse_bild"
     },
     {
       "id": 12,
       "ownerId": null,
       "name": "Theaterstrasse",
       "purchasePrice": 220,
+      "position": 21,
       "baseRent": 18,
       "rent1House": 90,
       "rent2Houses": 250,
@@ -213,14 +214,14 @@
       "hotelPrice": 150,
       "mortgageValue": 110,
       "isMortgaged": false,
-      "image": "Theaterstrasse_Bild",
-      "position": 21
+      "image": "theaterstrasse_bild"
     },
     {
       "id": 13,
       "ownerId": null,
       "name": "Museumsstrasse",
       "purchasePrice": 220,
+      "position": 23,
       "baseRent": 18,
       "rent1House": 90,
       "rent2Houses": 250,
@@ -231,14 +232,14 @@
       "hotelPrice": 150,
       "mortgageValue": 110,
       "isMortgaged": false,
-      "image": "Meuseumsstrasse_Bild",
-      "position": 23
+      "image": "museumsstrasse_bild"
     },
     {
       "id": 14,
       "ownerId": null,
       "name": "Opernplatz",
       "purchasePrice": 240,
+      "position": 24,
       "baseRent": 20,
       "rent1House": 100,
       "rent2Houses": 300,
@@ -249,14 +250,14 @@
       "hotelPrice": 150,
       "mortgageValue": 120,
       "isMortgaged": false,
-      "image": "Opernplatz_Bild",
-      "position": 24
+      "image": "opernplatz_bild"
     },
     {
       "id": 15,
       "ownerId": null,
       "name": "Liesingstrasse",
       "purchasePrice": 260,
+      "position": 26,
       "baseRent": 22,
       "rent1House": 110,
       "rent2Houses": 330,
@@ -267,14 +268,14 @@
       "hotelPrice": 150,
       "mortgageValue": 130,
       "isMortgaged": false,
-      "image": "Liesingstrasse_Bild",
-      "position": 26
+      "image": "liesingstrasse_bild"
     },
     {
       "id": 16,
       "ownerId": null,
       "name": "Schillerstrasse",
       "purchasePrice": 260,
+      "position": 27,
       "baseRent": 22,
       "rent1House": 110,
       "rent2Houses": 330,
@@ -285,14 +286,14 @@
       "hotelPrice": 150,
       "mortgageValue": 130,
       "isMortgaged": false,
-      "image": "Schillerstrasse_Bild",
-      "position": 27
+      "image": "schillerstrasse_bild"
     },
     {
       "id": 17,
       "ownerId": null,
       "name": "Goethestrasse",
       "purchasePrice": 280,
+      "position": 29,
       "baseRent": 24,
       "rent1House": 120,
       "rent2Houses": 360,
@@ -303,14 +304,14 @@
       "hotelPrice": 150,
       "mortgageValue": 140,
       "isMortgaged": false,
-      "image": "Goethestrasse_Bild",
-      "position": 29
+      "image": "goethestrasse_bild"
     },
     {
       "id": 18,
       "ownerId": null,
       "name": "Rathausplatz",
       "purchasePrice": 300,
+      "position": 31,
       "baseRent": 26,
       "rent1House": 130,
       "rent2Houses": 390,
@@ -321,14 +322,14 @@
       "hotelPrice": 200,
       "mortgageValue": 150,
       "isMortgaged": false,
-      "image": "Rathausplatz_Bild",
-      "position": 32
+      "image": "rathausplatz_bild"
     },
     {
       "id": 19,
       "ownerId": null,
       "name": "Hauptstrasse",
       "purchasePrice": 300,
+      "position": 32,
       "baseRent": 26,
       "rent1House": 130,
       "rent2Houses": 390,
@@ -339,14 +340,14 @@
       "hotelPrice": 200,
       "mortgageValue": 150,
       "isMortgaged": false,
-      "image": "Hauptstrasse_Bild",
-      "position": 34
+      "image": "hauptstrasse_bild"
     },
     {
       "id": 20,
       "ownerId": null,
       "name": "Bahnofstrasse",
       "purchasePrice": 320,
+      "position": 34,
       "baseRent": 28,
       "rent1House": 150,
       "rent2Houses": 450,
@@ -357,14 +358,14 @@
       "hotelPrice": 200,
       "mortgageValue": 160,
       "isMortgaged": false,
-      "image": "Bahnhofstrasse_Bild",
-      "position": 35
+      "image": "bahnhofstrasse_bild"
     },
     {
       "id": 21,
       "ownerId": null,
       "name": "Parkstrasse",
       "purchasePrice": 350,
+      "position": 37,
       "baseRent": 35,
       "rent1House": 175,
       "rent2Houses": 500,
@@ -375,14 +376,14 @@
       "hotelPrice": 200,
       "mortgageValue": 175,
       "isMortgaged": false,
-      "image": "Parkstrasse_Bild",
-      "position": 37
+      "image": "parkstrasse_bild"
     },
     {
       "id": 22,
       "ownerId": null,
       "name": "Schlossallee",
       "purchasePrice": 400,
+      "position": 39,
       "baseRent": 50,
       "rent1House": 200,
       "rent2Houses": 600,
@@ -393,8 +394,7 @@
       "hotelPrice": 200,
       "mortgageValue": 200,
       "isMortgaged": false,
-      "image": "Schlossallee_Bild",
-      "position": 39
+      "image": "schlossallee_bild"
     }
   ],
   "trainStations": [
@@ -402,57 +402,55 @@
       "id": 101,
       "ownerId": null,
       "name": "Südbahnhof",
+      "position": 5,
       "purchasePrice": 200,
-      "baseRent": 25,
-      "rent2Stations": 50,
-      "rent3Stations": 100,
+      "baseRent": 50,
+      "rent2Stations": 100,
+      "rent3Stations": 150,
       "rent4Stations": 200,
-      "mortgageValue": 100,
-      "isMortgaged": false,
-      "image": "Südbahnhof_Bild",
-      "position": 5
+      "image": "suedbahnhof_bild"
     },
     {
       "id": 102,
       "ownerId": null,
       "name": "Westbahnhof",
       "purchasePrice": 200,
-      "baseRent": 25,
-      "rent2Stations": 50,
-      "rent3Stations": 100,
+      "position": 15,
+      "baseRent": 50,
+      "rent2Stations": 100,
+      "rent3Stations": 150,
       "rent4Stations": 200,
       "mortgageValue": 100,
       "isMortgaged": false,
-      "image": "Westbahnhof_Bild",
-      "position": 15
+      "image": "westbahnhof_bild"
     },
     {
       "id": 103,
       "ownerId": null,
       "name": "Nordbahnhof",
       "purchasePrice": 200,
-      "baseRent": 25,
-      "rent2Stations": 50,
-      "rent3Stations": 100,
+      "position": 25,
+      "baseRent": 50,
+      "rent2Stations": 100,
+      "rent3Stations": 150,
       "rent4Stations": 200,
       "mortgageValue": 100,
       "isMortgaged": false,
-      "image": "Nordbahnhof_Bild",
-      "position": 25
+      "image": "nordbahnhof_bild"
     },
     {
       "id": 104,
       "ownerId": null,
-      "name": "Franz-Josefs-Bahnhof",
+      "name": "Hauptbahnhof",
       "purchasePrice": 200,
-      "baseRent": 25,
-      "rent2Stations": 50,
-      "rent3Stations": 100,
+      "position": 35,
+      "baseRent": 50,
+      "rent2Stations": 100,
+      "rent3Stations": 150,
       "rent4Stations": 200,
       "mortgageValue": 100,
       "isMortgaged": false,
-      "image": "FranzJosefsBahnhof_Bild",
-      "position": 35
+      "image": "hauptbahnhof_bild"
     }
   ],
   "utilities": [
@@ -461,24 +459,24 @@
       "ownerId": null,
       "name": "Elektrizitätswerk",
       "purchasePrice": 150,
+      "position": 12,
       "rentOneUtilityMultiplier": 4,
       "rentTwoUtilitiesMultiplier": 10,
       "mortgageValue": 75,
       "isMortgaged": false,
-      "image": "Elektrizität_Bild",
-      "position": 12
+      "image": "elektrizitaetswerk"
     },
     {
       "id": 202,
       "ownerId": null,
-      "name": "Wasserwerk",
+      "name": "Wasser Werk",
       "purchasePrice": 150,
+      "position": 28,
       "rentOneUtilityMultiplier": 4,
       "rentTwoUtilitiesMultiplier": 10,
       "mortgageValue": 75,
       "isMortgaged": false,
-      "image": "Wasserwerk_Bild",
-      "position": 28
+      "image": "wasserwerk"
     }
   ]
 }
