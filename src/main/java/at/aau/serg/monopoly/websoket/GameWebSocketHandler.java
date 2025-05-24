@@ -123,7 +123,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
             logger.log(Level.INFO, "Player {0} manually rolled {1}", new Object[]{userId, manualRoll});//bewusst geloggt aktuell
 
-            DiceRollMessage drm = new DiceRollMessage(userId, manualRoll, true);
+            DiceRollMessage drm = new DiceRollMessage(userId, manualRoll, true, false);
             String json = objectMapper.writeValueAsString(drm);
             broadcastMessage(json);
 
@@ -236,10 +236,17 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 }
 
                 int roll = diceManager.rollDices();
-                player.setHasRolledThisTurn(roll != 12);
+                boolean isPasch = diceManager.isPasch();
+                if (logger.isLoggable(Level.INFO)) {
+                    logger.info(String.format("Spieler %s hat geworfen: %s | Pasch: %s",
+                            userId,
+                            diceManager.getLastRollValues().toString(),
+                            isPasch));
+                }
+                player.setHasRolledThisTurn(!isPasch);
                 logger.log(Level.INFO, "Player {0} rolled {1}", new Object[]{userId, roll});//bewusst geloggt aktuell
 
-                DiceRollMessage drm = new DiceRollMessage(userId, roll);
+                DiceRollMessage drm = new DiceRollMessage(userId, roll, false, isPasch);
                 String json = objectMapper.writeValueAsString(drm);
                 broadcastMessage(json);
 
@@ -372,12 +379,18 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     void handleCheatMessage(String payload, String userId) throws JsonProcessingException {
         CheatCodeMessage cheatCodeMessage = objectMapper.readValue(payload, CheatCodeMessage.class);
         String cheatCode = cheatCodeMessage.getMessage();
-        try {
-            int amount = cheatService.getAmount(cheatCode, game.getPlayerById(userId).get().getMoney());
-            game.updatePlayerMoney(userId, amount); // method DOES NOT set the total - it adds or subtracts money to/from the balance
-            broadcastGameState();
-        } catch (NumberFormatException e) {
-            logger.log(Level.SEVERE, "Invalid money update format: {0}", sanitizeForLog(payload));//bewusst geloggt aktuell
+        Optional<Player> optionalPlayer = game.getPlayerById(userId);
+        if (optionalPlayer.isPresent()) {
+            Player player = optionalPlayer.get();
+            try {
+                int amount = cheatService.getAmount(cheatCode, player.getMoney());
+                game.updatePlayerMoney(userId, amount);
+                broadcastGameState();
+            } catch (NumberFormatException e) {
+                logger.log(Level.SEVERE, "Invalid money update format: {0}", sanitizeForLog(payload));
+            }
+        } else {
+            logger.log(Level.WARNING, "Player not found for cheat code handling (userId={0})", userId);
         }
     }
 
@@ -450,7 +463,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             }
 
             String currentId = null;
-            if (game.getPlayers().size() > 0) {
+            if (!game.getPlayers().isEmpty()) {
                 currentId = game.getCurrentPlayer().getId();
             }
 
@@ -467,7 +480,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             gameHistoryService.markPlayerAsLoser(userId);
 
             // Nur wenn der aktuelle Spieler aufgegeben hat, weiterschalten
-            if (userId.equals(currentId) && game.getPlayers().size() > 0) {
+            if (userId.equals(currentId) && !game.getPlayers().isEmpty()) {
                 game.nextPlayer();
                 broadcastMessage("PLAYER_TURN:" + game.getCurrentPlayer().getId());
             }

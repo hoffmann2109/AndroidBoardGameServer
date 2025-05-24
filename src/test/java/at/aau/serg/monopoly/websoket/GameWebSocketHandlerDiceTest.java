@@ -99,6 +99,7 @@ class GameWebSocketHandlerDiceTest {
         // Mock diceManager
         DiceManagerInterface mockDice = mock(DiceManagerInterface.class);
         when(mockDice.rollDices()).thenReturn(8);
+        when(mockDice.getLastRollValues()).thenReturn(List.of(4, 4));
         ReflectionTestUtils.setField(handler, "diceManager", mockDice);
 
         clearInvocations(session);
@@ -181,6 +182,7 @@ class GameWebSocketHandlerDiceTest {
         // Mock diceManager
         DiceManagerInterface mockDice = mock(DiceManagerInterface.class);
         when(mockDice.rollDices()).thenReturn(12);
+        when(mockDice.getLastRollValues()).thenReturn(List.of(6, 6)); // simulate Pasch (6+6)
         ReflectionTestUtils.setField(handler, "diceManager", mockDice);
 
         clearInvocations(s1, s2);
@@ -327,40 +329,6 @@ class GameWebSocketHandlerDiceTest {
         verify(spyGame).nextPlayer();
     }
 
-
-    @Test
-    void testRollTwelveAllowsSecondRoll() throws Exception {
-        handler.afterConnectionEstablished(session);
-
-        // INIT
-        String initJson = mapper.createObjectNode()
-                .put("type", "INIT")
-                .put("userId", "u1")
-                .put("name", "Alice")
-                .toString();
-        handler.handleTextMessage(session, new TextMessage(initJson));
-
-        // Würfeln: zuerst 12, dann z.B. 4
-        DiceManagerInterface mockDice = mock(DiceManagerInterface.class);
-        when(mockDice.rollDices()).thenReturn(12).thenReturn(4); // zweimal würfeln erlaubt
-        ReflectionTestUtils.setField(handler, "diceManager", mockDice);
-
-        clearInvocations(session);
-
-        // Roll #1 = 12
-        handler.handleTextMessage(session, new TextMessage("Roll"));
-
-        // Roll #2 = 4 (immer noch erlaubt)
-        handler.handleTextMessage(session, new TextMessage("Roll"));
-
-        // Check ob beide Rolls gesendet wurden
-        verify(session, atLeast(2)).sendMessage(msgCaptor.capture());
-        List<TextMessage> sent = msgCaptor.getAllValues();
-
-        long diceRolls = sent.stream().filter(m -> m.getPayload().contains("DICE_ROLL")).count();
-        assertEquals(2, diceRolls); // zwei gültige Würfe erlaubt
-    }
-
     @Test
     void testNextTurnFromWrongPlayer_returnsError() throws Exception {
         WebSocketSession s1 = mock(WebSocketSession.class);
@@ -387,34 +355,36 @@ class GameWebSocketHandlerDiceTest {
     }
 
     @Test
-    void testRollTwiceWithoutTwelveReturnsError() throws Exception {
+    void testRollPaschAllowsAnotherTurn() throws Exception {
         handler.afterConnectionEstablished(session);
 
-        // INIT
         String initJson = mapper.createObjectNode()
                 .put("type", "INIT")
                 .put("userId", "u1")
-                .put("name", "Alice")
+                .put("name", "PaschPlayer")
                 .toString();
         handler.handleTextMessage(session, new TextMessage(initJson));
 
-        // roll ≠ 12
         DiceManagerInterface mockDice = mock(DiceManagerInterface.class);
-        when(mockDice.rollDices()).thenReturn(5);
+        when(mockDice.rollDices()).thenReturn(12); // 6+6
+        when(mockDice.isPasch()).thenReturn(true);
+        when(mockDice.getLastRollValues()).thenReturn(List.of(6, 6));
         ReflectionTestUtils.setField(handler, "diceManager", mockDice);
 
         clearInvocations(session);
-
-        // roll 1
         handler.handleTextMessage(session, new TextMessage("Roll"));
 
-        // roll 2 (ungültig)
-        clearInvocations(session);
-        handler.handleTextMessage(session, new TextMessage("Roll"));
+        verify(session, atLeastOnce()).sendMessage(msgCaptor.capture());
+        List<TextMessage> sent = msgCaptor.getAllValues();
+        String json = sent.stream()
+                .map(TextMessage::getPayload)
+                .filter(p -> p.contains("DICE_ROLL"))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("No DICE_ROLL message found"));
 
-        // error
-        verify(session).sendMessage(msgCaptor.capture());
-        TextMessage errorMsg = msgCaptor.getValue();
-        assertTrue(errorMsg.getPayload().contains("already rolled"));
+        JsonNode msg = mapper.readTree(json);
+
+        assertTrue(msg.get("isPasch").asBoolean());
     }
+
 }

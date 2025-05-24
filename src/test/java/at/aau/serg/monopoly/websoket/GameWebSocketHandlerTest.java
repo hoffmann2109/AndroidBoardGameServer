@@ -123,6 +123,7 @@ class GameWebSocketHandlerTest {
 
         // Dice Manager
         when(diceManager.rollDices()).thenReturn(roll);
+        when(diceManager.getLastRollValues()).thenReturn(List.of(roll));
 
         // Reflect diceManager und game in Handler setzen
         ReflectionTestUtils.setField(handler, "diceManager", diceManager);
