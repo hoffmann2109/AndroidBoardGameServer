@@ -236,7 +236,13 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 }
 
                 int roll = diceManager.rollDices();
-                player.setHasRolledThisTurn(roll != 12);
+                boolean isPasch = diceManager.isPasch();
+                logger.info(String.format("Spieler %s hat geworfen: %s | Pasch: %s",
+                        userId,
+                        diceManager.getLastRollValues().toString(),
+                        isPasch));
+
+                player.setHasRolledThisTurn(!isPasch);
                 logger.log(Level.INFO, "Player {0} rolled {1}", new Object[]{userId, roll});//bewusst geloggt aktuell
 
                 DiceRollMessage drm = new DiceRollMessage(userId, roll);
