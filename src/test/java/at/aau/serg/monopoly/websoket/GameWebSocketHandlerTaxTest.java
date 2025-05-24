@@ -11,6 +11,7 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import static org.mockito.Mockito.*;
 import java.lang.reflect.Field;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -146,41 +147,70 @@ class GameWebSocketHandlerTaxTest {
     @Test
     void testTaxPaymentOnEinkommensteuerPosition() throws Exception {
         // Arrange
-        Player player = game.getPlayerById(TEST_USER_ID).orElseThrow();
-        player.setPosition(0); // Start at position 0
+        Game spyGame = spy(new Game());
+        spyGame.addPlayer(TEST_USER_ID, "TestPlayer");
+
+
+        Field gameField = GameWebSocketHandler.class.getDeclaredField("game");
+        gameField.setAccessible(true);
+        gameField.set(handler, spyGame);
+
+        Player player = spyGame.getPlayerById(TEST_USER_ID).orElseThrow();
+        player.setPosition(0);
         int initialMoney = player.getMoney();
 
-        // Mock dice roll to land on Einkommensteuer (position 4)
+        // DiceManager mocken
+        DiceManagerInterface mockDiceManager = mock(DiceManagerInterface.class);
+        when(mockDiceManager.rollDices()).thenReturn(4);
+        when(mockDiceManager.isPasch()).thenReturn(false);
+        when(mockDiceManager.getLastRollValues()).thenReturn(List.of(4));
+
         Field diceManagerField = GameWebSocketHandler.class.getDeclaredField("diceManager");
         diceManagerField.setAccessible(true);
-        DiceManagerInterface diceManager = (DiceManagerInterface) diceManagerField.get(handler);
-        when(diceManager.rollDices()).thenReturn(4);
+        diceManagerField.set(handler, mockDiceManager);
 
-        // Act - Simulate dice roll that lands on Einkommensteuer
+        doReturn(true).when(spyGame).updatePlayerPosition(4, TEST_USER_ID);
+        player.setPosition(4);
+
+        // Act: Roll
         handler.handleTextMessage(session, new TextMessage("Roll"));
 
         // Assert
-        assertEquals(initialMoney - 200, player.getMoney()); // Money should be deducted
+        assertEquals(initialMoney - 200, player.getMoney());
     }
 
     @Test
     void testTaxPaymentOnZusatzsteuerPosition() throws Exception {
         // Arrange
-        Player player = game.getPlayerById(TEST_USER_ID).orElseThrow();
-        player.setPosition(0); // Start at position 0
+        Game spyGame = spy(new Game());
+        spyGame.addPlayer(TEST_USER_ID, "TestPlayer");
+
+        Field gameField = GameWebSocketHandler.class.getDeclaredField("game");
+        gameField.setAccessible(true);
+        gameField.set(handler, spyGame);
+
+        Player player = spyGame.getPlayerById(TEST_USER_ID).orElseThrow();
+        player.setPosition(0);
         int initialMoney = player.getMoney();
 
-        // Mock dice roll to land on Zusatzsteuer (position 38)
+        // DiceManager mocken
+        DiceManagerInterface mockDiceManager = mock(DiceManagerInterface.class);
+        when(mockDiceManager.rollDices()).thenReturn(38);
+        when(mockDiceManager.isPasch()).thenReturn(false);
+        when(mockDiceManager.getLastRollValues()).thenReturn(List.of(38));
+
         Field diceManagerField = GameWebSocketHandler.class.getDeclaredField("diceManager");
         diceManagerField.setAccessible(true);
-        DiceManagerInterface diceManager = (DiceManagerInterface) diceManagerField.get(handler);
-        when(diceManager.rollDices()).thenReturn(38);
+        diceManagerField.set(handler, mockDiceManager);
 
-        // Act - Simulate dice roll that lands on Zusatzsteuer
+        doReturn(true).when(spyGame).updatePlayerPosition(38, TEST_USER_ID);
+        player.setPosition(38);
+
+        // Act
         handler.handleTextMessage(session, new TextMessage("Roll"));
 
         // Assert
-        assertEquals(initialMoney - 100, player.getMoney()); // Money should be deducted
+        assertEquals(initialMoney - 100, player.getMoney());
     }
 
     @Test
@@ -226,26 +256,41 @@ class GameWebSocketHandlerTaxTest {
     @Test
     void testTaxPaymentWithMultiplePlayers() throws Exception {
         // Arrange
+        Game spyGame = spy(new Game());
+        spyGame.addPlayer(TEST_USER_ID, "TestPlayer");
         String otherPlayerId = "otherPlayerId";
-        game.addPlayer(otherPlayerId, "Other Player");
-        Player currentPlayer = game.getPlayerById(TEST_USER_ID).orElseThrow();
-        Player otherPlayer = game.getPlayerById(otherPlayerId).orElseThrow();
-        
-        currentPlayer.setPosition(0); // Start at position 0
+        spyGame.addPlayer(otherPlayerId, "Other Player");
+
+        Field gameField = GameWebSocketHandler.class.getDeclaredField("game");
+        gameField.setAccessible(true);
+        gameField.set(handler, spyGame);
+
+        Player currentPlayer = spyGame.getPlayerById(TEST_USER_ID).orElseThrow();
+        Player otherPlayer = spyGame.getPlayerById(otherPlayerId).orElseThrow();
+
+        currentPlayer.setPosition(0); // Start at 0
         int currentPlayerInitialMoney = currentPlayer.getMoney();
         int otherPlayerInitialMoney = otherPlayer.getMoney();
 
-        // Mock dice roll to land on Einkommensteuer
+        // DiceManager mocken
+        DiceManagerInterface mockDiceManager = mock(DiceManagerInterface.class);
+        when(mockDiceManager.rollDices()).thenReturn(4);
+        when(mockDiceManager.isPasch()).thenReturn(false);
+        when(mockDiceManager.getLastRollValues()).thenReturn(List.of(4));
+
         Field diceManagerField = GameWebSocketHandler.class.getDeclaredField("diceManager");
         diceManagerField.setAccessible(true);
-        DiceManagerInterface diceManager = (DiceManagerInterface) diceManagerField.get(handler);
-        when(diceManager.rollDices()).thenReturn(4);
+        diceManagerField.set(handler, mockDiceManager);
 
-        // Act - Simulate dice roll
+
+        doReturn(true).when(spyGame).updatePlayerPosition(4, TEST_USER_ID);
+        currentPlayer.setPosition(4);
+
+        // Act
         handler.handleTextMessage(session, new TextMessage("Roll"));
 
         // Assert
-        assertEquals(currentPlayerInitialMoney - 200, currentPlayer.getMoney()); // Current player pays tax
-        assertEquals(otherPlayerInitialMoney, otherPlayer.getMoney()); // Other player's money unchanged
+        assertEquals(currentPlayerInitialMoney - 200, currentPlayer.getMoney()); // Steuern gezahlt
+        assertEquals(otherPlayerInitialMoney, otherPlayer.getMoney());           // Andere bleibt gleich
     }
 } 

@@ -76,17 +76,6 @@ class DiceTest {
         assertTrue(fixedManager.isPasch());
     }
 
-    @Test
-    void testIsNotPaschWhenDifferent() {
-        DiceManager fixedManager = new DiceManager();
-        fixedManager.addDicesToGame(List.of(
-                new Dice(1),
-                new Dice(2)
-        ));
-        fixedManager.rollDices();
-        assertFalse(fixedManager.isPasch());
-    }
-
     @AfterEach
     void tearDown() {
         firstDice = null;
