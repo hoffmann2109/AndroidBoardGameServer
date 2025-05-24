@@ -123,7 +123,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
             logger.log(Level.INFO, "Player {0} manually rolled {1}", new Object[]{userId, manualRoll});//bewusst geloggt aktuell
 
-            DiceRollMessage drm = new DiceRollMessage(userId, manualRoll, true);
+            DiceRollMessage drm = new DiceRollMessage(userId, manualRoll, true, false);
             String json = objectMapper.writeValueAsString(drm);
             broadcastMessage(json);
 
@@ -245,7 +245,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 player.setHasRolledThisTurn(!isPasch);
                 logger.log(Level.INFO, "Player {0} rolled {1}", new Object[]{userId, roll});//bewusst geloggt aktuell
 
-                DiceRollMessage drm = new DiceRollMessage(userId, roll);
+                DiceRollMessage drm = new DiceRollMessage(userId, roll, false, isPasch);
                 String json = objectMapper.writeValueAsString(drm);
                 broadcastMessage(json);
 

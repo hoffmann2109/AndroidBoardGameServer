@@ -65,6 +65,27 @@ class DiceTest {
         assertEquals(firstResult, diceManager.getRollHistory().get(0));
         assertEquals(secondResult, diceManager.getRollHistory().get(1));
     }
+    @Test
+    void testIsPaschWhenSame() {
+        DiceManager fixedManager = new DiceManager();
+        fixedManager.addDicesToGame(List.of(
+                new Dice(1),
+                new Dice(1)
+        ));
+        fixedManager.rollDices();
+        assertTrue(fixedManager.isPasch());
+    }
+
+    @Test
+    void testIsNotPaschWhenDifferent() {
+        DiceManager fixedManager = new DiceManager();
+        fixedManager.addDicesToGame(List.of(
+                new Dice(1),
+                new Dice(2)
+        ));
+        fixedManager.rollDices();
+        assertFalse(fixedManager.isPasch());
+    }
 
     @AfterEach
     void tearDown() {
