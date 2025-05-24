@@ -237,11 +237,12 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
                 int roll = diceManager.rollDices();
                 boolean isPasch = diceManager.isPasch();
-                logger.info(String.format("Spieler %s hat geworfen: %s | Pasch: %s",
-                        userId,
-                        diceManager.getLastRollValues().toString(),
-                        isPasch));
-
+                if (logger.isLoggable(Level.INFO)) {
+                    logger.info(String.format("Spieler %s hat geworfen: %s | Pasch: %s",
+                            userId,
+                            diceManager.getLastRollValues().toString(),
+                            isPasch));
+                }
                 player.setHasRolledThisTurn(!isPasch);
                 logger.log(Level.INFO, "Player {0} rolled {1}", new Object[]{userId, roll});//bewusst geloggt aktuell
 
@@ -462,7 +463,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             }
 
             String currentId = null;
-            if (game.getPlayers().size() > 0) {
+            if (!game.getPlayers().isEmpty()) {
                 currentId = game.getCurrentPlayer().getId();
             }
 
@@ -479,7 +480,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             gameHistoryService.markPlayerAsLoser(userId);
 
             // Nur wenn der aktuelle Spieler aufgegeben hat, weiterschalten
-            if (userId.equals(currentId) && game.getPlayers().size() > 0) {
+            if (userId.equals(currentId) && !game.getPlayers().isEmpty()) {
                 game.nextPlayer();
                 broadcastMessage("PLAYER_TURN:" + game.getCurrentPlayer().getId());
             }

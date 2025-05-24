@@ -6,7 +6,7 @@ import java.util.List;
 public class DiceManager implements DiceManagerInterface {
     private static List<Dice> dices;
     private static List<Integer> rollHistory;
-    private static List<Integer> lastRollValues;
+    private List<Integer> lastRollValues;
 
     public DiceManager() {
         dices = new ArrayList<>();
