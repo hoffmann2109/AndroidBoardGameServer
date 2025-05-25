@@ -200,6 +200,61 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 handleTaxPayment(payload, userId);
                 return;
             }
+            if (payload.contains("\"type\":\"RENT_PAYMENT\"")) {
+                try {
+                    RentPaymentMessage rentMsg = objectMapper.readValue(payload, RentPaymentMessage.class);
+                    logger.info("Processing rent payment for property " + rentMsg.getPropertyId());
+                    
+                    // Get the property
+                    BaseProperty property = propertyTransactionService.findPropertyById(rentMsg.getPropertyId());
+                    if (property == null) {
+                        logger.warning("Property not found for ID: " + rentMsg.getPropertyId());
+                        return;
+                    }
+
+                    // Get the players involved
+                    Player renter = game.getPlayerById(rentMsg.getPlayerId()).orElse(null);
+                    if (renter == null) {
+                        logger.warning("Renter not found: " + rentMsg.getPlayerId());
+                        return;
+                    }
+
+                    // Get the property owner
+                    Player owner = game.getPlayerById(property.getOwnerId()).orElse(null);
+                    if (owner == null) {
+                        logger.warning("Property owner not found for property: " + property.getName());
+                        return;
+                    }
+
+                    // Calculate rent amount
+                    int rentAmount = rentCalculationService.calculateRent(property, owner, renter);
+                    logger.info("Calculated rent amount: " + rentAmount + " for property " + property.getName());
+
+                    // Create complete rent payment message
+                    RentPaymentMessage completeRentMsg = new RentPaymentMessage(
+                        renter.getId(),
+                        owner.getId(),
+                        property.getId(),
+                        property.getName(),
+                        rentAmount
+                    );
+                    String jsonRent = objectMapper.writeValueAsString(completeRentMsg);
+                    broadcastMessage(jsonRent);
+
+                    // Process the rent collection
+                    boolean rentCollected = rentCollectionService.collectRent(renter, property, owner);
+                    if (rentCollected) {
+                        logger.info("Rent of " + rentAmount + " collected from player " + renter.getId() + 
+                            " for property " + property.getName());
+                        broadcastGameState();
+                    } else {
+                        logger.warning("Failed to collect rent for property " + property.getName());
+                    }
+                } catch (Exception e) {
+                    logger.log(Level.SEVERE, "Error processing rent payment message: {0}", e.getMessage());
+                }
+                return;
+            }
             if (payload.contains("\"type\":\"PULL_CARD\"")) {
                 PullCardMessage pull = objectMapper.readValue(payload, PullCardMessage.class);
                 logger.info("Player " + pull.getPlayerId()
@@ -527,26 +582,37 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             // Check for property and collect rent if applicable
             BaseProperty property = propertyService.getPropertyByPosition(position);
             if (property != null) {
-                boolean rentCollected = rentCollectionService.collectRent(player, property);
-                if (rentCollected) {
+                // Get the property owner first
+                Player owner = game.getPlayerById(property.getOwnerId()).orElse(null);
+                if (owner != null) {
+                    // Calculate rent amount
+                    int rentAmount = rentCalculationService.calculateRent(property, owner, player);
+                    
                     // Create and broadcast rent payment message
                     RentPaymentMessage rentMsg = new RentPaymentMessage(
                             player.getId(),
-                            property.getOwnerId(),
+                            owner.getId(),
                             property.getId(),
                             property.getName(),
-                            rentCalculationService.calculateRent(property,
-                                    propertyService.getPlayerById(property.getOwnerId()),
-                                    player)
+                            rentAmount
                     );
                     String jsonRent = objectMapper.writeValueAsString(rentMsg);
                     broadcastMessage(jsonRent);
+                    
+                    // Now try to collect the rent
+                    boolean rentCollected = rentCollectionService.collectRent(player, property, owner);
+                    if (rentCollected) {
+                        logger.log(Level.INFO, "Rent of {0} collected from player {1} for property {2}", 
+                            new Object[]{rentAmount, player.getId(), property.getName()});
+                    } else {
+                        logger.warning("Failed to collect rent for property " + property.getName());
+                    }
                 }
             }
 
             broadcastGameState();
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error handling player landing: {0}", e.getMessage());//bewusst geloggt aktuell
+            logger.log(Level.SEVERE, "Error handling player landing: {0}", e.getMessage());
         }
     }
 }
