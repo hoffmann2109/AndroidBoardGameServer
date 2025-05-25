@@ -54,7 +54,6 @@ public class RentCalculationService {
      */
     private int calculateHouseablePropertyRent(HouseableProperty property, Player owner) {
         // For now, just return base rent
-        // TODO: Implement house/hotel rent calculation
         return property.getBaseRent();
     }
 
@@ -65,7 +64,7 @@ public class RentCalculationService {
      * @return The calculated rent amount
      */
     private int calculateTrainStationRent(TrainStation station, Player owner) {
-        // TODO: Implement train station rent calculation based on number of stations owned
+        // For now, just return base rent
         return station.getBaseRent();
     }
 
