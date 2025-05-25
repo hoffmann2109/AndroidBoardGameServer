@@ -16,6 +16,7 @@ import org.springframework.web.socket.*;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -423,6 +424,23 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Fehler beim Beenden des Spiels", e);//bewusst geloggt aktuell
         }
+        try {
+            // Erstellen einer ClearChatMessage
+            Map<String, String> clearChatMessage = new HashMap<>();
+            clearChatMessage.put("type", "CLEAR_CHAT");
+            clearChatMessage.put("reason", "Game has ended");
+
+            String clearChatJson = objectMapper.writeValueAsString(clearChatMessage);
+
+            // Senden der Nachricht an alle Clients
+            broadcastMessage(clearChatJson);
+
+            logger.info("Sent chat clear signal to all clients");
+
+        } catch (JsonProcessingException e) {
+            logger.log(Level.SEVERE, "Error creating clear chat message: " + e.getMessage());
+        }
+
     }
 
 
@@ -456,7 +474,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     private void handleGiveUp(WebSocketSession session, JsonNode jsonNode) {
         try {
             String userId = jsonNode.get("userId").asText();
-
+            handleEndGame();
             if (userId == null || !sessionToUserId.containsValue(userId)) {
                 sendMessageToSession(session, createJsonError("Invalid user"));
                 return;
@@ -472,7 +490,6 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             sessionToUserId.remove(session.getId());
             sessions.remove(session);
             session.close();
-
             broadcastMessage("Player gave up: " + userId);
             logger.log(Level.INFO, "Player gave up: {0}", userId);
 
