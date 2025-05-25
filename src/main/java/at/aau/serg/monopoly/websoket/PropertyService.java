@@ -90,7 +90,7 @@ public class PropertyService {
                 .filter(p -> p.getPosition() == position)
                 .findFirst()
                 .orElse(null);
-        
+
         if (property != null) {
             return property;
         }
@@ -100,7 +100,7 @@ public class PropertyService {
                 .filter(p -> p.getPosition() == position)
                 .findFirst()
                 .orElse(null);
-        
+
         if (property != null) {
             return property;
         }

@@ -33,11 +33,58 @@ public class RentCalculationService {
             return 0;
         }
 
-        // For now, just return base rent for houseable properties
+        // Calculate rent based on property type
         if (property instanceof HouseableProperty) {
-            return ((HouseableProperty) property).getBaseRent();
+            return calculateHouseablePropertyRent((HouseableProperty) property, owner);
+        } else if (property instanceof TrainStation) {
+            return calculateTrainStationRent((TrainStation) property, owner);
+        } else if (property instanceof Utility) {
+            return calculateUtilityRent((Utility) property, owner);
         }
 
+        logger.log(Level.WARNING, "Unknown property type for rent calculation: {0}", property.getClass().getName());
         return 0;
     }
-} 
+
+    /**
+     * Calculates rent for a houseable property based on number of houses/hotels
+     * @param property The houseable property
+     * @param owner The owner of the property
+     * @return The calculated rent amount
+     */
+    private int calculateHouseablePropertyRent(HouseableProperty property, Player owner) {
+        // For now, just return base rent
+        // TODO: Implement house/hotel rent calculation
+        return property.getBaseRent();
+    }
+
+    /**
+     * Calculates rent for a train station based on number of stations owned
+     * @param station The train station
+     * @param owner The owner of the property
+     * @return The calculated rent amount
+     */
+    private int calculateTrainStationRent(TrainStation station, Player owner) {
+        // TODO: Implement train station rent calculation based on number of stations owned
+        return station.getBaseRent();
+    }
+
+    /**
+     * Calculates rent for a utility based on number of utilities owned
+     * @param utility The utility property
+     * @param owner The owner of the property
+     * @return The calculated rent amount
+     */
+    private int calculateUtilityRent(Utility utility, Player owner) {
+        // Get the number of utilities owned by the owner
+        int ownedUtilities = propertyService.getUtilities().stream()
+                .filter(u -> owner.getId().equals(u.getOwnerId()))
+                .toList()
+                .size();
+
+        // Calculate rent based on number of utilities owned
+        return ownedUtilities == 1 ? 
+            utility.getRentOneUtilityMultiplier() : 
+            utility.getRentTwoUtilitiesMultiplier();
+    }
+}
