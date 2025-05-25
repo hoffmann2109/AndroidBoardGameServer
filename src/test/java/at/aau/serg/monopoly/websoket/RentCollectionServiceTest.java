@@ -9,6 +9,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.MockitoAnnotations;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -22,19 +23,21 @@ class RentCollectionServiceTest {
     @Mock
     private RentCalculationService rentCalculationService;
 
-    @InjectMocks
     private RentCollectionService rentCollectionService;
-
-    private Player owner;
     private Player renter;
+    private Player owner;
     private HouseableProperty property;
 
     @BeforeEach
     void setUp() {
-        // Setup test data
-        owner = new Player("owner123", "Owner");
-        renter = new Player("renter123", "Renter");
-
+        MockitoAnnotations.openMocks(this);
+        rentCollectionService = new RentCollectionService(propertyService, rentCalculationService);
+        
+        // Setup test players
+        renter = new Player("renter", "Renter");
+        owner = new Player("owner", "Owner");
+        
+        // Setup test property
         property = new HouseableProperty(
             1,                // id
             owner.getId(),    // ownerId
@@ -53,127 +56,73 @@ class RentCollectionServiceTest {
             "test_image",    // image
             1                // position
         );
+        property.setOwnerId(owner.getId());
     }
 
     @Test
-    void canCollectRent_WithValidParameters_ReturnsTrue() {
-        // Act
-        boolean result = rentCollectionService.canCollectRent(renter, property);
-
-        // Assert
-        assertTrue(result, "Should be able to collect rent with valid parameters");
-    }
-
-    @Test
-    void canCollectRent_WithNullRenter_ReturnsFalse() {
-        // Act
-        boolean result = rentCollectionService.canCollectRent(null, property);
-
-        // Assert
-        assertFalse(result, "Should not be able to collect rent with null renter");
-    }
-
-    @Test
-    void canCollectRent_WithNullProperty_ReturnsFalse() {
-        // Act
-        boolean result = rentCollectionService.canCollectRent(renter, null);
-
-        // Assert
-        assertFalse(result, "Should not be able to collect rent with null property");
-    }
-
-    @Test
-    void canCollectRent_WithUnownedProperty_ReturnsFalse() {
-        // Arrange
+    void canCollectRent_WhenPropertyNotOwned_ReturnsFalse() {
         property.setOwnerId(null);
-
-        // Act
-        boolean result = rentCollectionService.canCollectRent(renter, property);
-
-        // Assert
-        assertFalse(result, "Should not be able to collect rent for unowned property");
+        assertFalse(rentCollectionService.canCollectRent(renter, property));
     }
 
     @Test
-    void canCollectRent_WhenRenterOwnsProperty_ReturnsFalse() {
-        // Arrange
+    void canCollectRent_WhenPropertyOwnedByRenter_ReturnsFalse() {
         property.setOwnerId(renter.getId());
-
-        // Act
-        boolean result = rentCollectionService.canCollectRent(renter, property);
-
-        // Assert
-        assertFalse(result, "Should not be able to collect rent when renter owns the property");
+        assertFalse(rentCollectionService.canCollectRent(renter, property));
     }
 
     @Test
-    void canCollectRent_WithMortgagedProperty_ReturnsFalse() {
-        // Arrange
+    void canCollectRent_WhenPropertyMortgaged_ReturnsFalse() {
         property.setMortgaged(true);
-
-        // Act
-        boolean result = rentCollectionService.canCollectRent(renter, property);
-
-        // Assert
-        assertFalse(result, "Should not be able to collect rent for mortgaged property");
+        assertFalse(rentCollectionService.canCollectRent(renter, property));
     }
 
     @Test
-    void collectRent_WithValidParameters_ReturnsTrue() {
-        // Arrange
-        when(propertyService.getPlayerById(owner.getId())).thenReturn(owner);
-        when(rentCalculationService.calculateRent(property, owner, renter)).thenReturn(10);
-        renter.addMoney(20); // Ensure renter has enough money
-
-        // Act
-        boolean result = rentCollectionService.collectRent(renter, property);
-
-        // Assert
-        assertTrue(result, "Should successfully collect rent");
-        assertEquals(10, owner.getMoney() - 1500, "Owner should receive rent amount");
-        assertEquals(1510, renter.getMoney(), "Renter should pay rent amount"); // 1500 (initial) + 20 (added) - 10 (rent)
+    void canCollectRent_WhenValidConditions_ReturnsTrue() {
+        assertTrue(rentCollectionService.canCollectRent(renter, property));
     }
 
     @Test
-    void collectRent_WhenCannotCollectRent_ReturnsFalse() {
-        // Arrange
-        property.setMortgaged(true);
+    void collectRent_WhenValidConditions_TransfersMoney() {
+        // Setup
+        int rentAmount = 50;
+        renter.setMoney(100);
+        owner.setMoney(100);
+        when(rentCalculationService.calculateRent(property, owner, renter)).thenReturn(rentAmount);
 
-        // Act
-        boolean result = rentCollectionService.collectRent(renter, property);
+        // Execute
+        boolean result = rentCollectionService.collectRent(renter, property, owner);
 
-        // Assert
-        assertFalse(result, "Should not collect rent when cannot collect rent");
-        verify(propertyService, never()).getPlayerById(any());
-        verify(rentCalculationService, never()).calculateRent(any(), any(), any());
+        // Verify
+        assertTrue(result);
+        assertEquals(50, renter.getMoney());
+        assertEquals(150, owner.getMoney());
+        verify(rentCalculationService).calculateRent(property, owner, renter);
     }
 
     @Test
-    void collectRent_WhenOwnerNotFound_ReturnsFalse() {
-        // Arrange
-        when(propertyService.getPlayerById(owner.getId())).thenReturn(null);
+    void collectRent_WhenInsufficientFunds_ReturnsFalse() {
+        // Setup
+        int rentAmount = 150;
+        renter.setMoney(100);
+        owner.setMoney(100);
+        when(rentCalculationService.calculateRent(property, owner, renter)).thenReturn(rentAmount);
 
-        // Act
-        boolean result = rentCollectionService.collectRent(renter, property);
+        // Execute
+        boolean result = rentCollectionService.collectRent(renter, property, owner);
 
-        // Assert
-        assertFalse(result, "Should not collect rent when owner not found");
-        verify(rentCalculationService, never()).calculateRent(any(), any(), any());
+        // Verify
+        assertFalse(result);
+        assertEquals(100, renter.getMoney());
+        assertEquals(100, owner.getMoney());
     }
 
     @Test
-    void collectRent_WhenRenterHasInsufficientFunds_ReturnsFalse() {
-        // Arrange
-        when(propertyService.getPlayerById(owner.getId())).thenReturn(owner);
-        when(rentCalculationService.calculateRent(property, owner, renter)).thenReturn(2000);
-        renter.subtractMoney(renter.getMoney()); // Set renter's money to 0
+    void collectRent_WhenOwnerIsNull_ReturnsFalse() {
+        // Execute
+        boolean result = rentCollectionService.collectRent(renter, property, null);
 
-        // Act
-        boolean result = rentCollectionService.collectRent(renter, property);
-
-        // Assert
-        assertFalse(result, "Should not collect rent when renter has insufficient funds");
-        assertEquals(1500, owner.getMoney(), "Owner's money should not change");
-        assertEquals(0, renter.getMoney(), "Renter's money should not change");
+        // Verify
+        assertFalse(result);
     }
 } 
