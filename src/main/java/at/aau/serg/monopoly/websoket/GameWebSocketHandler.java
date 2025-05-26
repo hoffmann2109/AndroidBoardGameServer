@@ -524,7 +524,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         return sanitized.length() > 100 ? sanitized.substring(0, 100) + "..." : sanitized;
     }
 
-    private void handleGiveUp(WebSocketSession session, JsonNode jsonNode) {
+    void handleGiveUp(WebSocketSession session, JsonNode jsonNode) {
         String quittingUserId = jsonNode.get("userId").asText();
 
         if (!game.isPlayerTurn(quittingUserId)) {
