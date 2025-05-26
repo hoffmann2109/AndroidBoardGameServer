@@ -33,7 +33,30 @@ public class Game {
     }
 
     public void removePlayer(String id) {
-        players.removeIf(player -> player.getId().equals(id));
+        // Very similar implementation to giveUp(...) - see that for more details
+        int idx = -1;
+        for (int i = 0; i < players.size(); i++) {
+            if (players.get(i).getId().equals(id)) {
+                idx = i;
+                break;
+            }
+        }
+        if (idx < 0) return;
+
+        players.remove(idx);
+
+        if (idx < currentPlayerIndex) {
+            currentPlayerIndex--;
+        } else if (idx == currentPlayerIndex) {
+
+            if (currentPlayerIndex >= players.size()) {
+                currentPlayerIndex = 0;
+            }
+        }
+
+        if (!players.isEmpty()) {
+            players.get(currentPlayerIndex).setHasRolledThisTurn(false);
+        }
     }
 
     public void updatePlayerMoney(String playerId, int amount) {
