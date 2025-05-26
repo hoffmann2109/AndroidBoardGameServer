@@ -347,6 +347,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             game.removePlayer(userId);
             sessionToUserId.remove(session.getId());
             broadcastMessage("Player left: " + userId + " (Total: " + sessions.size() + ")");
+            broadcastGameState();
             logger.log(Level.INFO, "Player disconnected: {0}", userId);//bewusst geloggt aktuell
         }
         sessions.remove(session);
