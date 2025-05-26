@@ -278,4 +278,78 @@ class GameTest {
         String winner = gameWinnerEqualMoney.determineWinner();
         assertNotNull(winner);
     }
+
+    @Test
+    void testGiveUpCurrentPlayerRemovedAdvancesTurnCorrectly() {
+        // Arrange: Player B's turn
+        game.addPlayer("A", "Alice");
+        game.addPlayer("B", "Bob");
+        game.addPlayer("C", "Carol");
+        game.setCurrentPlayerIndex(1);
+        game.getCurrentPlayer().setHasRolledThisTurn(true);
+
+        // Act: B gives up
+        game.giveUp("B");
+
+        // Assert: players list is now [A, C]
+        assertThat(game.getPlayers())
+                .extracting(Player::getId)
+                .containsExactly("A", "C");
+        assertThat(game.getCurrentPlayer().getId()).isEqualTo("C");
+        assertThat(game.getCurrentPlayer().hasRolledThisTurn()).isFalse();
+    }
+
+    @Test
+    void testGiveUpNonCurrentBeforeIndexShiftsTurnBack() {
+        // Arrange: Player C’s turn
+        game.addPlayer("A", "Alice");
+        game.addPlayer("B", "Bob");
+        game.addPlayer("C", "Carol");
+        game.setCurrentPlayerIndex(2);
+
+        // Act: B gives up
+        game.giveUp("B");
+
+        // Assert: players now [A, C]
+        assertThat(game.getPlayers())
+                .extracting(Player::getId)
+                .containsExactly("A", "C");
+        assertThat(game.getCurrentPlayer().getId()).isEqualTo("C");
+    }
+
+    @Test
+    void testGiveUpNonCurrentAfterIndexLeavesTurnAlone() {
+        // Arrange: Player A's turn
+        game.addPlayer("A", "Alice");
+        game.addPlayer("B", "Bob");
+        game.addPlayer("C", "Carol");
+        game.setCurrentPlayerIndex(0);
+
+        // Act: C gives up
+        game.giveUp("C");
+
+        // Assert: players now [A, B]
+        assertThat(game.getPlayers())
+                .extracting(Player::getId)
+                .containsExactly("A", "B");
+        assertThat(game.getCurrentPlayer().getId()).isEqualTo("A");
+    }
+
+    @Test
+    void testGiveUpLastRemainingPlayer() {
+        // Arrange: Player A’s turn
+        game.addPlayer("A", "Alice");
+        game.addPlayer("B", "Bob");
+        game.setCurrentPlayerIndex(0);
+
+        // Act: A gives up
+        game.giveUp("A");
+
+        // Assert: only B remains
+        assertThat(game.getPlayers())
+                .extracting(Player::getId)
+                .containsExactly("B");
+        assertThat(game.getCurrentPlayer().getId()).isEqualTo("B");
+    }
+
 }
