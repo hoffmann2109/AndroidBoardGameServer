@@ -1,4 +1,5 @@
 package model;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -44,6 +45,93 @@ class GameTest {
         player.subtractMoney(300);
         assertThat(player.getMoney()).isEqualTo(1700);
     }
+
+    @Test
+    void removeNonExistingPlayerDoesNothing() {
+        game.addPlayer("A", "Alice");
+        game.addPlayer("B", "Bob");
+        game.setCurrentPlayerIndex(0);
+
+        game.removePlayer("Z"); // no such player
+
+        // players unchanged
+        assertThat(game.getPlayers())
+                .extracting(Player::getId)
+                .containsExactly("A", "B");
+        // index unchanged
+        assertThat(game.getCurrentPlayer().getId()).isEqualTo("A");
+    }
+
+    @Test
+    void removePlayerBeforeCurrentShiftsIndexDown() {
+        // players: [A, B, C, D], current = C
+        game.addPlayer("A", "Alice");
+        game.addPlayer("B", "Bob");
+        game.addPlayer("C", "Carol");
+        game.addPlayer("D", "Dave");
+        game.setCurrentPlayerIndex(2);
+
+        game.removePlayer("B");
+
+        // now players [A, C, D], so C moves to idx=1
+        assertThat(game.getPlayers()).extracting(Player::getId)
+                .containsExactly("A", "C", "D");
+        assertThat(game.getCurrentPlayer().getId()).isEqualTo("C");
+    }
+
+    @Test
+    void removePlayerAfterCurrentKeepsIndex() {
+        // players: [A, B, C, D], current = B
+        game.addPlayer("A", "Alice");
+        game.addPlayer("B", "Bob");
+        game.addPlayer("C", "Carol");
+        game.addPlayer("D", "Dave");
+        game.setCurrentPlayerIndex(1);
+
+        game.removePlayer("D");
+
+        // players [A, B, C], current still B at idx=1
+        assertThat(game.getPlayers()).extracting(Player::getId)
+                .containsExactly("A", "B", "C");
+        assertThat(game.getCurrentPlayer().getId()).isEqualTo("B");
+    }
+
+    @Test
+    void removeCurrentPlayerNotLastHandsTurnToNext() {
+        // players: [A, B, C], current = B
+        game.addPlayer("A", "Alice");
+        game.addPlayer("B", "Bob");
+        game.addPlayer("C", "Carol");
+        game.setCurrentPlayerIndex(1);
+        game.getPlayers().get(2).setHasRolledThisTurn(true);
+
+        game.removePlayer("B"); // remove current
+
+        // new players [A, C]; currentIndex remains 1 → points at C
+        assertThat(game.getPlayers()).extracting(Player::getId)
+                .containsExactly("A", "C");
+        assertThat(game.getCurrentPlayer().getId()).isEqualTo("C");
+        assertThat(game.getCurrentPlayer().hasRolledThisTurn()).isFalse();
+    }
+
+    @Test
+    void removeCurrentPlayerLastWrapsIndexToZero() {
+        // players: [A, B, C], current = C
+        game.addPlayer("A", "Alice");
+        game.addPlayer("B", "Bob");
+        game.addPlayer("C", "Carol");
+        game.setCurrentPlayerIndex(2);
+        game.getPlayers().get(0).setHasRolledThisTurn(true);
+
+        game.removePlayer("C"); // remove last
+
+        // players [A, B]; wrap currentIndex to 0 → A's turn
+        assertThat(game.getPlayers()).extracting(Player::getId)
+                .containsExactly("A", "B");
+        assertThat(game.getCurrentPlayer().getId()).isEqualTo("A");
+        assertThat(game.getCurrentPlayer().hasRolledThisTurn()).isFalse();
+    }
+
 
     @Test
     void testPlayerTurnOrder() {
