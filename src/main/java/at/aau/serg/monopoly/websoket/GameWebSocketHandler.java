@@ -286,6 +286,12 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 Player player = game.getPlayerById(userId).orElse(null);
                 if (player == null) return;
 
+                if (player.isInJail()) {
+                    sendMessageToSession(session,
+                            createJsonError("You are in jail and cannot roll. End your turn."));
+                    return;
+                }
+
                 if (player.hasRolledThisTurn()) {
                     sendMessageToSession(session, createJsonError("You already rolled this turn."));
                     return;
@@ -321,6 +327,18 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 if (!game.isPlayerTurn(userId)) {
                     sendMessageToSession(session, createJsonError("Not your turn!"));
                     return;
+                }
+
+                Optional<Player> playerOpt = game.getPlayerById(userId);
+                if (playerOpt.isPresent()) {
+                    Player player = playerOpt.get();
+                    if (player.isInJail()) {
+                        player.reduceJailTurns();
+                        if (player.getJailTurns() == 0) {
+                            player.setInJail(false);
+                            broadcastMessage("Player " + userId + " is released from jail!");
+                        }
+                    }
                 }
 
                 game.nextPlayer();
@@ -577,6 +595,10 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 TaxPaymentMessage taxMsg = new TaxPaymentMessage(player.getId(), 100, "ZUSATZSTEUER");
                 String jsonTax = objectMapper.writeValueAsString(taxMsg);
                 broadcastMessage(jsonTax);
+            }
+            else if (position == 30) {
+                game.sendToJail(player.getId());
+                broadcastMessage("Player " + player.getId() + " goes to jail!");
             }
 
             // Check for property and collect rent if applicable

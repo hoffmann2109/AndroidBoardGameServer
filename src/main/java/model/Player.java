@@ -11,6 +11,8 @@ public class Player {
     private int position = 0; // Starting position
     @Setter
     private boolean hasRolledThisTurn = false;
+    private boolean inJail = false;
+    private int jailTurns = 0;
 
     public Player(String id, String name) {
         this.id = id;
@@ -28,5 +30,14 @@ public class Player {
 
     public boolean hasRolledThisTurn() {
         return hasRolledThisTurn;
+    }
+
+    public void reduceJailTurns() {
+        if (jailTurns > 0) {
+            jailTurns--;
+        }
+        if (jailTurns == 0) {
+            inJail = false;
+        }
     }
 }
