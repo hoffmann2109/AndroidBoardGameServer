@@ -23,8 +23,9 @@ public class MoveCard extends Card {
         if (spaces != null) {
             game.updatePlayerPosition(spaces, playerId);
         } else if (field != null) {
-            if (field == 30) {
-                player.setPosition(30);
+            if (field == 10) {
+                player.setPosition(10);
+                player.sendToJail();
             } else {
                 if (field < oldPos) {
                     game.updatePlayerMoney(playerId, 200);

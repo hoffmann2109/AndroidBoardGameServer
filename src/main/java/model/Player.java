@@ -12,7 +12,7 @@ public class Player {
     @Setter
     private boolean hasRolledThisTurn = false;
     private boolean inJail = false;
-    private int jailTurns = 0;
+    private int jailTurns = 2;
 
     public Player(String id, String name) {
         this.id = id;
@@ -32,12 +32,17 @@ public class Player {
         return hasRolledThisTurn;
     }
 
+    public void sendToJail() {
+        this.inJail = true;
+    }
+
     public void reduceJailTurns() {
         if (jailTurns > 0) {
             jailTurns--;
         }
         if (jailTurns == 0) {
             inJail = false;
+            jailTurns = 2;
         }
     }
 }
