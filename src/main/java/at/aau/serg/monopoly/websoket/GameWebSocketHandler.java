@@ -172,7 +172,6 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                     handleGiveUp(session, jsonNode);
                     return;
                 }
-
             }
         } catch (IOException e) {
             // Kein JSON, normal weiter
@@ -183,7 +182,6 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             sendMessageToSession(session, createJsonError("Send INIT message first"));
             return;
         }
-
 
         try {
             if (payload.contains("\"type\":\"CHEAT_MESSAGE\"")) {
@@ -368,6 +366,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             game.removePlayer(userId);
             sessionToUserId.remove(session.getId());
             broadcastMessage("Player left: " + userId + " (Total: " + sessions.size() + ")");
+            broadcastGameState();
             logger.log(Level.INFO, "Player disconnected: {0}", userId);//bewusst geloggt aktuell
         }
         sessions.remove(session);
@@ -545,43 +544,48 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         return sanitized.length() > 100 ? sanitized.substring(0, 100) + "..." : sanitized;
     }
 
-    private void handleGiveUp(WebSocketSession session, JsonNode jsonNode) {
+    void handleGiveUp(WebSocketSession session, JsonNode jsonNode) {
+        String quittingUserId = jsonNode.get("userId").asText();
+
+        if (!game.isPlayerTurn(quittingUserId)) {
+            sendMessageToSession(session,
+                    createJsonError("You can only give up on your turn."));
+            return;
+        }
+
         try {
-            String userId = jsonNode.get("userId").asText();
-            handleEndGame();
-            if (userId == null || !sessionToUserId.containsValue(userId)) {
-                sendMessageToSession(session, createJsonError("Invalid user"));
+            logger.log(Level.INFO,
+                    "Player {0} has given up",
+                    quittingUserId);
+
+            game.giveUp(quittingUserId);
+
+            // Do we have a winner already?
+            if (game.getPlayers().size() == 1) {
+                String winnerId = game.getPlayers().get(0).getId();
+
+                HasWonMessage win = new HasWonMessage(winnerId);
+                String winJson = objectMapper.writeValueAsString(win);
+                broadcastMessage(winJson);
+
+                // Wrap up the game
+                handleEndGame();
                 return;
             }
 
-            String currentId = null;
-            if (!game.getPlayers().isEmpty()) {
-                currentId = game.getCurrentPlayer().getId();
-            }
+            GiveUpMessage msg = new GiveUpMessage(quittingUserId);
+            String json = objectMapper.writeValueAsString(msg);
+            broadcastMessage(json);
+            broadcastGameState();
 
-            // Entferne Spieler
-            game.removePlayer(userId);
-            sessionToUserId.remove(session.getId());
-            sessions.remove(session);
-            session.close();
-            broadcastMessage("Player gave up: " + userId);
-            logger.log(Level.INFO, "Player gave up: {0}", userId);
-
-            // Optional: Spieler als Verlierer markieren
-            gameHistoryService.markPlayerAsLoser(userId);
-
-            // Nur wenn der aktuelle Spieler aufgegeben hat, weiterschalten
-            if (userId.equals(currentId) && !game.getPlayers().isEmpty()) {
-                game.nextPlayer();
-                broadcastMessage("PLAYER_TURN:" + game.getCurrentPlayer().getId());
-            }
-
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error processing GIVE_UP message", e);
-            sendMessageToSession(session, createJsonError("Error processing give up."));
+        } catch (JsonProcessingException e) {
+            logger.log(Level.SEVERE,
+                    "Error serializing GIVE_UP for {0}: {1}",
+                    new Object[]{ quittingUserId, e.getMessage() });
+            sendMessageToSession(session,
+                    createJsonError("Server error processing give up."));
         }
     }
-
 
     private void handlePlayerLanding(Player player) {
         try {

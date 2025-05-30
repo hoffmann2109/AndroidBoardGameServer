@@ -33,7 +33,30 @@ public class Game {
     }
 
     public void removePlayer(String id) {
-        players.removeIf(player -> player.getId().equals(id));
+        // Very similar implementation to giveUp(...) - see that for more details
+        int idx = -1;
+        for (int i = 0; i < players.size(); i++) {
+            if (players.get(i).getId().equals(id)) {
+                idx = i;
+                break;
+            }
+        }
+        if (idx < 0) return;
+
+        players.remove(idx);
+
+        if (idx < currentPlayerIndex) {
+            currentPlayerIndex--;
+        } else if (idx == currentPlayerIndex) {
+
+            if (currentPlayerIndex >= players.size()) {
+                currentPlayerIndex = 0;
+            }
+        }
+
+        if (!players.isEmpty()) {
+            players.get(currentPlayerIndex).setHasRolledThisTurn(false);
+        }
     }
 
     public void updatePlayerMoney(String playerId, int amount) {
@@ -112,6 +135,36 @@ public class Game {
             }
         }
         return false;
+    }
+
+    public void giveUp(String playerId) {
+        // Find the index of the player who sent GIVE_UP
+        int idx = -1;
+        for (int i = 0; i < players.size(); i++) {
+            if (players.get(i).getId().equals(playerId)) {
+                idx = i;
+                break;
+            }
+        }
+        if (idx < 0) return;
+
+        players.remove(idx);
+
+        // If we remove the current player than the next turn is still the same index
+        if (idx == currentPlayerIndex) {
+
+            // If we were at the end -> back to 0
+            if (currentPlayerIndex >= players.size()) {
+                currentPlayerIndex = 0;
+            }
+        } else if (idx < currentPlayerIndex) {
+            currentPlayerIndex--;
+        }
+
+        // Reset hasRolled
+        if (!players.isEmpty()) {
+            players.get(currentPlayerIndex).setHasRolledThisTurn(false);
+        }
     }
 
     /**
