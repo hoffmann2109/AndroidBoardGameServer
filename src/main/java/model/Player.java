@@ -34,15 +34,15 @@ public class Player {
 
     public void sendToJail() {
         this.inJail = true;
+        this.jailTurns = 2;
     }
 
     public void reduceJailTurns() {
-        if (jailTurns > 0) {
+        if (inJail && jailTurns > 0) {
             jailTurns--;
-        }
-        if (jailTurns == 0) {
-            inJail = false;
-            jailTurns = 2;
+            if (jailTurns == 0) {
+                inJail = false;
+            }
         }
     }
 }

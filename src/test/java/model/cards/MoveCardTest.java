@@ -92,4 +92,18 @@ class MoveCardTest {
         verify(player).getPosition();
         verifyNoMoreInteractions(game, player);
     }
+
+    @Test
+    void testMoveToJailField() {
+        MoveCard card = new MoveCard();
+        card.setField(10); // Jail position
+
+        when(player.getPosition()).thenReturn(5);
+
+        card.apply(game, "p1");
+
+        verify(player).setPosition(10);
+        verify(player).sendToJail();
+        verify(game, never()).updatePlayerMoney(anyString(), anyInt());
+    }
 }

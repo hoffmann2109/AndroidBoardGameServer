@@ -50,6 +50,9 @@ public class Game {
     }
 
     public Player getCurrentPlayer() {
+        if (players.isEmpty()) {
+            return null;
+        }
         return players.get(currentPlayerIndex);
     }
 

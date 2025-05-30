@@ -4,6 +4,7 @@ import model.Game;
 import model.Player;
 import model.DiceManagerInterface;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -19,6 +20,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -47,6 +49,9 @@ class GameWebSocketHandlerTest {
     void setUp() throws Exception {
         MockitoAnnotations.openMocks(this);
         handler = new GameWebSocketHandler();
+        handler.propertyService = mock(PropertyService.class);
+        handler.rentCalculationService = mock(RentCalculationService.class);
+        handler.rentCollectionService = mock(RentCollectionService.class);
         // Inject mocks
         var gameField = GameWebSocketHandler.class.getDeclaredField("game");
         gameField.setAccessible(true);
@@ -54,6 +59,11 @@ class GameWebSocketHandlerTest {
         var propField = GameWebSocketHandler.class.getDeclaredField("propertyTransactionService");
         propField.setAccessible(true);
         propField.set(handler, propertyTransactionService);
+
+        game.addPlayer("player1", "Player 1");
+        when(game.getPlayerById("player1")).thenReturn(Optional.of(player));
+        when(game.getCurrentPlayer()).thenReturn(player);
+
         var diceField = GameWebSocketHandler.class.getDeclaredField("diceManager");
         diceField.setAccessible(true);
         diceField.set(handler, diceManager);
@@ -65,6 +75,8 @@ class GameWebSocketHandlerTest {
         // Simulate INIT
         String initJson = "{\"type\":\"INIT\",\"userId\":\"player1\",\"name\":\"Player1\"}";
         handler.handleTextMessage(session, new TextMessage(initJson));
+        // PropertyService mocken
+        when(handler.propertyService.getPropertyByPosition(anyInt())).thenReturn(null);
         // Clear initial broadcasts
         clearInvocations(session);
     }
@@ -240,5 +252,89 @@ class GameWebSocketHandlerTest {
         ));
     }
 
+
+    @Test
+    void testPlayerInJailCannotRoll() throws Exception {
+        when(game.getPlayerById("player1")).thenReturn(Optional.of(player));
+        when(game.isPlayerTurn("player1")).thenReturn(true);
+        when(player.isInJail()).thenReturn(true);
+
+        handler.handleTextMessage(session, new TextMessage("Roll"));
+
+        verify(session).sendMessage(argThat((TextMessage msg) ->
+                msg.getPayload().contains("You are in jail and cannot roll")
+        ));
+    }
+
+    @Test
+    @Disabled
+    void testPlayerLandingOnGoToJail() throws Exception {
+        // Arrange
+        when(game.isPlayerTurn("player1")).thenReturn(true);
+        when(diceManager.rollDices()).thenReturn(5);
+
+        // Update position to 30 after roll
+        doAnswer(inv -> {
+            when(player.getPosition()).thenReturn(30);
+            return false; // Didn't pass GO
+        }).when(game).updatePlayerPosition(5, "player1");
+
+        when(player.isInJail()).thenReturn(false);
+
+        // Act
+        handler.handleTextMessage(session, new TextMessage("Roll"));
+
+        // Assert
+        verify(game).sendToJail("player1");
+        verify(session).sendMessage(argThat(msg ->
+                ((TextMessage) msg).getPayload().contains("goes to jail")
+        ));
+    }
+
+    @Test
+    @Disabled
+    void testJailReleaseAfterThreeTurns() throws Exception {
+        // Arrange
+        when(game.isPlayerTurn("player1")).thenReturn(true);
+        when(player.isInJail()).thenReturn(true);
+        when(player.getJailTurns()).thenReturn(1);
+
+        // Mock jail release logic
+        doAnswer(inv -> {
+            when(player.getJailTurns()).thenReturn(0);
+            when(player.isInJail()).thenReturn(false);
+            return null;
+        }).when(player).reduceJailTurns();
+
+        // Capture all sent messages
+        ArgumentCaptor<TextMessage> messageCaptor = ArgumentCaptor.forClass(TextMessage.class);
+
+        // Act
+        handler.handleTextMessage(session, new TextMessage("NEXT_TURN"));
+
+        // Assert
+        verify(player).reduceJailTurns();
+        verify(session, atLeastOnce()).sendMessage(messageCaptor.capture());
+
+        List<TextMessage> messages = messageCaptor.getAllValues();
+        boolean found = messages.stream()
+                .anyMatch(msg -> msg.getPayload().contains("is released from jail"));
+
+        assertTrue(found, "Release message not found");
+    }
+
+    @Test
+    void testJailTurnReduction() throws Exception {
+        // Arrange
+        when(game.isPlayerTurn("player1")).thenReturn(true); // FIX: Set player's turn
+        when(player.isInJail()).thenReturn(true);
+        when(player.getJailTurns()).thenReturn(3); // Initial jail turns
+
+        // Act
+        handler.handleTextMessage(session, new TextMessage("NEXT_TURN"));
+
+        // Assert
+        verify(player).reduceJailTurns(); // Verify reduction call
+    }
 
 }

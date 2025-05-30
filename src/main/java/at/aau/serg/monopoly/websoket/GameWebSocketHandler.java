@@ -43,11 +43,11 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     @Autowired
     private PropertyTransactionService propertyTransactionService;
     @Autowired
-    private PropertyService propertyService;
+    PropertyService propertyService;
     @Autowired
-    private RentCollectionService rentCollectionService;
+    RentCollectionService rentCollectionService;
     @Autowired
-    private RentCalculationService rentCalculationService;
+    RentCalculationService rentCalculationService;
     @Autowired
     private CheatService cheatService;
 
@@ -132,6 +132,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             if (game.updatePlayerPosition(manualRoll, userId)) {
                 broadcastMessage(PLAYER_PREFIX + userId + " passed GO and collected €200");
             }
+
             broadcastGameState();
         } catch (NumberFormatException e) {
             sendMessageToSession(session, createJsonError("Invalid manual roll format. Please provide a number between 1 and 39."));
@@ -316,13 +317,10 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 if (game.updatePlayerPosition(roll, userId)) {
                     broadcastMessage(PLAYER_PREFIX + userId + " passed GO and collected €200");
                 }
-
-                // Check for tax fields and send appropriate messages
-                int position = player.getPosition();
-                handlePlayerLanding(player, position);
+                handlePlayerLanding(player);
 
             } else if ("NEXT_TURN".equals(payload)) {
-                logger.log(Level.INFO, "Received NEXT_TURN from {0}", userId);//bewusst geloggt aktuell
+                logger.log(Level.INFO, "Received NEXT_TURN from {0}", userId);
 
                 if (!game.isPlayerTurn(userId)) {
                     sendMessageToSession(session, createJsonError("Not your turn!"));
@@ -334,15 +332,18 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                     Player player = playerOpt.get();
                     if (player.isInJail()) {
                         player.reduceJailTurns();
-                        if (player.getJailTurns() == 0) {
-                            player.setInJail(false);
+                        if (!player.isInJail()) {
                             broadcastMessage("Player " + userId + " is released from jail!");
                         }
+                        // Always advance to next player after jail turn
+                        game.nextPlayer();
+                    } else {
+                        game.nextPlayer(); // Normal turn advancement
                     }
                 }
 
-                game.nextPlayer();
                 broadcastGameState();
+
             } else if (payload.startsWith("MANUAL_ROLL:")) {
                 handleManualRoll(payload, userId, session);
             } else if (payload.startsWith("UPDATE_MONEY:")) {
@@ -582,10 +583,17 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     }
 
 
-    private void handlePlayerLanding(Player player, int position) {
+    private void handlePlayerLanding(Player player) {
         try {
+
+            int position = player.getPosition();
+
             // Check for tax squares
-            if (position == 4) {  // Einkommensteuer
+            if (position == 30) {
+                game.sendToJail(player.getId());
+                broadcastMessage("Player " + player.getId() + " goes to jail!");
+            }
+            else if (position == 4) {  // Einkommensteuer
                 game.updatePlayerMoney(player.getId(), -200);  // Deduct money first
                 TaxPaymentMessage taxMsg = new TaxPaymentMessage(player.getId(), 200, "EINKOMMENSTEUER");
                 String jsonTax = objectMapper.writeValueAsString(taxMsg);
@@ -596,11 +604,6 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 String jsonTax = objectMapper.writeValueAsString(taxMsg);
                 broadcastMessage(jsonTax);
             }
-            else if (position == 30) {
-                game.sendToJail(player.getId());
-                broadcastMessage("Player " + player.getId() + " goes to jail!");
-            }
-
             // Check for property and collect rent if applicable
             BaseProperty property = propertyService.getPropertyByPosition(position);
             if (property != null) {
