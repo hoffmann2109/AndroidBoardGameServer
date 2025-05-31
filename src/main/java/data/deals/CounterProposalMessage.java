@@ -1,4 +1,4 @@
-package data.Deals;
+package data.deals;
 
 import java.util.List;
 

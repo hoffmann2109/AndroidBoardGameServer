@@ -1,9 +1,9 @@
 package at.aau.serg.monopoly.websoket;
 
-import data.Deals.DealProposalMessage;
-import data.Deals.DealResponseMessage;
-import data.Deals.DealResponseType;
-import data.Deals.CounterProposalMessage;
+import data.deals.DealProposalMessage;
+import data.deals.DealResponseMessage;
+import data.deals.DealResponseType;
+import data.deals.CounterProposalMessage;
 import model.Game;
 import model.Player;
 import model.properties.BaseProperty;
@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.Mockito.*;
 
 class DealServiceTest {
@@ -41,8 +42,8 @@ class DealServiceTest {
     void testExecuteTrade_gameNotSet_doesNothing() {
         DealService localService = new DealService(propertyTransactionService);
         DealResponseMessage msg = new DealResponseMessage("DEAL_RESPONSE", "from", "to", DealResponseType.ACCEPT, List.of(1), 100);
-        localService.executeTrade(msg);
-        // No exception = pass
+        assertDoesNotThrow(() -> localService.executeTrade(msg));
+        verifyNoInteractions(propertyTransactionService);
     }
 
     @Test
@@ -51,8 +52,8 @@ class DealServiceTest {
         when(game.getPlayerById("to")).thenReturn(Optional.of(toPlayer));
 
         DealResponseMessage msg = new DealResponseMessage("DEAL_RESPONSE", "from", "to", DealResponseType.ACCEPT, List.of(1), 100);
-        dealService.executeTrade(msg);
-        // No exception = pass
+        assertDoesNotThrow(() -> dealService.executeTrade(msg));
+        verify(propertyTransactionService, never()).findPropertyById(anyInt());
     }
 
     @Test

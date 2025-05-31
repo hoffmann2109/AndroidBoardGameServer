@@ -1,4 +1,4 @@
-package data.Deals;
+package data.deals;
 
 public enum DealResponseType {
     ACCEPT,

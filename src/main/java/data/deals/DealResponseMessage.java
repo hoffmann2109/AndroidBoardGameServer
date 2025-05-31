@@ -1,4 +1,4 @@
-package data.Deals;
+package data.deals;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

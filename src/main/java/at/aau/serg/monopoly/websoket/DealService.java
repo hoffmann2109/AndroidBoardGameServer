@@ -1,8 +1,8 @@
 package at.aau.serg.monopoly.websoket;
 
-import data.Deals.DealProposalMessage;
-import data.Deals.DealResponseMessage;
-import data.Deals.CounterProposalMessage;
+import data.deals.DealProposalMessage;
+import data.deals.DealResponseMessage;
+import data.deals.CounterProposalMessage;
 import lombok.Setter;
 import model.Game;
 import model.Player;

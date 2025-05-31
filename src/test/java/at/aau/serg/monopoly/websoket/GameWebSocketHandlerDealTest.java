@@ -1,9 +1,9 @@
 package at.aau.serg.monopoly.websoket;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import data.Deals.DealProposalMessage;
-import data.Deals.DealResponseMessage;
-import data.Deals.DealResponseType;
+import data.deals.DealProposalMessage;
+import data.deals.DealResponseMessage;
+import data.deals.DealResponseType;
 import model.Game;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static org.mockito.Mockito.*;
 
-public class GameWebSocketHandlerDealTest {
+class GameWebSocketHandlerDealTest {
 
     private GameWebSocketHandler handler;
     private DealService dealService;
@@ -112,7 +112,7 @@ public class GameWebSocketHandlerDealTest {
 
         handler.handleTextMessage(fromSession, new TextMessage(json));
 
-        verify(dealService).executeTrade(eq(response));
+        verify(dealService).executeTrade(response);
         verify(toSession, atLeastOnce()).sendMessage(any(TextMessage.class));
     }
 
