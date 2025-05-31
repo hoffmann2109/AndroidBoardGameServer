@@ -16,6 +16,7 @@ public class Player {
     private boolean hasRolledThisTurn = false;
     private boolean inJail = false;
     private int jailTurns = 2;
+    private boolean isBot= false;
 
     public Player(String id, String name) {
         this.id = id;
@@ -51,5 +52,12 @@ public class Player {
 
     public void setConnected(boolean connected) {
         this.connected = connected;
+    }
+    public boolean isBot() {
+        return isBot;
+    }
+
+    public void setBot(boolean bot) {
+        this.isBot = bot;
     }
 }

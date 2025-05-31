@@ -5,10 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import data.*;
 import lombok.NonNull;
-import model.DiceManager;
-import model.DiceManagerInterface;
-import model.Game;
-import model.Player;
+import model.*;
 import model.properties.BaseProperty;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -34,6 +31,17 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     final Map<String, String> sessionToUserId = new ConcurrentHashMap<>();
     private final Game game = new Game();
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final BotManager botManager = new BotManager(game, objectMapper, new BotManager.BotCallback() {
+        @Override
+        public void broadcast(String message) {
+            broadcastMessage(message);
+        }
+
+        @Override
+        public void updateGameState() {
+            broadcastGameState();
+        }
+    });
     private DiceManagerInterface diceManager;
 
     @Autowired
@@ -85,6 +93,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             // Spielstart-Logik anpassen
             if (sessionToUserId.size() >= 2 && sessionToUserId.size() <= 4) {
                 startGame();
+
             }
 
             broadcastGameState();
@@ -325,6 +334,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
             } else if ("NEXT_TURN".equals(payload)) {
                 logger.log(Level.INFO, "Received NEXT_TURN from {0}", userId);
+                botManager.handleBotTurn();
 
                 if (!game.isPlayerTurn(userId)) {
                     sendMessageToSession(session, createJsonError("Not your turn!"));
@@ -365,18 +375,24 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    @Override
+    @@Override
     public void afterConnectionClosed(@NonNull WebSocketSession session, @NonNull CloseStatus status) {
         String userId = sessionToUserId.get(session.getId());
         if (userId != null) {
             game.markPlayerDisconnected(userId);
+            game.replaceDisconnectedWithBot(userId); // Spieler wird zu Bot
+
             sessionToUserId.remove(session.getId());
-            broadcastMessage("Player left: " + userId + " (Total: " + sessions.size() + ")");
+            broadcastMessage("Player left: " + userId + " and was replaced by a bot.");
             broadcastGameState();
-            logger.log(Level.INFO, "Player disconnected: {0}", userId);//bewusst geloggt aktuell
+
+            logger.log(Level.INFO, "Player disconnected and replaced with bot: {0}", userId);
+
+            botManager.handleBotTurn(); // Bot übernimmt Zug sofort, wenn er dran ist
         }
         sessions.remove(session);
     }
+
 
     private void broadcastMessage(String message) {
         for (WebSocketSession session : sessions) {
@@ -409,6 +425,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             broadcastMessage("Game started! " + sessions.size() + " players are connected.");
             logger.log(Level.INFO, "Game started with {0} players!", sessions.size());//bewusst geloggt aktuell
             game.start();
+            botManager.handleBotTurn();
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Error sending game state: {0}", e.getMessage());//bewusst geloggt aktuell
         }

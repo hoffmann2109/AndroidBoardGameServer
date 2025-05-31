@@ -1,6 +1,11 @@
 package model;
 import java.util.Date;
+
+import at.aau.serg.monopoly.websoket.PropertyService;
+import at.aau.serg.monopoly.websoket.PropertyTransactionService;
 import lombok.Data;
+import lombok.Getter;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -13,6 +18,12 @@ public class Game {
     private int currentPlayerIndex;
     private Date startTime;
     private String winnerId;
+    @Getter
+    private final DiceManagerInterface diceManager = new DiceManager();
+    @Getter
+    private PropertyService propertyService;
+    @Getter
+    private PropertyTransactionService propertyTransactionService;
 
 
     public Game() {
@@ -218,9 +229,24 @@ public class Game {
         });
     }
 
-    public void markPlayerDisconnected(String userId){
-
+    public void markPlayerDisconnected(String userId) {
         getPlayerById(userId).ifPresent(player -> player.setConnected(false));
+    }
+
+    public void replaceDisconnectedWithBot(String userId) {
+        getPlayerById(userId).ifPresent(player -> {
+            player.setConnected(true);
+            player.setBot(true);
+            player.setName(player.getName() + " [Bot]");
+        });
+    }
+
+    public void setPropertyService(PropertyService propertyService) {
+        this.propertyService = propertyService;
+    }
+
+    public void setPropertyTransactionService(PropertyTransactionService propertyTransactionService) {
+        this.propertyTransactionService = propertyTransactionService;
     }
 
 }
