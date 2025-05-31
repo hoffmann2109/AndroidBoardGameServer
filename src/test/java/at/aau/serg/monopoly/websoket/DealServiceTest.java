@@ -201,5 +201,44 @@ class DealServiceTest {
         verify(fromPlayer).subtractMoney(100);
         verify(toPlayer).addMoney(100);
     }
+    @Test
+    void testExecuteTrade_propertyTransferredFromReceiverToSender() {
+        // Arrange
+        when(game.getPlayerById("from")).thenReturn(Optional.of(fromPlayer));
+        when(game.getPlayerById("to")).thenReturn(Optional.of(toPlayer));
+        when(fromPlayer.getId()).thenReturn("from");
+        when(toPlayer.getId()).thenReturn("to");
+
+        BaseProperty receiverProperty = mock(BaseProperty.class);
+        when(receiverProperty.getOwnerId()).thenReturn("to");
+        when(receiverProperty.getName()).thenReturn("Receiverstraße");
+        when(propertyTransactionService.findPropertyById(2)).thenReturn(receiverProperty);
+
+        // simulate: sender bekommt Grundstück vom Empfänger
+        DealProposalMessage proposal = new DealProposalMessage(
+                "DEAL_PROPOSAL",
+                "from",      // initiator
+                "to",        // receiver
+                List.of(2),  // requested → Empfänger gibt dieses Property ab
+                List.of(),   // offered
+                0
+        );
+        dealService.saveProposal(proposal);
+
+        DealResponseMessage response = new DealResponseMessage(
+                "DEAL_RESPONSE",
+                "to",   // fromPlayerId = Empfänger akzeptiert
+                "from", // toPlayerId = an den ursprünglichen Absender
+                DealResponseType.ACCEPT,
+                List.of(), // irrelevant bei Proposal-basiertem Trade
+                0
+        );
+
+        // Act
+        dealService.executeTrade(response);
+
+        // Assert
+        verify(receiverProperty).setOwnerId("from");
+    }
 
 }
