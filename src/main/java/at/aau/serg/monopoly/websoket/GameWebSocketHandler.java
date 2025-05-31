@@ -375,7 +375,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    @@Override
+    @Override
     public void afterConnectionClosed(@NonNull WebSocketSession session, @NonNull CloseStatus status) {
         String userId = sessionToUserId.get(session.getId());
         if (userId != null) {

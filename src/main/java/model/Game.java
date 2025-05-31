@@ -107,7 +107,7 @@ public class Game {
     public List<PlayerInfo> getPlayerInfo() {
         List<PlayerInfo> info = new ArrayList<>();
         for (Player player : players) {
-            info.add(new PlayerInfo(player.getId(), player.getName(), player.getMoney(), player.getPosition(), player.isInJail(), player.getJailTurns()));
+            info.add(new PlayerInfo(player.getId(), player.getName(), player.getMoney(), player.getPosition(), player.isInJail(), player.getJailTurns(), player.isBot()));
         }
         return info;
     }
