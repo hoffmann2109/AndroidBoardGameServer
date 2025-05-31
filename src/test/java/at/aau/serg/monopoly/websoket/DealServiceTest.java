@@ -3,6 +3,7 @@ package at.aau.serg.monopoly.websoket;
 import data.Deals.DealProposalMessage;
 import data.Deals.DealResponseMessage;
 import data.Deals.DealResponseType;
+import data.Deals.CounterProposalMessage;
 import model.Game;
 import model.Player;
 import model.properties.BaseProperty;
@@ -160,6 +161,44 @@ class DealServiceTest {
         verifyNoInteractions(propertyTransactionService);
         verify(fromPlayer, never()).subtractMoney(anyInt());
         verify(toPlayer, never()).addMoney(anyInt());
+    }
+    @Test
+    void testExecuteTrade_withCounterOffer_succeeds() {
+        // Arrange
+        when(game.getPlayerById("from")).thenReturn(Optional.of(fromPlayer));
+        when(game.getPlayerById("to")).thenReturn(Optional.of(toPlayer));
+        when(propertyTransactionService.findPropertyById(1)).thenReturn(property);
+        when(fromPlayer.getId()).thenReturn("from");
+        when(toPlayer.getId()).thenReturn("to");
+        when(fromPlayer.getMoney()).thenReturn(1000);
+        when(property.getOwnerId()).thenReturn("from");
+        when(property.getName()).thenReturn("Teststraße");
+
+        // Counter-Angebot: "from" bietet "to" die Straße + 100€
+        CounterProposalMessage counter = new CounterProposalMessage(
+                "from",       // von
+                "to",         // an
+                List.of(),    // requested (will nichts vom anderen)
+                List.of(1),   // offered property
+                100           // bietet 100€ Geld
+        );
+        dealService.saveCounterProposal(counter);
+
+        DealResponseMessage response = new DealResponseMessage();
+        response.setType("DEAL_RESPONSE");
+        response.setFromPlayerId("to");  // der ursprüngliche Deal-Anbieter antwortet
+        response.setToPlayerId("from");  // an den neuen Anbieter
+        response.setResponseType(DealResponseType.ACCEPT);
+        response.setCounterPropertyIds(List.of(1));
+        response.setCounterMoney(100);
+
+        // Act
+        dealService.executeTrade(response);
+
+        // Assert
+        verify(property).setOwnerId("to");
+        verify(fromPlayer).subtractMoney(100);
+        verify(toPlayer).addMoney(100);
     }
 
 }

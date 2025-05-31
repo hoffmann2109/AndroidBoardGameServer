@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import data.*;
+import data.Deals.CounterProposalMessage;
 import jakarta.annotation.PostConstruct;
 import lombok.NonNull;
 import model.DiceManager;
@@ -321,6 +322,22 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 }
                 return;
             }
+
+            if (payload.contains("\"type\":\"COUNTER_OFFER\"")) {
+                CounterProposalMessage counter = objectMapper.readValue(payload, CounterProposalMessage.class);
+                logger.info("Received counter offer from " + counter.getFromPlayerId());
+
+                dealService.saveCounterProposal(counter);
+
+                WebSocketSession targetSession = findSessionByPlayerId(counter.getToPlayerId());
+                if (targetSession != null) {
+                    sendMessageToSession(targetSession, payload); // leite den Gegenvorschlag weiter
+                } else {
+                    logger.warning("Target player session not found for counter offer");
+                }
+                return;
+            }
+
             if (payload.trim().equalsIgnoreCase("Roll")) {
                 if (!game.isPlayerTurn(userId)) {
                     sendMessageToSession(session, createJsonError("Not your turn!"));

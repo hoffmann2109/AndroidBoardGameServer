@@ -2,6 +2,7 @@ package at.aau.serg.monopoly.websoket;
 
 import data.Deals.DealProposalMessage;
 import data.Deals.DealResponseMessage;
+import data.Deals.CounterProposalMessage;
 import lombok.Setter;
 import model.Game;
 import model.Player;
@@ -26,24 +27,39 @@ public class DealService {
     public DealService(PropertyTransactionService propertyTransactionService) {
         this.propertyTransactionService = propertyTransactionService;
     }
+
     public void saveProposal(DealProposalMessage deal) {
         pendingDeals.put(deal.getToPlayerId(), deal);
         logger.info("DealProposal saved for receiver " + deal.getToPlayerId());
     }
 
-    public void removeProposal(String receiverId) {
-        pendingDeals.remove(receiverId);
-        logger.info("DealProposal removed for " + receiverId);
+    public void saveCounterProposal(CounterProposalMessage counter) {
+        pendingDeals.put(counter.getToPlayerId(), counter);
+        logger.info("CounterProposal saved for receiver " + counter.getToPlayerId());
     }
+
+    public void removeProposal(String playerId) {
+        pendingDeals.remove(playerId);
+        logger.info("DealProposal removed for " + playerId);
+    }
+
+    private DealProposalMessage getPendingDeal(DealResponseMessage response) {
+        DealProposalMessage proposal = pendingDeals.get(response.getToPlayerId());
+        if (proposal == null) {
+            proposal = pendingDeals.get(response.getFromPlayerId());
+        }
+        return proposal;
+    }
+
     public void executeTrade(DealResponseMessage response) {
         if (game == null) {
             logger.warning("Game instance is not set in DealService.");
             return;
         }
 
-        DealProposalMessage proposal = pendingDeals.get(response.getToPlayerId());
+        DealProposalMessage proposal = getPendingDeal(response);
         if (proposal == null) {
-            logger.warning("No saved deal for " + response.getToPlayerId());
+            logger.warning("No saved deal for response from " + response.getFromPlayerId() + " to " + response.getToPlayerId());
             return;
         }
 
@@ -82,6 +98,7 @@ public class DealService {
 
         // Vorschlag löschen
         removeProposal(response.getToPlayerId());
+        removeProposal(response.getFromPlayerId());
 
         logger.info("Trade executed between " + sender.getName() + " and " + receiver.getName());
     }
