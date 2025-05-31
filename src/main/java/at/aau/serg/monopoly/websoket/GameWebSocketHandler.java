@@ -291,6 +291,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             if (payload.contains("\"type\":\"DEAL_PROPOSAL\"")) {
                 DealProposalMessage deal = objectMapper.readValue(payload, DealProposalMessage.class);
                 logger.info("Received deal proposal from " + deal.getFromPlayerId());
+                dealService.saveProposal(deal);
 
                 WebSocketSession targetSession = findSessionByPlayerId(deal.getToPlayerId());
                 if (targetSession != null) {

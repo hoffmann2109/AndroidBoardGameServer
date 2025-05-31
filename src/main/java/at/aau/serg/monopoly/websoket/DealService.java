@@ -1,13 +1,15 @@
 package at.aau.serg.monopoly.websoket;
 
+import data.Deals.DealProposalMessage;
 import data.Deals.DealResponseMessage;
-import data.Deals.DealResponseType;
 import lombok.Setter;
 import model.Game;
 import model.Player;
 import model.properties.BaseProperty;
 import org.springframework.stereotype.Service;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
 @Service
@@ -17,34 +19,70 @@ public class DealService {
 
     private final PropertyTransactionService propertyTransactionService;
     @Setter
-    private Game game; // wird per Setter gesetzt
+    private Game game;
+
+    private final Map<String, DealProposalMessage> pendingDeals = new ConcurrentHashMap<>();
 
     public DealService(PropertyTransactionService propertyTransactionService) {
         this.propertyTransactionService = propertyTransactionService;
     }
+    public void saveProposal(DealProposalMessage deal) {
+        pendingDeals.put(deal.getToPlayerId(), deal);
+        logger.info("DealProposal saved for receiver " + deal.getToPlayerId());
+    }
 
+    public void removeProposal(String receiverId) {
+        pendingDeals.remove(receiverId);
+        logger.info("DealProposal removed for " + receiverId);
+    }
     public void executeTrade(DealResponseMessage response) {
         if (game == null) {
             logger.warning("Game instance is not set in DealService.");
             return;
         }
 
-        Player from = game.getPlayerById(response.getFromPlayerId()).orElse(null);
-        Player to = game.getPlayerById(response.getToPlayerId()).orElse(null);
-        if (from == null || to == null) return;
+        DealProposalMessage proposal = pendingDeals.get(response.getToPlayerId());
+        if (proposal == null) {
+            logger.warning("No saved deal for " + response.getToPlayerId());
+            return;
+        }
 
-        for (int propertyId : response.getCounterPropertyIds()) {
-            BaseProperty prop = propertyTransactionService.findPropertyById(propertyId);
-            if (prop != null && response.getResponseType() == DealResponseType.ACCEPT) {
-                prop.setOwnerId(from.getId());
+        Player sender = game.getPlayerById(proposal.getFromPlayerId()).orElse(null);
+        Player receiver = game.getPlayerById(proposal.getToPlayerId()).orElse(null);
+        if (sender == null || receiver == null) {
+            logger.warning("Sender or receiver not found");
+            return;
+        }
+
+        // Eigentum vom Sender → Empfänger
+        for (int propId : proposal.getOfferedPropertyIds()) {
+            BaseProperty prop = propertyTransactionService.findPropertyById(propId);
+            if (prop != null && sender.getId().equals(prop.getOwnerId())) {
+                prop.setOwnerId(receiver.getId());
+                logger.info(prop.getName() + " from " + sender.getName() + " → " + receiver.getName());
             }
         }
 
-        if (response.getCounterMoney() > 0) {
-            from.subtractMoney(response.getCounterMoney());
-            to.addMoney(response.getCounterMoney());
+        // Eigentum vom Empfänger → Sender
+        for (int propId : proposal.getRequestedPropertyIds()) {
+            BaseProperty prop = propertyTransactionService.findPropertyById(propId);
+            if (prop != null && receiver.getId().equals(prop.getOwnerId())) {
+                prop.setOwnerId(sender.getId());
+                logger.info(prop.getName() + " from " + receiver.getName() + " → " + sender.getName());
+            }
         }
 
-        logger.info("Trade executed between " + from.getId() + " and " + to.getId());
+        // Geld vom Sender → Empfänger
+        int money = proposal.getOfferedMoney();
+        if (money > 0 && sender.getMoney() >= money) {
+            sender.subtractMoney(money);
+            receiver.addMoney(money);
+            logger.info(money + " € from " + sender.getName() + " → " + receiver.getName());
+        }
+
+        // Vorschlag löschen
+        removeProposal(response.getToPlayerId());
+
+        logger.info("Trade executed between " + sender.getName() + " and " + receiver.getName());
     }
 }

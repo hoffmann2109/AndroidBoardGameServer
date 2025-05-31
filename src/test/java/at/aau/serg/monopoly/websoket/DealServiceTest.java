@@ -1,5 +1,6 @@
 package at.aau.serg.monopoly.websoket;
 
+import data.Deals.DealProposalMessage;
 import data.Deals.DealResponseMessage;
 import data.Deals.DealResponseType;
 import model.Game;
@@ -55,10 +56,25 @@ class DealServiceTest {
 
     @Test
     void testExecuteTrade_propertyTransferred_andMoneyExchanged() {
+        // Arrange
         when(game.getPlayerById("from")).thenReturn(Optional.of(fromPlayer));
         when(game.getPlayerById("to")).thenReturn(Optional.of(toPlayer));
         when(propertyTransactionService.findPropertyById(1)).thenReturn(property);
         when(fromPlayer.getId()).thenReturn("from");
+        when(fromPlayer.getMoney()).thenReturn(200);
+        when(toPlayer.getId()).thenReturn("to");
+        when(property.getOwnerId()).thenReturn("from");
+        when(property.getName()).thenReturn("Teststraße");
+
+        DealProposalMessage proposal = new DealProposalMessage(
+                "DEAL_PROPOSAL",
+                "from",
+                "to",
+                List.of(),      // requested
+                List.of(1),     // offered
+                100             // money
+        );
+        dealService.saveProposal(proposal);
 
         DealResponseMessage msg = new DealResponseMessage();
         msg.setType("DEAL_RESPONSE");
@@ -68,19 +84,36 @@ class DealServiceTest {
         msg.setCounterPropertyIds(List.of(1));
         msg.setCounterMoney(100);
 
+        // Act
         dealService.executeTrade(msg);
 
-        verify(property).setOwnerId("from");
+        // Assert
+        verify(property).setOwnerId("to");
         verify(fromPlayer).subtractMoney(100);
         verify(toPlayer).addMoney(100);
     }
 
+
     @Test
     void testExecuteTrade_noMoneyTransferred_ifZero() {
+        // Arrange
         when(game.getPlayerById("from")).thenReturn(Optional.of(fromPlayer));
         when(game.getPlayerById("to")).thenReturn(Optional.of(toPlayer));
         when(propertyTransactionService.findPropertyById(1)).thenReturn(property);
         when(fromPlayer.getId()).thenReturn("from");
+        when(toPlayer.getId()).thenReturn("to");
+        when(property.getOwnerId()).thenReturn("from");
+        when(property.getName()).thenReturn("Teststraße");
+
+        DealProposalMessage proposal = new DealProposalMessage(
+                "DEAL_PROPOSAL",
+                "from",
+                "to",
+                List.of(),      // requested
+                List.of(1),     // offered
+                0               // money
+        );
+        dealService.saveProposal(proposal);
 
         DealResponseMessage msg = new DealResponseMessage();
         msg.setType("DEAL_RESPONSE");
@@ -90,12 +123,15 @@ class DealServiceTest {
         msg.setCounterPropertyIds(List.of(1));
         msg.setCounterMoney(0);
 
+        // Act
         dealService.executeTrade(msg);
 
-        verify(property).setOwnerId("from");
+        // Assert
+        verify(property).setOwnerId("to");
         verify(fromPlayer, never()).subtractMoney(anyInt());
         verify(toPlayer, never()).addMoney(anyInt());
     }
+
 
     @Test
     void testExecuteTrade_ignoresPropertyIfNotFound() {
@@ -108,4 +144,22 @@ class DealServiceTest {
         dealService.executeTrade(msg);
         // Should skip property, but still work
     }
+
+    @Test
+    void testExecuteTrade_responseTypeNotAccept_doesNothing() {
+        when(game.getPlayerById("from")).thenReturn(Optional.of(fromPlayer));
+        when(game.getPlayerById("to")).thenReturn(Optional.of(toPlayer));
+
+        DealResponseMessage msg = new DealResponseMessage(
+                "DEAL_RESPONSE", "from", "to", DealResponseType.DECLINE, List.of(1), 100
+        );
+
+        dealService.executeTrade(msg);
+
+        // keine Transfers, keine Eigentumsänderung
+        verifyNoInteractions(propertyTransactionService);
+        verify(fromPlayer, never()).subtractMoney(anyInt());
+        verify(toPlayer, never()).addMoney(anyInt());
+    }
+
 }
