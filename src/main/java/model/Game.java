@@ -80,8 +80,17 @@ public class Game {
     }
 
     public void nextPlayer() {
-        currentPlayerIndex = (currentPlayerIndex + 1) % players.size();
-        players.get(currentPlayerIndex).setHasRolledThisTurn(false);
+        if (players.isEmpty()) return;
+
+        for (int i = 1; i <= players.size(); i++) {
+            int nextIndex = (currentPlayerIndex + i) % players.size();
+            Player next = players.get(nextIndex);
+            if (next.isConnected()) {
+                currentPlayerIndex = nextIndex;
+                next.setHasRolledThisTurn(false);
+                return;
+            }
+        }
     }
 
     public List<PlayerInfo> getPlayerInfo() {
@@ -207,6 +216,11 @@ public class Game {
             player.setJailTurns(2);
             player.setPosition(10);
         });
+    }
+
+    public void markPlayerDisconnected(String userId){
+
+        getPlayerById(userId).ifPresent(player -> player.setConnected(false));
     }
 
 }

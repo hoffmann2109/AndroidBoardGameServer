@@ -69,6 +69,12 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 return;
             }
 
+            if (game.isStarted() && game.getPlayerById(userId).map(p -> !p.isConnected()).orElse(false)) {
+                sendMessageToSession(session, createJsonError("Rejoin not allowed. You have been disconnected."));
+                return;
+            }
+
+
             // Spieler mit Firebase-ID hinzufügen
             game.addPlayer(userId, name);
             sessionToUserId.put(session.getId(), userId);
@@ -363,7 +369,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     public void afterConnectionClosed(@NonNull WebSocketSession session, @NonNull CloseStatus status) {
         String userId = sessionToUserId.get(session.getId());
         if (userId != null) {
-            game.removePlayer(userId);
+            game.markPlayerDisconnected(userId);
             sessionToUserId.remove(session.getId());
             broadcastMessage("Player left: " + userId + " (Total: " + sessions.size() + ")");
             broadcastGameState();
