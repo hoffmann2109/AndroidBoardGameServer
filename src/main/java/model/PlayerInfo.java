@@ -12,4 +12,6 @@ public class PlayerInfo {
     private String name;
     private int money;
     private int position;
+    private boolean inJail;
+    private int jailTurns;
 }

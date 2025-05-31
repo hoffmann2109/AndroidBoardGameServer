@@ -1,5 +1,6 @@
 package model;
 
+import model.cards.MoveCard;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -9,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.lang.reflect.Field;
+import java.util.Optional;
 
 class GameTest {
     private Game game;
@@ -368,7 +370,50 @@ class GameTest {
     }
 
     @Test
-    void testGiveUpCurrentPlayerRemovedAdvancesTurnCorrectly() {
+    void testSendToJail() {
+        game.addPlayer("p1", "Player 1");
+        game.addPlayer("p2", "Player 2");
+
+        game.sendToJail("p1");
+        Optional<Player> jailedPlayer = game.getPlayerById("p1");
+
+        assertTrue(jailedPlayer.isPresent());
+        assertTrue(jailedPlayer.get().isInJail());
+        assertEquals(10, jailedPlayer.get().getPosition());
+        assertEquals(2, jailedPlayer.get().getJailTurns());
+
+        Optional<Player> freePlayer = game.getPlayerById("p2");
+        assertTrue(freePlayer.isPresent());
+        assertFalse(freePlayer.get().isInJail());
+    }
+
+    @Test
+    void testSendToJailInvalidPlayer() {
+        game.addPlayer("p1", "Player 1");
+        game.sendToJail("invalid_id");
+
+        Optional<Player> player = game.getPlayerById("p1");
+        assertTrue(player.isPresent());
+        assertFalse(player.get().isInJail());
+    }
+
+    @Test
+    void testJailCardLogic() {
+        MoveCard jailCard = new MoveCard();
+        jailCard.setField(10); // Jail position
+
+        game.addPlayer("p1", "Player 1");
+        jailCard.apply(game, "p1");
+
+        Optional<Player> player = game.getPlayerById("p1");
+        assertTrue(player.isPresent());
+        assertTrue(player.get().isInJail());
+        assertEquals(10, player.get().getPosition());
+        assertEquals(2, player.get().getJailTurns());
+    }
+
+  @Test
+  void testGiveUpCurrentPlayerRemovedAdvancesTurnCorrectly() {
         // Arrange: Player B's turn
         game.addPlayer("A", "Alice");
         game.addPlayer("B", "Bob");
@@ -439,5 +484,4 @@ class GameTest {
                 .containsExactly("B");
         assertThat(game.getCurrentPlayer().getId()).isEqualTo("B");
     }
-
 }

@@ -73,6 +73,9 @@ public class Game {
     }
 
     public Player getCurrentPlayer() {
+        if (players.isEmpty()) {
+            return null;
+        }
         return players.get(currentPlayerIndex);
     }
 
@@ -84,7 +87,7 @@ public class Game {
     public List<PlayerInfo> getPlayerInfo() {
         List<PlayerInfo> info = new ArrayList<>();
         for (Player player : players) {
-            info.add(new PlayerInfo(player.getId(), player.getName(), player.getMoney(), player.getPosition()));
+            info.add(new PlayerInfo(player.getId(), player.getName(), player.getMoney(), player.getPosition(), player.isInJail(), player.getJailTurns()));
         }
         return info;
     }
@@ -197,4 +200,13 @@ public class Game {
 
         return winner.getId();
     }
+
+    public void sendToJail(String playerId) {
+        getPlayerById(playerId).ifPresent(player -> {
+            player.setInJail(true);
+            player.setJailTurns(2);
+            player.setPosition(10);
+        });
+    }
+
 }
