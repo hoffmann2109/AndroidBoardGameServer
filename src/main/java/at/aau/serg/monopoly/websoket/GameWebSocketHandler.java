@@ -512,7 +512,15 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
     private void handleSellProperty(WebSocketSession session, String payload, String userId) {
         try {
-            int propertyId = Integer.parseInt(payload.substring("SELL_PROPERTY:".length()));
+            int propertyId;
+            // Check if the payload is in JSON format
+            if (payload.contains("\"type\":\"SELL_PROPERTY\"")) {
+                JsonNode jsonNode = objectMapper.readTree(payload);
+                propertyId = jsonNode.get("propertyId").asInt();
+            } else {
+                // Handle string format
+                propertyId = Integer.parseInt(payload.substring("SELL_PROPERTY:".length()));
+            }
 
             Optional<Player> playerOpt = game.getPlayerById(userId);
             if (playerOpt.isEmpty()) {
