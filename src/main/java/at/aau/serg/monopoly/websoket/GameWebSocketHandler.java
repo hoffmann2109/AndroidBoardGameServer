@@ -4,10 +4,14 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import data.*;
+import data.deals.CounterProposalMessage;
 import jakarta.annotation.PostConstruct;
 import lombok.NonNull;
 import model.*;
 import model.properties.BaseProperty;
+import data.deals.DealProposalMessage;
+import data.deals.DealResponseMessage;
+import data.deals.DealResponseType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.*;
@@ -33,7 +37,6 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     final Map<String, String> sessionToUserId = new ConcurrentHashMap<>();
     private final Game game = new Game();
     private final ObjectMapper objectMapper = new ObjectMapper();
-
     private DiceManagerInterface diceManager;
 
     @Autowired
@@ -50,23 +53,30 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     RentCalculationService rentCalculationService;
     @Autowired
     private CheatService cheatService;
+    @Autowired
+    private DealService dealService;
+
+
     BotManager botManager;
 
     @PostConstruct
-        // wird aufgerufen, wenn Spring alles injiziert hat
-    void init() {
+    public void init() {
+        // Game-abhängige Services setzen
+        dealService.setGame(game);
         game.setPropertyService(propertyService);
         game.setPropertyTransactionService(propertyTransactionService);
 
+        // BotManager initialisieren
         botManager = new BotManager(
                 game,
                 objectMapper,
                 new BotManager.BotCallback() {
-                    @Override public void broadcast(String m){ broadcastMessage(m); }
-                    @Override public void updateGameState()  { broadcastGameState(); }
+                    @Override public void broadcast(String m) { broadcastMessage(m); }
+                    @Override public void updateGameState() { broadcastGameState(); }
                 }
         );
     }
+
 
     @Override
     public void afterConnectionEstablished(@NonNull WebSocketSession session) {
@@ -195,6 +205,12 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 } else if ("GIVE_UP".equals(type)) {
                     handleGiveUp(session, jsonNode);
                     return;
+                } else if ("SELL_PROPERTY".equals(type)) {
+                    String userId = sessionToUserId.get(sessionId);
+                    if (userId != null) {
+                        handleSellProperty(session, payload, userId);
+                    }
+                    return;
                 }
             }
         } catch (IOException e) {
@@ -301,6 +317,55 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 }
                 return;
             }
+            if (payload.contains("\"type\":\"DEAL_PROPOSAL\"")) {
+                DealProposalMessage deal = objectMapper.readValue(payload, DealProposalMessage.class);
+                logger.info("Received deal proposal from " + deal.getFromPlayerId());
+                dealService.saveProposal(deal);
+
+                WebSocketSession targetSession = findSessionByPlayerId(deal.getToPlayerId());
+                if (targetSession != null) {
+                    sendMessageToSession(targetSession, payload);
+                } else {
+                    logger.warning("Target player session not found for deal proposal");
+                }
+                return;
+            }
+
+            if (payload.contains("\"type\":\"DEAL_RESPONSE\"")) {
+                DealResponseMessage response = objectMapper.readValue(payload, DealResponseMessage.class);
+                logger.info("Received deal response: " + response.getResponseType()
+                        + " from " + response.getFromPlayerId()
+                        + " to " + response.getToPlayerId());
+
+                if (response.getResponseType() == DealResponseType.ACCEPT) {
+                    dealService.executeTrade(response);
+                    broadcastGameState();
+                }
+
+                WebSocketSession targetSession = findSessionByPlayerId(response.getToPlayerId());
+                if (targetSession != null) {
+                    sendMessageToSession(targetSession, payload);
+                } else {
+                    logger.warning("Target player session not found for deal response");
+                }
+                return;
+            }
+
+            if (payload.contains("\"type\":\"COUNTER_OFFER\"")) {
+                CounterProposalMessage counter = objectMapper.readValue(payload, CounterProposalMessage.class);
+                logger.info("Received counter offer from " + counter.getFromPlayerId());
+
+                dealService.saveCounterProposal(counter);
+
+                WebSocketSession targetSession = findSessionByPlayerId(counter.getToPlayerId());
+                if (targetSession != null) {
+                    sendMessageToSession(targetSession, payload); // leite den Gegenvorschlag weiter
+                } else {
+                    logger.warning("Target player session not found for counter offer");
+                }
+                return;
+            }
+
             if (payload.trim().equalsIgnoreCase("Roll")) {
                 if (!game.isPlayerTurn(userId)) {
                     sendMessageToSession(session, createJsonError("Not your turn!"));
@@ -343,7 +408,6 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
             } else if ("NEXT_TURN".equals(payload)) {
                 logger.log(Level.INFO, "Received NEXT_TURN from {0}", userId);
-
 
                 if (!game.isPlayerTurn(userId)) {
                     sendMessageToSession(session, createJsonError("Not your turn!"));
@@ -408,6 +472,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 }, 300);
             }
         }
+        sessions.remove(session);
     }
 
 
@@ -458,11 +523,9 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     private void handleBuyProperty(WebSocketSession session, String userId, String payload) {
         try {
             int propertyId = Integer.parseInt(payload.substring("BUY_PROPERTY:".length()));
-            logger.log(Level.INFO, "Player {0} attempts to buy property {1}", new Object[]{userId, propertyId});//bewusst geloggt aktuell
 
             Optional<Player> playerOpt = game.getPlayerById(userId);
             if (playerOpt.isEmpty()) {
-                logger.log(Level.WARNING, "Player {0} not found in game state during buy attempt.", userId);//bewusst geloggt aktuell
                 sendMessageToSession(session, createJsonError("Player not found."));
                 return;
             }
@@ -471,29 +534,54 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             if (propertyTransactionService.canBuyProperty(player, propertyId)) {
                 boolean success = propertyTransactionService.buyProperty(player, propertyId);
                 if (success) {
-                    logger.log(Level.INFO, "Property {0} bought successfully by player {1}", new Object[]{propertyId, userId});//bewusst geloggt aktuell
                     broadcastMessage(createJsonMessage(PLAYER_PREFIX + userId + " bought property " + propertyId));
                     broadcastGameState();
                 } else {
-                    logger.log(Level.WARNING, "Property purchase failed for player {0}, property {1} after canBuy check.", new Object[]{userId, propertyId});//bewusst geloggt aktuell
                     sendMessageToSession(session, createJsonError("Failed to buy property due to server error."));
                 }
             } else {
                 if (!game.isPlayerTurn(userId)) {
-                    logger.log(Level.WARNING, "Player {0} attempted to buy property {1} when it is not their turn", new Object[]{userId, propertyId});//bewusst geloggt aktuell
                     sendMessageToSession(session, createJsonError("Cannot buy property - it's not your turn."));
                 } else {
-                    logger.log(Level.WARNING, "Property purchase failed for player {0}, property {1} after canBuy check.", new Object[]{userId, propertyId});//bewusst geloggt aktuell
                     sendMessageToSession(session, createJsonError("Cannot buy property (insufficient funds or already owned)."));
                 }
             }
-
         } catch (NumberFormatException e) {
-            logger.log(Level.WARNING, "Invalid property ID in payload from player {0}: {1}", new Object[]{userId, sanitizeForLog(payload)});//bewusst geloggt aktuell
             sendMessageToSession(session, createJsonError("Invalid property ID format."));
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error handling BUY_PROPERTY for player {0}: {1}", new Object[]{userId, e.getMessage()});//bewusst geloggt aktuell
             sendMessageToSession(session, createJsonError("Server error handling buy property request."));
+        }
+    }
+
+    private void handleSellProperty(WebSocketSession session, String payload, String userId) {
+        try {
+            int propertyId;
+            // Check if the payload is in JSON format
+            if (payload.contains("\"type\":\"SELL_PROPERTY\"")) {
+                JsonNode jsonNode = objectMapper.readTree(payload);
+                propertyId = jsonNode.get("propertyId").asInt();
+            } else {
+                // Handle string format
+                propertyId = Integer.parseInt(payload.substring("SELL_PROPERTY:".length()));
+            }
+
+            Optional<Player> playerOpt = game.getPlayerById(userId);
+            if (playerOpt.isEmpty()) {
+                sendMessageToSession(session, createJsonError("Player not found."));
+                return;
+            }
+            Player player = playerOpt.get();
+
+            if (propertyTransactionService.sellProperty(player, propertyId)) {
+                broadcastMessage(createJsonMessage(PLAYER_PREFIX + userId + " sold property " + propertyId));
+                broadcastGameState();
+            } else {
+                sendMessageToSession(session, createJsonError("Cannot sell property (not owned by player)."));
+            }
+        } catch (NumberFormatException e) {
+            sendMessageToSession(session, createJsonError("Invalid property ID format."));
+        } catch (Exception e) {
+            sendMessageToSession(session, createJsonError("Server error handling sell property request."));
         }
     }
 
@@ -691,11 +779,6 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             }
 
             broadcastGameState();
-
-            if (player.isBot() && !player.hasRolledThisTurn()) {
-                // Bot hat seinen Zug erledigt -> sofort weiter
-                advanceToNextPlayer();
-            }
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Error handling player landing: {0}", e.getMessage());
         }
@@ -710,4 +793,17 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
+    private WebSocketSession findSessionByPlayerId(String playerId) {
+        for (Map.Entry<String, String> entry : sessionToUserId.entrySet()) {
+            if (entry.getValue().equals(playerId)) {
+                String sessionId = entry.getKey();
+                for (WebSocketSession session : sessions) {
+                    if (session.getId().equals(sessionId)) {
+                        return session;
+                    }
+                }
+            }
+        }
+        return null;
+    }
 }

@@ -46,7 +46,8 @@ class PropertyTransactionServiceTest {
                 MORTGAGE_VALUE, false, "image", 1 // Added position parameter
         );
 
-        // Ensure collections are empty if methods like getTrainStations are called
+        // Make all property service lookups lenient
+        lenient().when(propertyService.getHouseablePropertyById(anyInt())).thenReturn(null);
         lenient().when(propertyService.getTrainStations()).thenReturn(Collections.emptyList());
         lenient().when(propertyService.getUtilities()).thenReturn(Collections.emptyList());
     }
@@ -274,5 +275,120 @@ class PropertyTransactionServiceTest {
         verify(propertyService).getHouseablePropertyById(PROPERTY_ID);
         verify(propertyService).getTrainStations();
         verify(propertyService).getUtilities();
+    }
+
+    // --- Tests for sellProperty ---
+
+    @Test
+    void sellProperty_SuccessfulSale() {
+        // Arrange
+        testProperty.setOwnerId(PLAYER_ID);
+        when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(testProperty);
+        int initialMoney = 100;
+        testPlayer.setMoney(initialMoney);
+
+        // Act
+        boolean result = propertyTransactionService.sellProperty(testPlayer, PROPERTY_ID);
+
+        // Assert
+        assertTrue(result);
+        assertEquals(initialMoney + (PURCHASE_PRICE / 2), testPlayer.getMoney()); // Money should be increased by half the purchase price
+        assertNull(testProperty.getOwnerId()); // Owner ID should be cleared
+    }
+
+    @Test
+    void sellProperty_PropertyNotFound_ReturnsFalse() {
+        // Arrange
+        when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(null);
+        when(propertyService.getTrainStations()).thenReturn(Collections.emptyList());
+        when(propertyService.getUtilities()).thenReturn(Collections.emptyList());
+        int initialMoney = 100;
+        testPlayer.setMoney(initialMoney);
+
+        // Act
+        boolean result = propertyTransactionService.sellProperty(testPlayer, PROPERTY_ID);
+
+        // Assert
+        assertFalse(result);
+        assertEquals(initialMoney, testPlayer.getMoney()); // Money should not change
+    }
+
+    @Test
+    void sellProperty_NotOwnedByPlayer_ReturnsFalse() {
+        // Arrange
+        testProperty.setOwnerId("differentPlayer");
+        when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(testProperty);
+        int initialMoney = 100;
+        testPlayer.setMoney(initialMoney);
+
+        // Act
+        boolean result = propertyTransactionService.sellProperty(testPlayer, PROPERTY_ID);
+
+        // Assert
+        assertFalse(result);
+        assertEquals(initialMoney, testPlayer.getMoney()); // Money should not change
+        assertEquals("differentPlayer", testProperty.getOwnerId()); // Owner ID should not change
+    }
+
+    @Test
+    void sellProperty_WithTrainStation() {
+        // Arrange
+        TrainStation trainStation = new TrainStation(
+            PROPERTY_ID,
+            PLAYER_ID,  // owned by test player
+            "Test Station",
+            200,   // purchase price
+            25,    // baseRent
+            50,    // rent2Stations
+            75,    // rent3Stations
+            100,   // rent4Stations
+            MORTGAGE_VALUE,
+            false, // not mortgaged
+            "train_image",
+            5      // position
+        );
+        lenient().when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(null);
+        lenient().when(propertyService.getTrainStations()).thenReturn(Collections.singletonList(trainStation));
+        lenient().when(propertyService.getUtilities()).thenReturn(Collections.emptyList());
+        int initialMoney = 100;
+        testPlayer.setMoney(initialMoney);
+
+        // Act
+        boolean result = propertyTransactionService.sellProperty(testPlayer, PROPERTY_ID);
+
+        // Assert
+        assertTrue(result);
+        assertEquals(initialMoney + (200 / 2), testPlayer.getMoney()); // Money should be increased by half the purchase price
+        assertNull(trainStation.getOwnerId()); // Owner ID should be cleared
+    }
+
+    @Test
+    void sellProperty_WithUtility() {
+        // Arrange
+        Utility utility = new Utility(
+            PROPERTY_ID,
+            PLAYER_ID,  // owned by test player
+            "Test Utility",
+            150,   // purchase price
+            4,     // rentOneUtilityMultiplier
+            10,    // rentTwoUtilitiesMultiplier
+            MORTGAGE_VALUE,
+            false, // not mortgaged
+            "utility_image",
+            12     // position
+        );
+        when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(null);
+        when(propertyService.getTrainStations()).thenReturn(Collections.emptyList());
+        when(propertyService.getUtilities()).thenReturn(Collections.singletonList(utility));
+        int initialMoney = 100;
+        testPlayer.setMoney(initialMoney);
+
+        // Act
+        boolean result = propertyTransactionService.sellProperty(testPlayer, PROPERTY_ID);
+
+        // Assert
+        assertTrue(result);
+        assertEquals(initialMoney + (150 / 2), testPlayer.getMoney()); // Money should be increased by half the purchase price
+        assertNull(utility.getOwnerId()); // Owner ID should be cleared
     }
 }
