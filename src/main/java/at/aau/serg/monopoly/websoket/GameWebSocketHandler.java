@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import data.*;
+import jakarta.annotation.PostConstruct;
 import lombok.NonNull;
 import model.*;
 import model.properties.BaseProperty;
@@ -13,6 +14,7 @@ import org.springframework.web.socket.*;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -31,17 +33,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     final Map<String, String> sessionToUserId = new ConcurrentHashMap<>();
     private final Game game = new Game();
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final BotManager botManager = new BotManager(game, objectMapper, new BotManager.BotCallback() {
-        @Override
-        public void broadcast(String message) {
-            broadcastMessage(message);
-        }
 
-        @Override
-        public void updateGameState() {
-            broadcastGameState();
-        }
-    });
     private DiceManagerInterface diceManager;
 
     @Autowired
@@ -58,6 +50,23 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     RentCalculationService rentCalculationService;
     @Autowired
     private CheatService cheatService;
+    BotManager botManager;
+
+    @PostConstruct
+        // wird aufgerufen, wenn Spring alles injiziert hat
+    void init() {
+        game.setPropertyService(propertyService);
+        game.setPropertyTransactionService(propertyTransactionService);
+
+        botManager = new BotManager(
+                game,
+                objectMapper,
+                new BotManager.BotCallback() {
+                    @Override public void broadcast(String m){ broadcastMessage(m); }
+                    @Override public void updateGameState()  { broadcastGameState(); }
+                }
+        );
+    }
 
     @Override
     public void afterConnectionEstablished(@NonNull WebSocketSession session) {
@@ -334,7 +343,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
             } else if ("NEXT_TURN".equals(payload)) {
                 logger.log(Level.INFO, "Received NEXT_TURN from {0}", userId);
-                botManager.handleBotTurn();
+
 
                 if (!game.isPlayerTurn(userId)) {
                     sendMessageToSession(session, createJsonError("Not your turn!"));
@@ -349,14 +358,12 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                         if (!player.isInJail()) {
                             broadcastMessage("Player " + userId + " is released from jail!");
                         }
-                        // Always advance to next player after jail turn
-                        game.nextPlayer();
-                    } else {
-                        game.nextPlayer(); // Normal turn advancement
-                    }
-                }
 
-                broadcastGameState();
+                    } //else {
+                        //game.nextPlayer(); // Normal turn advancement
+                    //}
+                }
+                advanceToNextPlayer();
 
             } else if (payload.startsWith("MANUAL_ROLL:")) {
                 handleManualRoll(payload, userId, session);
@@ -380,22 +387,37 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         String userId = sessionToUserId.get(session.getId());
         if (userId != null) {
             game.markPlayerDisconnected(userId);
-            game.replaceDisconnectedWithBot(userId); // Spieler wird zu Bot
+            game.replaceDisconnectedWithBot(userId); // Bot übernimmt intern dieselbe ID
 
             sessionToUserId.remove(session.getId());
+            sessions.remove(session);
+
             broadcastMessage("Player left: " + userId + " and was replaced by a bot.");
             broadcastGameState();
 
             logger.log(Level.INFO, "Player disconnected and replaced with bot: {0}", userId);
 
-            botManager.handleBotTurn(); // Bot übernimmt Zug sofort, wenn er dran ist
+            // Prüfen, ob der aktuelle Spieler gerade disconnected wurde
+            Player current = game.getCurrentPlayer();
+            if (current != null && current.getId().equals(userId)) {
+                new java.util.Timer().schedule(new java.util.TimerTask() {
+                    @Override
+                    public void run() {
+                        advanceToNextPlayer(); // Nächster Spieler oder Bot übernimmt
+                    }
+                }, 300);
+            }
         }
-        sessions.remove(session);
     }
 
 
+
+
+
+
+
     private void broadcastMessage(String message) {
-        for (WebSocketSession session : sessions) {
+        for (WebSocketSession session : new ArrayList<>(sessions)) {
             try {
                 if (session.isOpen()) {
                     session.sendMessage(new TextMessage(message));
@@ -403,10 +425,12 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                     sessions.remove(session);
                 }
             } catch (Exception e) {
-                logger.log(Level.SEVERE, "Error sending message: {0}", e.getMessage());//bewusst geloggt aktuell
+                logger.log(Level.SEVERE, "Error sending message: {0}", e.getMessage());
+                sessions.remove(session);
             }
         }
     }
+
 
     void broadcastGameState() {
         try {
@@ -414,7 +438,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             broadcastMessage("GAME_STATE:" + gameState);
             broadcastMessage("PLAYER_TURN:" + game.getCurrentPlayer().getId());
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error broadcasting game state: {0}", e.getMessage());//bewusst geloggt aktuell
+            logger.log(Level.SEVERE, "Error Fbroadcasting game state: {0}", e.getMessage());//bewusst geloggt aktuell
         }
     }
 
@@ -582,6 +606,8 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                     quittingUserId);
 
             game.giveUp(quittingUserId);
+            botManager.handleBotTurn();
+
 
             // Do we have a winner already?
             if (game.getPlayers().size() == 1) {
@@ -595,11 +621,13 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 handleEndGame();
                 return;
             }
+            advanceToNextPlayer();
 
             GiveUpMessage msg = new GiveUpMessage(quittingUserId);
             String json = objectMapper.writeValueAsString(msg);
             broadcastMessage(json);
-            broadcastGameState();
+
+
 
         } catch (JsonProcessingException e) {
             logger.log(Level.SEVERE,
@@ -663,8 +691,23 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             }
 
             broadcastGameState();
+
+            if (player.isBot() && !player.hasRolledThisTurn()) {
+                // Bot hat seinen Zug erledigt -> sofort weiter
+                advanceToNextPlayer();
+            }
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Error handling player landing: {0}", e.getMessage());
         }
     }
+
+    private void advanceToNextPlayer() {
+        game.nextPlayer();
+        broadcastGameState();
+        Player current = game.getCurrentPlayer();
+        if (current != null && current.isBot()) {
+            botManager.handleBotTurn();
+        }
+    }
+
 }

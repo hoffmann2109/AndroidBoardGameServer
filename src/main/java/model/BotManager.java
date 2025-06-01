@@ -1,16 +1,14 @@
 package model;
 
 import data.DiceRollMessage;
-import model.Game;
-import model.Player;
 import model.properties.BaseProperty;
-import org.springframework.web.socket.TextMessage;
-import org.springframework.web.socket.WebSocketSession;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -19,6 +17,7 @@ public class BotManager {
     private final Game game;
     private final ObjectMapper objectMapper;
     private final Logger logger = Logger.getLogger(BotManager.class.getName());
+    private final ScheduledExecutorService scheduler;
 
     public interface BotCallback {
         void broadcast(String message);
@@ -27,15 +26,27 @@ public class BotManager {
 
     private final BotCallback callback;
 
-    public BotManager(Game game, ObjectMapper objectMapper, BotCallback callback) {
-        this.game = game;
-        this.objectMapper = objectMapper;
-        this.callback = callback;
+    public BotManager(Game game,
+                      ObjectMapper objectMapper,
+                      BotCallback callback) {
+        this(game, objectMapper, callback, Executors.newSingleThreadScheduledExecutor());
     }
+
+    // Für Tests
+    BotManager(Game game,
+               ObjectMapper objectMapper,
+               BotCallback callback,
+               ScheduledExecutorService scheduler) {
+        this.game         = game;
+        this.objectMapper = objectMapper;
+        this.callback     = callback;
+        this.scheduler    = scheduler;
+    }
+
 
     public void handleBotTurn() {
         Player current = game.getCurrentPlayer();
-        if (current == null || !current.isBot() || !current.isConnected()) return;
+        if (current == null || !current.isBot() ) return;
 
         logger.info("Bot " + current.getName() + " is taking their turn...");
 

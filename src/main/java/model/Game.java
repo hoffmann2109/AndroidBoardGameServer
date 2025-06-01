@@ -102,6 +102,7 @@ public class Game {
                 return;
             }
         }
+
     }
 
     public List<PlayerInfo> getPlayerInfo() {
@@ -235,11 +236,15 @@ public class Game {
 
     public void replaceDisconnectedWithBot(String userId) {
         getPlayerById(userId).ifPresent(player -> {
-            player.setConnected(true);
-            player.setBot(true);
-            player.setName(player.getName() + " [Bot]");
+            if (!player.isConnected() && !player.isBot()) {
+                player.setBot(true);
+                player.setConnected(true);
+                player.setName(player.getName() + " 🤖"); // Optional: Name sichtbar markieren
+                System.out.println("Replaced disconnected player with bot: " + player.getId());
+            }
         });
     }
+
 
     public void setPropertyService(PropertyService propertyService) {
         this.propertyService = propertyService;
