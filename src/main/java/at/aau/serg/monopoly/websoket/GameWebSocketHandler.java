@@ -183,6 +183,12 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 } else if ("GIVE_UP".equals(type)) {
                     handleGiveUp(session, jsonNode);
                     return;
+                } else if ("SELL_PROPERTY".equals(type)) {
+                    String userId = sessionToUserId.get(sessionId);
+                    if (userId != null) {
+                        handleSellProperty(session, payload, userId);
+                    }
+                    return;
                 }
             }
         } catch (IOException e) {
@@ -410,7 +416,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             } else if (payload.startsWith("BUY_PROPERTY:")) {
                 handleBuyProperty(session, userId, payload);
             } else if (payload.startsWith("SELL_PROPERTY:")) {
-                handleSellProperty(session, userId, payload);
+                handleSellProperty(session, payload, userId);
             } else {
                 String safePayload = sanitizeForLog(payload);
                 logger.log(Level.INFO, "Received unknown message format: {0} from player {1}", new Object[]{safePayload, userId});//bewusst geloggt aktuell
@@ -513,11 +519,10 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    private void handleSellProperty(WebSocketSession session, String userId, String payload) {
+    private void handleSellProperty(WebSocketSession session, String payload, String userId) {
         try {
-            SellPropertyMessage sellMsg = objectMapper.readValue(payload, SellPropertyMessage.class);
-            logger.log(Level.INFO, "Player {0} attempts to sell property {1}", 
-                    new Object[]{userId, sellMsg.getPropertyId()});
+            int propertyId = Integer.parseInt(payload.substring("SELL_PROPERTY:".length()));
+            logger.info("Player " + userId + " attempting to sell property " + propertyId);
 
             Optional<Player> playerOpt = game.getPlayerById(userId);
             if (playerOpt.isEmpty()) {
@@ -527,18 +532,22 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             }
             Player player = playerOpt.get();
 
-            if (propertyTransactionService.sellProperty(player, sellMsg.getPropertyId())) {
-                logger.log(Level.INFO, "Property {0} sold successfully by player {1}", 
-                        new Object[]{sellMsg.getPropertyId(), userId});
-                broadcastMessage(createJsonMessage(PLAYER_PREFIX + userId + " sold property " + sellMsg.getPropertyId()));
+            if (propertyTransactionService.sellProperty(player, propertyId)) {
+                logger.log(Level.INFO, "Property {0} sold successfully by player {1}",
+                        new Object[]{propertyId, userId});
+                broadcastMessage(createJsonMessage(PLAYER_PREFIX + userId + " sold property " + propertyId));
                 broadcastGameState();
             } else {
-                logger.log(Level.WARNING, "Property sale failed for player {0}, property {1}", 
-                        new Object[]{userId, sellMsg.getPropertyId()});
+                logger.log(Level.WARNING, "Property sale failed for player {0}, property {1}",
+                        new Object[]{userId, propertyId});
                 sendMessageToSession(session, createJsonError("Cannot sell property (not owned by player)."));
             }
+        } catch (NumberFormatException e) {
+            logger.log(Level.WARNING, "Invalid property ID in payload from player {0}: {1}",
+                    new Object[]{userId, sanitizeForLog(payload)});
+            sendMessageToSession(session, createJsonError("Invalid property ID format."));
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error handling SELL_PROPERTY for player {0}: {1}", 
+            logger.log(Level.SEVERE, "Error handling SELL_PROPERTY for player {0}: {1}",
                     new Object[]{userId, e.getMessage()});
             sendMessageToSession(session, createJsonError("Server error handling sell property request."));
         }
