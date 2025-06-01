@@ -409,6 +409,8 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 handleUpdateMoney(payload, userId);
             } else if (payload.startsWith("BUY_PROPERTY:")) {
                 handleBuyProperty(session, userId, payload);
+            } else if (payload.startsWith("SELL_PROPERTY:")) {
+                handleSellProperty(session, userId, payload);
             } else {
                 String safePayload = sanitizeForLog(payload);
                 logger.log(Level.INFO, "Received unknown message format: {0} from player {1}", new Object[]{safePayload, userId});//bewusst geloggt aktuell
@@ -508,6 +510,37 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Error handling BUY_PROPERTY for player {0}: {1}", new Object[]{userId, e.getMessage()});//bewusst geloggt aktuell
             sendMessageToSession(session, createJsonError("Server error handling buy property request."));
+        }
+    }
+
+    private void handleSellProperty(WebSocketSession session, String userId, String payload) {
+        try {
+            SellPropertyMessage sellMsg = objectMapper.readValue(payload, SellPropertyMessage.class);
+            logger.log(Level.INFO, "Player {0} attempts to sell property {1}", 
+                    new Object[]{userId, sellMsg.getPropertyId()});
+
+            Optional<Player> playerOpt = game.getPlayerById(userId);
+            if (playerOpt.isEmpty()) {
+                logger.log(Level.WARNING, "Player {0} not found in game state during sell attempt.", userId);
+                sendMessageToSession(session, createJsonError("Player not found."));
+                return;
+            }
+            Player player = playerOpt.get();
+
+            if (propertyTransactionService.sellProperty(player, sellMsg.getPropertyId())) {
+                logger.log(Level.INFO, "Property {0} sold successfully by player {1}", 
+                        new Object[]{sellMsg.getPropertyId(), userId});
+                broadcastMessage(createJsonMessage(PLAYER_PREFIX + userId + " sold property " + sellMsg.getPropertyId()));
+                broadcastGameState();
+            } else {
+                logger.log(Level.WARNING, "Property sale failed for player {0}, property {1}", 
+                        new Object[]{userId, sellMsg.getPropertyId()});
+                sendMessageToSession(session, createJsonError("Cannot sell property (not owned by player)."));
+            }
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "Error handling SELL_PROPERTY for player {0}: {1}", 
+                    new Object[]{userId, e.getMessage()});
+            sendMessageToSession(session, createJsonError("Server error handling sell property request."));
         }
     }
 
