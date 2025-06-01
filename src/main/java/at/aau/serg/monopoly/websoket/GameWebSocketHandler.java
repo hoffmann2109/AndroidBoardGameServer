@@ -183,6 +183,12 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 } else if ("GIVE_UP".equals(type)) {
                     handleGiveUp(session, jsonNode);
                     return;
+                } else if ("SELL_PROPERTY".equals(type)) {
+                    String userId = sessionToUserId.get(sessionId);
+                    if (userId != null) {
+                        handleSellProperty(session, payload, userId);
+                    }
+                    return;
                 }
             }
         } catch (IOException e) {
@@ -409,6 +415,8 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 handleUpdateMoney(payload, userId);
             } else if (payload.startsWith("BUY_PROPERTY:")) {
                 handleBuyProperty(session, userId, payload);
+            } else if (payload.startsWith("SELL_PROPERTY:")) {
+                handleSellProperty(session, payload, userId);
             } else {
                 String safePayload = sanitizeForLog(payload);
                 logger.log(Level.INFO, "Received unknown message format: {0} from player {1}", new Object[]{safePayload, userId});//bewusst geloggt aktuell
@@ -472,11 +480,9 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     private void handleBuyProperty(WebSocketSession session, String userId, String payload) {
         try {
             int propertyId = Integer.parseInt(payload.substring("BUY_PROPERTY:".length()));
-            logger.log(Level.INFO, "Player {0} attempts to buy property {1}", new Object[]{userId, propertyId});//bewusst geloggt aktuell
 
             Optional<Player> playerOpt = game.getPlayerById(userId);
             if (playerOpt.isEmpty()) {
-                logger.log(Level.WARNING, "Player {0} not found in game state during buy attempt.", userId);//bewusst geloggt aktuell
                 sendMessageToSession(session, createJsonError("Player not found."));
                 return;
             }
@@ -485,29 +491,54 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             if (propertyTransactionService.canBuyProperty(player, propertyId)) {
                 boolean success = propertyTransactionService.buyProperty(player, propertyId);
                 if (success) {
-                    logger.log(Level.INFO, "Property {0} bought successfully by player {1}", new Object[]{propertyId, userId});//bewusst geloggt aktuell
                     broadcastMessage(createJsonMessage(PLAYER_PREFIX + userId + " bought property " + propertyId));
                     broadcastGameState();
                 } else {
-                    logger.log(Level.WARNING, "Property purchase failed for player {0}, property {1} after canBuy check.", new Object[]{userId, propertyId});//bewusst geloggt aktuell
                     sendMessageToSession(session, createJsonError("Failed to buy property due to server error."));
                 }
             } else {
                 if (!game.isPlayerTurn(userId)) {
-                    logger.log(Level.WARNING, "Player {0} attempted to buy property {1} when it is not their turn", new Object[]{userId, propertyId});//bewusst geloggt aktuell
                     sendMessageToSession(session, createJsonError("Cannot buy property - it's not your turn."));
                 } else {
-                    logger.log(Level.WARNING, "Property purchase failed for player {0}, property {1} after canBuy check.", new Object[]{userId, propertyId});//bewusst geloggt aktuell
                     sendMessageToSession(session, createJsonError("Cannot buy property (insufficient funds or already owned)."));
                 }
             }
-
         } catch (NumberFormatException e) {
-            logger.log(Level.WARNING, "Invalid property ID in payload from player {0}: {1}", new Object[]{userId, sanitizeForLog(payload)});//bewusst geloggt aktuell
             sendMessageToSession(session, createJsonError("Invalid property ID format."));
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error handling BUY_PROPERTY for player {0}: {1}", new Object[]{userId, e.getMessage()});//bewusst geloggt aktuell
             sendMessageToSession(session, createJsonError("Server error handling buy property request."));
+        }
+    }
+
+    private void handleSellProperty(WebSocketSession session, String payload, String userId) {
+        try {
+            int propertyId;
+            // Check if the payload is in JSON format
+            if (payload.contains("\"type\":\"SELL_PROPERTY\"")) {
+                JsonNode jsonNode = objectMapper.readTree(payload);
+                propertyId = jsonNode.get("propertyId").asInt();
+            } else {
+                // Handle string format
+                propertyId = Integer.parseInt(payload.substring("SELL_PROPERTY:".length()));
+            }
+
+            Optional<Player> playerOpt = game.getPlayerById(userId);
+            if (playerOpt.isEmpty()) {
+                sendMessageToSession(session, createJsonError("Player not found."));
+                return;
+            }
+            Player player = playerOpt.get();
+
+            if (propertyTransactionService.sellProperty(player, propertyId)) {
+                broadcastMessage(createJsonMessage(PLAYER_PREFIX + userId + " sold property " + propertyId));
+                broadcastGameState();
+            } else {
+                sendMessageToSession(session, createJsonError("Cannot sell property (not owned by player)."));
+            }
+        } catch (NumberFormatException e) {
+            sendMessageToSession(session, createJsonError("Invalid property ID format."));
+        } catch (Exception e) {
+            sendMessageToSession(session, createJsonError("Server error handling sell property request."));
         }
     }
 
