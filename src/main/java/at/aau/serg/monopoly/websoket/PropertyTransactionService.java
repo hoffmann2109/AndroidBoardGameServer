@@ -94,6 +94,36 @@ public class PropertyTransactionService {
     }
 
     /**
+     * Executes the sale of a property back to the bank.
+     * @param player The player selling the property.
+     * @param propertyId The ID of the property being sold.
+     * @return true if the sale was successful, false otherwise.
+     */
+    public boolean sellProperty(Player player, int propertyId) {
+        BaseProperty property = findPropertyById(propertyId);
+        
+        if (property == null || !player.getId().equals(property.getOwnerId())) {
+            logger.log(Level.WARNING, "Attempted to sell property {0} by player {1} failed pre-check.", 
+                    new Object[]{propertyId, player.getId()});
+            return false;
+        }
+        
+        try {
+            // Return half of the purchase price to the player
+            int sellAmount = property.getPurchasePrice() / 2;
+            player.addMoney(sellAmount);
+            property.setOwnerId(null);
+            
+            logger.log(Level.INFO, "Player {0} successfully sold property {1}. New balance: {2}",
+                    new Object[]{player.getId(), propertyId, player.getMoney()});
+            return true;
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "An unexpected error occurred during property sale: {0}", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Helper method to find a property by its ID across all property types
      */
     BaseProperty findPropertyById(int propertyId) {
