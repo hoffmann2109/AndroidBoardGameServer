@@ -51,23 +51,23 @@ public class DealService {
         return proposal;
     }
 
-    public void executeTrade(DealResponseMessage response) {
+    public DealProposalMessage executeTrade(DealResponseMessage response) {
         if (game == null) {
             logger.warning("Game instance is not set in DealService.");
-            return;
+            return null;
         }
 
         DealProposalMessage proposal = getPendingDeal(response);
         if (proposal == null) {
             logger.warning("No saved deal for response from " + response.getFromPlayerId() + " to " + response.getToPlayerId());
-            return;
+            return null;
         }
 
         Player sender = game.getPlayerById(proposal.getFromPlayerId()).orElse(null);
         Player receiver = game.getPlayerById(proposal.getToPlayerId()).orElse(null);
         if (sender == null || receiver == null) {
             logger.warning("Sender or receiver not found");
-            return;
+            return null;
         }
 
         // Eigentum vom Sender → Empfänger
@@ -101,5 +101,8 @@ public class DealService {
         removeProposal(response.getFromPlayerId());
 
         logger.info("Trade executed between " + sender.getName() + " and " + receiver.getName());
+
+        // Proposal zurückgeben
+        return proposal;
     }
 }

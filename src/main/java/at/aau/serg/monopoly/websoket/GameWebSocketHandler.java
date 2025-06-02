@@ -295,6 +295,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 }
                 return;
             }
+
             if (payload.contains("\"type\":\"DEAL_PROPOSAL\"")) {
                 DealProposalMessage deal = objectMapper.readValue(payload, DealProposalMessage.class);
                 logger.info("Received deal proposal from " + deal.getFromPlayerId());
@@ -316,7 +317,23 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                         + " to " + response.getToPlayerId());
 
                 if (response.getResponseType() == DealResponseType.ACCEPT) {
-                    dealService.executeTrade(response);
+
+                    DealProposalMessage proposal = dealService.executeTrade(response);
+
+                    if (proposal != null) {
+                        // Für jedes Property von Sender -> Empfänger:
+                        for (int propId : proposal.getOfferedPropertyIds()) {
+                            String msg = "Player " + proposal.getToPlayerId() + " bought property " + propId;
+                            broadcastMessage(createJsonMessage(msg));
+                        }
+
+                        // Für jedes Property von Empfänger -> Sender:
+                        for (int propId : proposal.getRequestedPropertyIds()) {
+                            String msg = "Player " + proposal.getFromPlayerId() + " bought property " + propId;
+                            broadcastMessage(createJsonMessage(msg));
+                        }
+                    }
+
                     broadcastGameState();
                 }
 
