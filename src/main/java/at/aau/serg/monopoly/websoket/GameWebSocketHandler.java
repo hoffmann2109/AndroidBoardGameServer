@@ -330,7 +330,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                         + " to " + response.getToPlayerId());
 
                 if (response.getResponseType() == DealResponseType.ACCEPT) {
-                    // Proposal speichern
+
                     DealProposalMessage proposal = dealService.executeTrade(response);
 
                     if (proposal != null) {
