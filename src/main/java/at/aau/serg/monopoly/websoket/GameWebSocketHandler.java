@@ -295,19 +295,6 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 }
                 return;
             }
-            if (payload.contains("\"type\":\"DEAL_PROPOSAL\"")) {
-                DealProposalMessage deal = objectMapper.readValue(payload, DealProposalMessage.class);
-                logger.info("Received deal proposal from " + deal.getFromPlayerId());
-                dealService.saveProposal(deal);
-
-                WebSocketSession targetSession = findSessionByPlayerId(deal.getToPlayerId());
-                if (targetSession != null) {
-                    sendMessageToSession(targetSession, payload);
-                } else {
-                    logger.warning("Target player session not found for deal proposal");
-                }
-                return;
-            }
 
             if (payload.contains("\"type\":\"DEAL_PROPOSAL\"")) {
                 DealProposalMessage deal = objectMapper.readValue(payload, DealProposalMessage.class);
