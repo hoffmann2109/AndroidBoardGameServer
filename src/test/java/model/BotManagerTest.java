@@ -19,7 +19,7 @@ import java.util.concurrent.*;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class BotManagerTest {
-    /*
+
 
     @Mock  Game                game;
     @Mock  DiceManagerInterface diceManager;
@@ -50,7 +50,7 @@ class BotManagerTest {
     void tearDown() {
         scheduler.shutdownNow();   // Threads sauber beenden
     }
-
+    @Disabled ("Will be inspected later")
     @Test
     void botBroadcasts_whenConnected() {
         botManager.handleBotTurn();
@@ -59,7 +59,7 @@ class BotManagerTest {
                 .untilAsserted(() ->
                         verify(cb, atLeastOnce()).broadcast(anyString()));
     }
-
+    @Disabled ("Will be inspected later")
     @Test
     void botBroadcasts_evenWhenDisconnected() {
         bot.setConnected(false);          // Bot gilt als "Offline"
@@ -69,5 +69,5 @@ class BotManagerTest {
                 .untilAsserted(() ->
                         verify(cb, atLeastOnce()).broadcast(anyString()));
     }
-*/
+
 }

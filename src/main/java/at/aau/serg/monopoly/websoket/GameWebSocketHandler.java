@@ -61,20 +61,18 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
     @PostConstruct
     public void init() {
-        // Game-abhängige Services setzen
         dealService.setGame(game);
         game.setPropertyService(propertyService);
         game.setPropertyTransactionService(propertyTransactionService);
+        initializeBotManager(); // <-- wichtig!
+    }
 
-        // BotManager initialisieren
-        botManager = new BotManager(
-                game,
-                objectMapper,
-                new BotManager.BotCallback() {
-                    @Override public void broadcast(String m) { broadcastMessage(m); }
-                    @Override public void updateGameState() { broadcastGameState(); }
-                }
-        );
+
+    public void initializeBotManager() {
+        this.botManager = new BotManager(game, objectMapper, new BotManager.BotCallback() {
+            @Override public void broadcast(String m) { broadcastMessage(m); }
+            @Override public void updateGameState() { broadcastGameState(); }
+        });
     }
 
 
