@@ -696,6 +696,102 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
+    // Helper method to handle giveUp
+    public void processPlayerGiveUp(String quittingUserId) {
+
+        game.giveUp(quittingUserId);
+
+        // Broadcast a GIVE_UP message
+        try {
+            GiveUpMessage giveUpMsg = new GiveUpMessage(quittingUserId);
+            String json = objectMapper.writeValueAsString(giveUpMsg);
+            broadcastMessage(json);
+        } catch (JsonProcessingException e) {
+            logger.log(Level.SEVERE, "Error serializing GIVE_UP for {0}: {1}",
+                    new Object[]{ quittingUserId, e.getMessage() });
+        }
+
+        // Do we have a winner already?
+        if (game.getPlayers().size() == 1) {
+            String winnerId = game.getPlayers().get(0).getId();
+            try {
+                HasWonMessage win = new HasWonMessage(winnerId);
+                String winJson = objectMapper.writeValueAsString(win);
+                broadcastMessage(winJson);
+            } catch (JsonProcessingException e) {
+                logger.log(Level.SEVERE, "Error serializing HAS_WON: {0}", e.getMessage());
+            }
+            // Wrap up the game
+            handleEndGame();
+            return;
+        }
+
+        broadcastGameState();
+        checkAllPlayersForBankruptcy();
+    }
+
+    // Helper method to calculate the value of all owned properties
+    private int sumLiquidationValueOfOwnedProperties(String playerId) {
+        int total = 0;
+
+        // Houseable properties
+        for (HouseableProperty p : propertyService.getHouseableProperties()) {
+            if (playerId.equals(p.getOwnerId())) {
+                total += p.getPurchasePrice() / 2;
+            }
+        }
+        // Train stations
+        for (TrainStation ts : propertyService.getTrainStations()) {
+            if (playerId.equals(ts.getOwnerId())) {
+                total += ts.getPurchasePrice() / 2;
+            }
+        }
+        // Utilities
+        for (Utility u : propertyService.getUtilities()) {
+            if (playerId.equals(u.getOwnerId())) {
+                total += u.getPurchasePrice() / 2;
+            }
+        }
+
+        return total;
+    }
+
+    // Helper method to check if any player is bankrupt
+    private void checkAllPlayersForBankruptcy() {
+        // Copy of the players list
+        List<Player> snapshot = new ArrayList<>(game.getPlayers());
+
+        for (Player p : snapshot) {
+            String pid = p.getId();
+
+            // Net worth: cash + sum(property)
+            int cash = p.getMoney();
+            int assets = sumLiquidationValueOfOwnedProperties(pid);
+            int netWorth = cash + assets;
+
+            if (netWorth <= 0) {
+                logger.log(Level.INFO, "Player {0} is bankrupt (net worth {1}). Forcing GIVE_UP.",
+                        new Object[]{ pid, netWorth });
+
+                // Broadcast an IS_BANKRUPT
+                try {
+                    ObjectNode bankruptNotice = objectMapper.createObjectNode();
+                    bankruptNotice.put("type", "IS_BANKRUPT");
+                    bankruptNotice.put("userId", pid);
+                    broadcastMessage(objectMapper.writeValueAsString(bankruptNotice));
+                } catch (JsonProcessingException e) {
+                    logger.log(Level.SEVERE, "Error serializing IS_BANKRUPT for {0}: {1}",
+                            new Object[]{ pid, e.getMessage() });
+                }
+
+                // Process GIVE_UP
+                processPlayerGiveUp(pid);
+            }
+        }
+    }
+
+
+
     private void handlePlayerLanding(Player player) {
         try {
 
