@@ -15,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
+import java.util.Collections;
 
 @ExtendWith(MockitoExtension.class)
 class GameWebSocketHandlerPullTest {
@@ -23,6 +24,7 @@ class GameWebSocketHandlerPullTest {
     @Mock CardDeckService cardDeckService;
     @Mock PropertyTransactionService propertyTransactionService;
     @Mock GameHistoryService gameHistoryService;
+    @Mock PropertyService propertyService;
     @Captor ArgumentCaptor<TextMessage> msgCaptor;
 
     ObjectMapper mapper = new ObjectMapper();
@@ -36,6 +38,11 @@ class GameWebSocketHandlerPullTest {
         ReflectionTestUtils.setField(handler, "cardDeckService", cardDeckService);
         ReflectionTestUtils.setField(handler, "propertyTransactionService", propertyTransactionService);
         ReflectionTestUtils.setField(handler, "gameHistoryService", gameHistoryService);
+        ReflectionTestUtils.setField(handler, "propertyService", propertyService);
+
+        when(propertyService.getHouseableProperties()).thenReturn(Collections.emptyList());
+        when(propertyService.getTrainStations()).thenReturn(Collections.emptyList());
+        when(propertyService.getUtilities()).thenReturn(Collections.emptyList());
 
         when(session.getId()).thenReturn("sess-1");
         when(session.isOpen()).thenReturn(true);
@@ -70,15 +77,15 @@ class GameWebSocketHandlerPullTest {
         pull.setType("PULL_CARD");
         pull.setPlayerId("u1");
         pull.setCardType("CHANCE");
-
         String payload = mapper.writeValueAsString(pull);
+
         handler.handleTextMessage(session, new TextMessage(payload));
 
         verify(cardDeckService).drawCard(CardType.CHANCE);
 
         verify(spyCard).apply(any(), eq("u1"));
 
-        verify(session).sendMessage(msgCaptor.capture());
+        verify(session, times(1)).sendMessage(msgCaptor.capture());
         String jsonReply = msgCaptor.getValue().getPayload();
 
         assertTrue(jsonReply.contains("\"playerId\":\"u1\""),       "must include playerId");
