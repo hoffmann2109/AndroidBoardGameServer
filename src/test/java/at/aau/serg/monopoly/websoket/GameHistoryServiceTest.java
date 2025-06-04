@@ -27,9 +27,16 @@ class GameHistoryServiceTest {
         CollectionReference history = mock(CollectionReference.class);
         DocumentReference gameDoc = mock(DocumentReference.class);
         ApiFuture<WriteResult> future = mock(ApiFuture.class);
+        ApiFuture<DocumentSnapshot> getFuture = mock(ApiFuture.class);
+        DocumentSnapshot documentSnapshot = mock(DocumentSnapshot.class);
 
         when(firestore.collection("users")).thenReturn(users);
         when(users.document("123")).thenReturn(userDoc);
+
+        when(userDoc.get()).thenReturn(getFuture);
+        when(getFuture.get()).thenReturn(documentSnapshot);
+        when(documentSnapshot.exists()).thenReturn(true);
+
         when(userDoc.collection("gameHistory")).thenReturn(history);
         when(history.document(anyString())).thenReturn(gameDoc);
         when(gameDoc.set(any(GameHistory.class))).thenReturn(future);
@@ -54,9 +61,15 @@ class GameHistoryServiceTest {
         CollectionReference history = mock(CollectionReference.class);
         DocumentReference gameDoc = mock(DocumentReference.class);
         ApiFuture<WriteResult> future = mock(ApiFuture.class);
+        ApiFuture<DocumentSnapshot> getFuture = mock(ApiFuture.class);
+        DocumentSnapshot documentSnapshot = mock(DocumentSnapshot.class);
 
         when(firestore.collection("users")).thenReturn(users);
         when(users.document("123")).thenReturn(userDoc);
+        when(userDoc.get()).thenReturn(getFuture);
+        when(getFuture.get()).thenReturn(documentSnapshot);
+        when(documentSnapshot.exists()).thenReturn(true);
+
         when(userDoc.collection("gameHistory")).thenReturn(history);
         when(history.document(anyString())).thenReturn(gameDoc);
         when(gameDoc.set(any(GameHistory.class))).thenReturn(future);
@@ -80,9 +93,14 @@ class GameHistoryServiceTest {
         CollectionReference history = mock(CollectionReference.class);
         DocumentReference gameDoc = mock(DocumentReference.class);
         ApiFuture<WriteResult> future = mock(ApiFuture.class);
+        ApiFuture<DocumentSnapshot> getFuture = mock(ApiFuture.class);
+        DocumentSnapshot documentSnapshot = mock(DocumentSnapshot.class);
 
         when(firestore.collection("users")).thenReturn(users);
         when(users.document("123")).thenReturn(userDoc);
+        when(userDoc.get()).thenReturn(getFuture);
+        when(getFuture.get()).thenReturn(documentSnapshot);
+        when(documentSnapshot.exists()).thenReturn(true);
         when(userDoc.collection("gameHistory")).thenReturn(history);
         when(history.document(anyString())).thenReturn(gameDoc);
         when(gameDoc.set(any(GameHistory.class))).thenReturn(future);
@@ -118,9 +136,14 @@ class GameHistoryServiceTest {
         CollectionReference history = mock(CollectionReference.class);
         DocumentReference gameDoc = mock(DocumentReference.class);
         ApiFuture<WriteResult> future = mock(ApiFuture.class);
+        ApiFuture<DocumentSnapshot> getFuture = mock(ApiFuture.class);
+        DocumentSnapshot documentSnapshot = mock(DocumentSnapshot.class);
 
         when(firestore.collection(anyString())).thenReturn(users);
         when(users.document(anyString())).thenReturn(userDoc);
+        when(userDoc.get()).thenReturn(getFuture);
+        when(getFuture.get()).thenReturn(documentSnapshot);
+        when(documentSnapshot.exists()).thenReturn(true);
         when(userDoc.collection(anyString())).thenReturn(history);
         when(history.document(anyString())).thenReturn(gameDoc);
         when(gameDoc.set(any(GameHistory.class))).thenReturn(future);
