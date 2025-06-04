@@ -683,6 +683,10 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     // Helper method to handle giveUp
     public void processPlayerGiveUp(String quittingUserId) {
 
+        //mark player as looser for firebase
+        gameHistoryService.markPlayerAsLoser(quittingUserId);
+
+        //handle give up in game logic
         game.giveUp(quittingUserId);
 
         // Broadcast a GIVE_UP message
