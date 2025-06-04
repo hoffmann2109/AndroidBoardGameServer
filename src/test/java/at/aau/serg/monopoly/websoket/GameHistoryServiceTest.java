@@ -39,7 +39,7 @@ class GameHistoryServiceTest {
             client.when(FirestoreClient::getFirestore).thenReturn(firestore);
 
             GameHistoryService service = new GameHistoryService();
-            boolean result = service.saveGameHistory("123", 45, 1500, 1, 4, false);
+            boolean result = service.saveGameHistory("123", 45, 1500, 1, false);
 
             assertTrue(result);
             verify(gameDoc).set(any(GameHistory.class));
@@ -66,7 +66,7 @@ class GameHistoryServiceTest {
             client.when(FirestoreClient::getFirestore).thenReturn(firestore);
 
             GameHistoryService service = new GameHistoryService();
-            boolean result = service.saveGameHistory("123", 30, 1000, 1, 2, true);
+            boolean result = service.saveGameHistory("123", 30, 1000, 1, true);
 
             assertFalse(result);
         }
@@ -92,7 +92,7 @@ class GameHistoryServiceTest {
             client.when(FirestoreClient::getFirestore).thenReturn(firestore);
 
             GameHistoryService service = new GameHistoryService();
-            boolean result = service.saveGameHistory("123", 30, 1000, 1, 2, false);
+            boolean result = service.saveGameHistory("123", 30, 1000, 1, false);
 
             assertFalse(result);
         }
