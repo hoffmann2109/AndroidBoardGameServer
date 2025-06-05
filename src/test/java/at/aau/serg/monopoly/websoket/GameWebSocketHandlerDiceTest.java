@@ -387,4 +387,49 @@ class GameWebSocketHandlerDiceTest {
         assertTrue(msg.get("isPasch").asBoolean());
     }
 
+    @Test
+    void testShakeRequestTriggersDiceRollAndGameState() throws Exception {
+        // Arrange
+        handler.afterConnectionEstablished(session);
+        String initJson = mapper.createObjectNode()
+                .put("type", "INIT")
+                .put("userId", "u1")
+                .put("name", "TestUser")
+                .toString();
+        handler.handleTextMessage(session, new TextMessage(initJson));
+
+        DiceManagerInterface mockDice = mock(DiceManagerInterface.class);
+        when(mockDice.rollDices()).thenReturn(7);
+        when(mockDice.getLastRollValues()).thenReturn(List.of(3, 4));
+        when(mockDice.isPasch()).thenReturn(false);
+        ReflectionTestUtils.setField(handler, "diceManager", mockDice);
+
+        clearInvocations(session);
+
+        // Act
+        String shakeJson = mapper.createObjectNode()
+                .put("type", "SHAKE_REQUEST")
+                .put("playerId", "u1")
+                .toString();
+        handler.handleTextMessage(session, new TextMessage(shakeJson));
+
+        // Assert
+        verify(session, atLeast(3)).sendMessage(msgCaptor.capture());
+        List<TextMessage> sent = msgCaptor.getAllValues();
+
+        JsonNode diceMsg = mapper.readTree(sent.get(0).getPayload());
+        assertEquals("DICE_ROLL", diceMsg.get("type").asText());
+        assertEquals("u1",     diceMsg.get("playerId").asText());
+        assertEquals(7,        diceMsg.get("value").asInt());
+        assertFalse(diceMsg.get("isPasch").asBoolean());
+
+        assertTrue(sent.stream().anyMatch(
+                m -> m.getPayload().startsWith("GAME_STATE:")
+        ));
+        assertTrue(sent.stream().anyMatch(
+                m -> m.getPayload().startsWith("PLAYER_TURN:")
+        ));
+    }
+
+
 }
