@@ -15,7 +15,6 @@ public class GameHistory {
     private int durationMinutes;
     private int endMoney;
     private int levelGained;
-    private int playersCount;
     private Date timestamp;
     private boolean won;
 }

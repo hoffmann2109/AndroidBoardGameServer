@@ -32,7 +32,7 @@ public class LeaderboardService {
     }
 
     /**
-     * Aktualisiert alle Leaderboards ... einmal am Tag - firebase-free sonst sofort die reqeusts verbraucht
+     * Aktualisiert alle Leaderboards ... einmal am Tag - firebase-free sonst schnell die reqeusts verbraucht
      */
     @Scheduled(fixedRate = 86400000) // wegen begrenzter Requestanzahl in firebase-free
     public void updateAllLeaderboards() {
