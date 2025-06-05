@@ -469,6 +469,47 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         sessions.remove(session);
     }
 
+    private void handleDiceRoll(WebSocketSession session, String userId) throws JsonProcessingException {
+        if (!game.isPlayerTurn(userId)) {
+            sendMessageToSession(session, createJsonError("Not your turn!"));
+            return;
+        }
+        Player player = game.getPlayerById(userId).orElse(null);
+        if (player == null) return;
+
+        if (player.isInJail()) {
+            sendMessageToSession(session,
+                    createJsonError("You are in jail and cannot roll. End your turn."));
+            return;
+        }
+
+        if (player.hasRolledThisTurn()) {
+            sendMessageToSession(session, createJsonError("You already rolled this turn."));
+            return;
+        }
+
+        int roll = diceManager.rollDices();
+        boolean isPasch = diceManager.isPasch();
+        if (logger.isLoggable(Level.INFO)) {
+            logger.info(String.format("Spieler %s hat geworfen: %s | Pasch: %s",
+                    userId,
+                    diceManager.getLastRollValues().toString(),
+                    isPasch));
+        }
+        player.setHasRolledThisTurn(!isPasch);
+        logger.log(Level.INFO, "Player {0} rolled {1}", new Object[]{userId, roll});//bewusst geloggt aktuell
+
+        DiceRollMessage drm = new DiceRollMessage(userId, roll, false, isPasch);
+        String json = objectMapper.writeValueAsString(drm);
+        broadcastMessage(json);
+
+        // Update Position and broadcast Game-State:
+        if (game.updatePlayerPosition(roll, userId)) {
+            broadcastMessage(PLAYER_PREFIX + userId + " passed GO and collected €200");
+        }
+        handlePlayerLanding(player);
+    }
+
     private void broadcastMessage(String message) {
         for (WebSocketSession session : sessions) {
             try {
