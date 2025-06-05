@@ -206,6 +206,21 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
+        // Shake message parsing:
+        if (payload.contains("\"type\":\"SHAKE_REQUEST\"")) {
+            try {
+                ShakeMessage shake = objectMapper.readValue(payload, ShakeMessage.class);
+
+                logger.log(Level.INFO, "Player {0} has shaken his device", shake.getPlayerId());
+                // Send a normal roll dice message:
+                handleDiceRoll(session, userId);
+            } catch (Exception ex) {
+                logger.log(Level.WARNING,
+                        "Error parsing SHAKE_MESSAGE from payload: {0}", ex.getMessage());
+            }
+            return;
+        }
+
         try {
             if (payload.contains("\"type\":\"CHEAT_MESSAGE\"")) {
                 logger.log(Level.INFO, "Received cheat message from player {0}", userId);//bewusst geloggt aktuell
@@ -370,45 +385,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             }
 
             if (payload.trim().equalsIgnoreCase("Roll")) {
-                if (!game.isPlayerTurn(userId)) {
-                    sendMessageToSession(session, createJsonError("Not your turn!"));
-                    return;
-                }
-                Player player = game.getPlayerById(userId).orElse(null);
-                if (player == null) return;
-
-                if (player.isInJail()) {
-                    sendMessageToSession(session,
-                            createJsonError("You are in jail and cannot roll. End your turn."));
-                    return;
-                }
-
-                if (player.hasRolledThisTurn()) {
-                    sendMessageToSession(session, createJsonError("You already rolled this turn."));
-                    return;
-                }
-
-                int roll = diceManager.rollDices();
-                boolean isPasch = diceManager.isPasch();
-                if (logger.isLoggable(Level.INFO)) {
-                    logger.info(String.format("Spieler %s hat geworfen: %s | Pasch: %s",
-                            userId,
-                            diceManager.getLastRollValues().toString(),
-                            isPasch));
-                }
-                player.setHasRolledThisTurn(!isPasch);
-                logger.log(Level.INFO, "Player {0} rolled {1}", new Object[]{userId, roll});//bewusst geloggt aktuell
-
-                DiceRollMessage drm = new DiceRollMessage(userId, roll, false, isPasch);
-                String json = objectMapper.writeValueAsString(drm);
-                broadcastMessage(json);
-
-                // Update Position and broadcast Game-State:
-                if (game.updatePlayerPosition(roll, userId)) {
-                    broadcastMessage(PLAYER_PREFIX + userId + " passed GO and collected €200");
-                }
-                handlePlayerLanding(player);
-
+                handleDiceRoll(session, userId);
             } else if ("NEXT_TURN".equals(payload)) {
                 logger.log(Level.INFO, "Received NEXT_TURN from {0}", userId);
 
@@ -467,6 +444,47 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             logger.log(Level.INFO, "Player disconnected: {0}", userId);//bewusst geloggt aktuell
         }
         sessions.remove(session);
+    }
+
+    private void handleDiceRoll(WebSocketSession session, String userId) throws JsonProcessingException {
+        if (!game.isPlayerTurn(userId)) {
+            sendMessageToSession(session, createJsonError("Not your turn!"));
+            return;
+        }
+        Player player = game.getPlayerById(userId).orElse(null);
+        if (player == null) return;
+
+        if (player.isInJail()) {
+            sendMessageToSession(session,
+                    createJsonError("You are in jail and cannot roll. End your turn."));
+            return;
+        }
+
+        if (player.hasRolledThisTurn()) {
+            sendMessageToSession(session, createJsonError("You already rolled this turn."));
+            return;
+        }
+
+        int roll = diceManager.rollDices();
+        boolean isPasch = diceManager.isPasch();
+        if (logger.isLoggable(Level.INFO)) {
+            logger.info(String.format("Spieler %s hat geworfen: %s | Pasch: %s",
+                    userId,
+                    diceManager.getLastRollValues().toString(),
+                    isPasch));
+        }
+        player.setHasRolledThisTurn(!isPasch);
+        logger.log(Level.INFO, "Player {0} rolled {1}", new Object[]{userId, roll});//bewusst geloggt aktuell
+
+        DiceRollMessage drm = new DiceRollMessage(userId, roll, false, isPasch);
+        String json = objectMapper.writeValueAsString(drm);
+        broadcastMessage(json);
+
+        // Update Position and broadcast Game-State:
+        if (game.updatePlayerPosition(roll, userId)) {
+            broadcastMessage(PLAYER_PREFIX + userId + " passed GO and collected €200");
+        }
+        handlePlayerLanding(player);
     }
 
     private void broadcastMessage(String message) {
