@@ -1,6 +1,7 @@
 package at.aau.serg.monopoly.websoket;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import data.deals.CounterProposalMessage;
 import data.deals.DealProposalMessage;
 import data.deals.DealResponseMessage;
 import data.deals.DealResponseType;
@@ -156,4 +157,112 @@ class GameWebSocketHandlerDealTest {
         verify(dealService).executeTrade(any()); // Trade is still processed
         // No exception expected, just a missing session warning in logs
     }
+    @Test
+    void testDealProposalIsSavedAndLoggedIfTargetNotFound() throws Exception {
+        DealProposalMessage proposal = new DealProposalMessage();
+        proposal.setType("DEAL_PROPOSAL");
+        proposal.setFromPlayerId("fromPlayer");
+        proposal.setToPlayerId("missingPlayer");
+        proposal.setRequestedPropertyIds(List.of(1));
+        proposal.setOfferedPropertyIds(List.of());
+        proposal.setOfferedMoney(100);
+
+        String json = objectMapper.writeValueAsString(proposal);
+
+        // Ensure that the session for "missingPlayer" is not present
+        CopyOnWriteArrayList<WebSocketSession> sessions = new CopyOnWriteArrayList<>();
+        sessions.add(fromSession); // Only fromSession is present
+        ReflectionTestUtils.setField(handler, "sessions", sessions);
+
+        handler.handleTextMessage(fromSession, new TextMessage(json));
+
+        // Proposal should still be saved even if recipient session is not found
+        verify(dealService).saveProposal(any(DealProposalMessage.class));
+
+        // No message should be sent since session is missing
+        verify(toSession, never()).sendMessage(any());
+    }
+
+    @Test
+    void testDealResponseAcceptWithPropertiesBroadcastsMessages() throws Exception {
+        DealResponseMessage response = new DealResponseMessage();
+        response.setType("DEAL_RESPONSE");
+        response.setFromPlayerId("fromPlayer");
+        response.setToPlayerId("toPlayer");
+        response.setResponseType(DealResponseType.ACCEPT);
+        response.setCounterPropertyIds(List.of());
+        response.setCounterMoney(200);
+
+        DealProposalMessage proposal = new DealProposalMessage();
+        proposal.setFromPlayerId("fromPlayer");
+        proposal.setToPlayerId("toPlayer");
+        proposal.setOfferedPropertyIds(List.of(3, 5)); // von fromPlayer → toPlayer
+        proposal.setRequestedPropertyIds(List.of(2));  // von toPlayer → fromPlayer
+
+        when(dealService.executeTrade(response)).thenReturn(proposal);
+
+        String json = objectMapper.writeValueAsString(response);
+
+        handler.handleTextMessage(fromSession, new TextMessage(json));
+
+        verify(fromSession, atLeastOnce()).sendMessage(argThat(msg -> {
+            String payload = ((TextMessage) msg).getPayload();
+            return payload.contains("toPlayer bought property 3")
+                    || payload.contains("toPlayer bought property 5")
+                    || payload.contains("fromPlayer bought property 2");
+        }));
+
+        verify(toSession, atLeastOnce()).sendMessage(argThat(msg -> {
+            String payload = ((TextMessage) msg).getPayload();
+            return payload.contains("toPlayer bought property 3")
+                    || payload.contains("toPlayer bought property 5")
+                    || payload.contains("fromPlayer bought property 2");
+        }));
+    }
+
+    @Test
+    void testCounterOfferIsSavedAndForwarded() throws Exception {
+        CounterProposalMessage counter = new CounterProposalMessage(
+                "fromPlayer",
+                "toPlayer",
+                List.of(1),   // requested by counter-er
+                List.of(2),   // offered
+                150           // money
+        );
+
+        String json = objectMapper.writeValueAsString(counter);
+
+        handler.handleTextMessage(fromSession, new TextMessage(json));
+
+        verify(dealService).saveCounterProposal(any(CounterProposalMessage.class));
+
+        verify(toSession).sendMessage(argThat(message ->
+                ((TextMessage) message).getPayload().contains("\"type\":\"COUNTER_OFFER\"")
+        ));
+    }
+
+    @Test
+    void testCounterOfferSavedButNotForwardedIfTargetMissing() throws Exception {
+        CounterProposalMessage counter = new CounterProposalMessage(
+                "fromPlayer",
+                "missingPlayer",
+                List.of(),
+                List.of(2),
+                200
+        );
+
+        String json = objectMapper.writeValueAsString(counter);
+
+        // Only fromSession is connected
+        CopyOnWriteArrayList<WebSocketSession> sessions = new CopyOnWriteArrayList<>();
+        sessions.add(fromSession);
+        ReflectionTestUtils.setField(handler, "sessions", sessions);
+
+        handler.handleTextMessage(fromSession, new TextMessage(json));
+
+        verify(dealService).saveCounterProposal(any(CounterProposalMessage.class));
+        verify(toSession, never()).sendMessage(any());
+    }
+
+
 }

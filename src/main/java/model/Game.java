@@ -96,14 +96,16 @@ public class Game {
         for (int i = 1; i <= players.size(); i++) {
             int nextIndex = (currentPlayerIndex + i) % players.size();
             Player next = players.get(nextIndex);
-            if (next.isConnected()) {
+
+
+            if (next.isConnected() || next.isBot()) {
                 currentPlayerIndex = nextIndex;
                 next.setHasRolledThisTurn(false);
                 return;
             }
         }
-
     }
+
 
     public List<PlayerInfo> getPlayerInfo() {
         List<PlayerInfo> info = new ArrayList<>();
