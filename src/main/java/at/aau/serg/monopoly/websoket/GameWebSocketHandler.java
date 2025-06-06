@@ -68,7 +68,8 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         dealService.setGame(game);
         game.setPropertyService(propertyService);
         game.setPropertyTransactionService(propertyTransactionService);
-        initializeBotManager(); // <-- wichtig!
+        game.getDiceManager().initializeStandardDices();
+        initializeBotManager();
     }
 
 
@@ -80,6 +81,9 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                     @Override public void broadcast(String m)        { broadcastMessage(m); }
                     @Override public void updateGameState()          { broadcastGameState(); }
                     @Override public void advanceToNextPlayer()      { advanceToNextPlayer(); }
+                    @Override public void checkBankruptcy() {        // ➋ einfach durchreichen
+                        checkAllPlayersForBankruptcy();
+                    }
                 });
     }
 

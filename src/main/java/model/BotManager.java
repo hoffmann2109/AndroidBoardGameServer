@@ -1,28 +1,32 @@
 package model;
 
 import at.aau.serg.monopoly.websoket.PropertyTransactionService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import model.properties.BaseProperty;
 
 import java.util.concurrent.*;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
-/**
- * Führt alle Bot-Züge in einem separaten Daemon-Thread aus.
- */
+
+
+
 public class BotManager {
 
-    /* ────────────────── Callback ────────────────── */
+
 
     /** Vom Handler bereitgestellte Funktionen, die der Bot aufrufen darf. */
     public interface BotCallback {
         void broadcast(String msg);          // Chat / Systemmeldung an alle
         void updateGameState();              // kompletten Spielstand pushen
         void advanceToNextPlayer();          // Zug an nächsten Spieler übergeben
+        void checkBankruptcy();
     }
 
     /* ────────────────── Felder ────────────────── */
 
     private static final Logger log = Logger.getLogger(BotManager.class.getName());
+    private final ObjectMapper mapper = new ObjectMapper();
 
     private final Game game;
     private final PropertyTransactionService pts;
@@ -67,7 +71,7 @@ public class BotManager {
         exec.execute(() -> processSpecificBot(botId));
     }
 
-    /* ────────────────── Kernlogik ────────────────── */
+
 
     private void processTurn() {
         // 1) Spiel läuft überhaupt?
@@ -85,7 +89,7 @@ public class BotManager {
         }
     }
 
-    /** Führt einen Zug speziell für den Bot mit <code>botId</code> aus. */
+
     private void processSpecificBot(String botId) {
         if (!game.getTurnLock().tryLock()) return;
         try {
@@ -121,26 +125,56 @@ public class BotManager {
 
         // Würfeln fertig
         bot.setHasRolledThisTurn(true);
-        cb.updateGameState();      // Position + evtl. Besitz anzeigen
+        cb.updateGameState();// Position + evtl. Besitz anzeigen
+        cb.checkBankruptcy();
+
 
         // Pasch → noch einmal; sonst Zugende
         if (!pasch) {
             game.nextPlayer();
+            cb.updateGameState();
             cb.advanceToNextPlayer();
         } else {
             // Für den zweiten Wurf freigeben
             bot.setHasRolledThisTurn(false);
+            cb.updateGameState();
         }
     }
 
     /** Prüft, ob kaufbar, kauft und meldet das. */
     private void tryBuyCurrentField(Player bot) {
-        int pos = bot.getPosition();
 
-        if (pts.canBuyProperty(bot, pos) && pts.buyProperty(bot, pos)) {
-            cb.broadcast("SYSTEM: " + bot.getName() + " bought property " + pos);
-            cb.updateGameState();
-            log.info(() -> "Bot kauft Feld " + pos);
+        BaseProperty field =
+                pts.findPropertyByPosition(bot.getPosition());
+        if (field == null || field.getOwnerId() != null) {
+            return;                     // nichts zu kaufen
         }
+
+        // 1) Kann/Möchte der Bot kaufen?
+        if (!pts.canBuyProperty(bot, field.getId())) {
+            return;
+        }
+
+        // 2) Kaufen
+        boolean bought = pts.buyProperty(bot, field.getId());
+        if (!bought) {
+            return;                     // Sicherheits-Exit
+        }
+
+  // 3. Nachricht an alle schicken
+        try {
+            ObjectNode msg = mapper.createObjectNode();
+            msg.put("type", "PROPERTY_BOUGHT");
+            msg.put(
+                    "message",
+                    "Player " + bot.getName() + " 🤖 bought property " + field.getName()
+            );
+            cb.broadcast(mapper.writeValueAsString(msg));
+        } catch (Exception e) {
+            log.severe("Could not broadcast bot purchase");
+        }
+
+        // 4) Spielstand sofort aktualisieren
+        cb.updateGameState();
     }
 }
