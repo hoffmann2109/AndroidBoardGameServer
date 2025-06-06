@@ -42,7 +42,6 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     final Map<String, String> sessionToUserId = new ConcurrentHashMap<>();
     private final Game game = new Game();
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private DiceManagerInterface diceManager;
 
     @Autowired
     private GameHistoryService gameHistoryService;
@@ -74,20 +73,22 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
 
     public void initializeBotManager() {
-        this.botManager = new BotManager(game, objectMapper, new BotManager.BotCallback() {
-            @Override public void broadcast(String m) { broadcastMessage(m); }
-            @Override public void updateGameState() { broadcastGameState(); }
-            @Override public void advanceToNextPlayer() { advanceToNextPlayer();}
-        });
+        botManager = new BotManager(
+                game,
+                propertyTransactionService,
+                new BotManager.BotCallback() {
+                    @Override public void broadcast(String m)        { broadcastMessage(m); }
+                    @Override public void updateGameState()          { broadcastGameState(); }
+                    @Override public void advanceToNextPlayer()      { advanceToNextPlayer(); }
+                });
     }
+
 
 
     @Override
     public void afterConnectionEstablished(@NonNull WebSocketSession session) {
         sessions.add(session);
 
-        diceManager = new DiceManager();
-        diceManager.initializeStandardDices();
     }
 
     protected void handleInitMessage(WebSocketSession session, JsonNode jsonNode) {
@@ -412,29 +413,36 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             } else if ("NEXT_TURN".equals(payload)) {
                 logger.log(Level.INFO, "Received NEXT_TURN from {0}", userId);
 
+    /* 1 ──────────────────────────────────────────────
+       Gilt: Nur der aktuelle Spieler darf „NEXT_TURN“ schicken   */
                 if (!game.isPlayerTurn(userId)) {
                     sendMessageToSession(session, createJsonError("Not your turn!"));
                     return;
                 }
 
-                Optional<Player> playerOpt = game.getPlayerById(userId);
-                if (playerOpt.isPresent()) {
-                    Player player = playerOpt.get();
-                    if (player.isInJail()) {
-                        player.reduceJailTurns();
-                        if (!player.isInJail()) {
-                            broadcastMessage("Player " + userId + " is released from jail!");
-                        }
-                        // Always advance to next player after jail turn
-                        game.nextPlayer();
-                    } else {
-                        game.nextPlayer(); // Normal turn advancement
+    /* 2 ──────────────────────────────────────────────
+       Prüfen, ob schon gewürfelt wurde (und kein offener Pasch) */
+                Player current = game.getCurrentPlayer();
+                if (!current.isHasRolledThisTurn()) {
+                    sendMessageToSession(session, createJsonError("Roll the dice first!"));
+                    return;
+                }
+
+    /* 3 ──────────────────────────────────────────────
+       Jail-Sonderfall: erst Jail-Zug runterzählen   */
+                if (current.isInJail()) {
+                    current.reduceJailTurns();
+                    if (!current.isInJail()) {
+                        broadcastMessage("Player " + current.getName() + " is released from jail!");
                     }
                 }
-                advanceToNextPlayer();
-                checkAllPlayersForBankruptcy();
 
-            } else if (payload.startsWith("MANUAL_ROLL:")) {
+    /* 4 ──────────────────────────────────────────────
+       Alles ok  →  Zug weitergeben                     */
+                advanceTurn();          // eigene Methode; s. unten
+                checkAllPlayersForBankruptcy();
+            }
+            else if (payload.startsWith("MANUAL_ROLL:")) {
                 handleManualRoll(payload, userId, session);
             } else if (payload.startsWith("UPDATE_MONEY:")) {
                 handleUpdateMoney(payload, userId);
@@ -460,7 +468,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             // Spieler als disconnected markieren
             game.markPlayerDisconnected(userId);
 
-            // 👇 Prüfe, ob noch irgendein Spieler verbunden ist
+            //  Prüfe, ob noch irgendein Spieler verbunden ist
             boolean allDisconnected = game.getPlayers().stream().noneMatch(Player::isConnected);
 
             if (allDisconnected) {
@@ -468,10 +476,10 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 sessionToUserId.remove(session.getId());
                 sessions.remove(session);
                 handleEndGame();
-                return; // ⛔️ WICHTIG: Keine Bot-Übernahme mehr
+                return;
             }
 
-            // 👇 Nur wenn nicht alle disconnected → Bot übernehmen
+            //Nur wenn nicht alle disconnected → Bot übernehmen
             game.replaceDisconnectedWithBot(userId);
 
             // Sessions aktualisieren
@@ -499,6 +507,8 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
 
     private void handleDiceRoll(WebSocketSession session, String userId) throws JsonProcessingException {
+
+        /*  1. Gültigkeits-Checks  */
         if (!game.isPlayerTurn(userId)) {
             sendMessageToSession(session, createJsonError("Not your turn!"));
             return;
@@ -511,36 +521,32 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                     createJsonError("You are in jail and cannot roll. End your turn."));
             return;
         }
-
         if (player.hasRolledThisTurn()) {
             sendMessageToSession(session, createJsonError("You already rolled this turn."));
             return;
         }
 
-        int roll = diceManager.rollDices();
-        boolean isPasch = diceManager.isPasch();
-        if (logger.isLoggable(Level.INFO)) {
-            logger.info(String.format("Spieler %s hat geworfen: %s | Pasch: %s",
-                    userId,
-                    diceManager.getLastRollValues().toString(),
-                    isPasch));
-        }
-        player.setHasRolledThisTurn(!isPasch);
-        logger.log(Level.INFO, "Player {0} rolled {1}", new Object[]{userId, roll});//bewusst geloggt aktuell
+        /* ── 2. Würfeln über Game  */
+        int roll   = game.handleDiceRoll(userId);               // zentrales Handling
+        boolean pasch = game.getDiceManager().isPasch();
 
-        DiceRollMessage drm = new DiceRollMessage(userId, roll, false, isPasch);
-        String json = objectMapper.writeValueAsString(drm);
-        broadcastMessage(json);
-
-        // Update Position and broadcast Game-State:
-        if (game.updatePlayerPosition(roll, userId)) {
-            broadcastMessage(PLAYER_PREFIX + userId + " passed GO and collected €200");
+        // Bei Pasch darf noch einmal gewürfelt werden
+        if (pasch) {
+            player.setHasRolledThisTurn(false);
         }
+
+        /* ── 3. Nachricht an alle Clients  */
+        DiceRollMessage drm = new DiceRollMessage(
+                userId,
+                roll,
+                /* isManual  = */ false,
+                /* pasch     = */ pasch
+        );
+        broadcastMessage(objectMapper.writeValueAsString(drm));
+
+        /* ── 4. Sonderfelder / Miete etc. */
         handlePlayerLanding(player);
     }
-
-
-
 
 
 
@@ -575,16 +581,28 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
     private void startGame() {
         try {
+            // 1) kompletten Spielstand an alle schicken
             String gameState = objectMapper.writeValueAsString(game.getPlayerInfo());
             broadcastMessage("GAME_STATE:" + gameState);
+
+            // 2) kurze System-Meldung
             broadcastMessage("Game started! " + sessions.size() + " players are connected.");
-            logger.log(Level.INFO, "Game started with {0} players!", sessions.size());//bewusst geloggt aktuell
+
+            // 3) Logging
+            logger.log(Level.INFO, "Game started with {0} players!", sessions.size());
+
+            // 4) Spiel-Status setzen
             game.start();
-            botManager.handleBotTurn();
+
+            // 5) Bot-Thread EINMAL starten (statt handleBotTurn)
+            botManager.start();
+            logger.info("BotManager started");
+
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error sending game state: {0}", e.getMessage());//bewusst geloggt aktuell
+            logger.log(Level.SEVERE, "Error sending game state: {0}", e.getMessage());
         }
     }
+
 
     private void handleBuyProperty(WebSocketSession session, String userId, String payload) {
         try {
@@ -928,11 +946,34 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     private void advanceToNextPlayer() {
         game.nextPlayer();
         broadcastGameState();
+
         Player current = game.getCurrentPlayer();
-        if (current != null && current.isBot()) {
-            botManager.handleBotTurn();
+        if (current == null) return;
+
+        if (current.isBot()) {
+            botManager.queueBotTurn(current.getId());   // <<< statt handleBotTurn()
         }
     }
+
+
+    private void advanceTurn() {
+        // akt. Spieler zurücksetzen
+        Player prev = game.getCurrentPlayer();
+        prev.setHasRolledThisTurn(false);
+
+        game.nextPlayer();          // bestimmt den nächsten (überspringt offline-Spieler/Bots)
+
+        broadcastMessage("PLAYER_TURN:" + game.getCurrentPlayer().getId());
+
+        // falls Bot: Bot-Zug in eigener Queue
+        if (game.getCurrentPlayer().isBot()) {
+            botManager.queueBotTurn(game.getCurrentPlayer().getId());
+        }
+    }
+
+
+
+
 
     private WebSocketSession findSessionByPlayerId(String playerId) {
         for (Map.Entry<String, String> entry : sessionToUserId.entrySet()) {

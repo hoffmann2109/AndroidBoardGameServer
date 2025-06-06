@@ -1,102 +1,146 @@
 package model;
 
-import data.DiceRollMessage;
-import model.properties.BaseProperty;
+import at.aau.serg.monopoly.websoket.PropertyTransactionService;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * Führt alle Bot-Züge in einem separaten Daemon-Thread aus.
+ */
 public class BotManager {
 
-    private final Game game;
-    private final ObjectMapper objectMapper;
-    private final Logger logger = Logger.getLogger(BotManager.class.getName());
-    private final ScheduledExecutorService scheduler;
+    /* ────────────────── Callback ────────────────── */
 
+    /** Vom Handler bereitgestellte Funktionen, die der Bot aufrufen darf. */
     public interface BotCallback {
-        void broadcast(String message);
-        void updateGameState();
+        void broadcast(String msg);          // Chat / Systemmeldung an alle
+        void updateGameState();              // kompletten Spielstand pushen
+        void advanceToNextPlayer();          // Zug an nächsten Spieler übergeben
     }
 
-    private final BotCallback callback;
+    /* ────────────────── Felder ────────────────── */
+
+    private static final Logger log = Logger.getLogger(BotManager.class.getName());
+
+    private final Game game;
+    private final PropertyTransactionService pts;
+    private final BotCallback cb;
+
+    private final ScheduledExecutorService exec =
+            Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "BotThread");
+                t.setDaemon(true);
+                return t;
+            });
+
+    /* ────────────────── Konstruktor ────────────────── */
 
     public BotManager(Game game,
-                      ObjectMapper objectMapper,
-                      BotCallback callback) {
-        this(game, objectMapper, callback, Executors.newSingleThreadScheduledExecutor());
+                      PropertyTransactionService pts,
+                      BotCallback cb) {
+        this.game = game;
+        this.pts  = pts;
+        this.cb   = cb;
     }
 
-    // Für Tests
-    BotManager(Game game,
-               ObjectMapper objectMapper,
-               BotCallback callback,
-               ScheduledExecutorService scheduler) {
-        this.game         = game;
-        this.objectMapper = objectMapper;
-        this.callback     = callback;
-        this.scheduler    = scheduler;
+    /* ────────────────── Lebenszyklus ────────────────── */
+
+    /** startet die Dauerschleife (einmal nach Game-Start aufrufen) */
+    public void start() {
+        exec.scheduleWithFixedDelay(this::processTurn, 500, 500, TimeUnit.MILLISECONDS);
     }
 
+    /** sofort beenden (z.B. wenn das Spiel endet) */
+    public void shutdown() {
+        exec.shutdownNow();
+    }
 
-    public void handleBotTurn() {
-        Player current = game.getCurrentPlayer();
-        if (current == null || !current.isBot() ) return;
+    /* ────────────────── Externe Trigger ────────────────── */
 
-        logger.info("Bot " + current.getName() + " is taking their turn...");
+    /**
+     * Wird vom Handler aufgerufen, wenn *nach* einem Bot-Zug
+     * direkt der nächste Bot dran ist → sofort verarbeiten.
+     */
+    public void queueBotTurn(String botId) {
+        exec.execute(() -> processSpecificBot(botId));
+    }
 
-        new Timer().schedule(new TimerTask() {
-            @Override
-            public void run() {
-                try {
-                    int roll = game.getDiceManager().rollDices();
-                    boolean isPasch = game.getDiceManager().isPasch();
+    /* ────────────────── Kernlogik ────────────────── */
 
-                    logger.info("Bot rolled: " + roll + " | Pasch: " + isPasch);
+    private void processTurn() {
+        // 1) Spiel läuft überhaupt?
+        if (!game.isStarted()) return;
 
-                    current.setHasRolledThisTurn(!isPasch);
+        // 2) Lock versuchen (nicht blockierend)
+        if (!game.getTurnLock().tryLock()) return;
+        try {
+            Player cur = game.getCurrentPlayer();
+            if (cur == null || !cur.isBot()) return;
 
-                    DiceRollMessage drm = new DiceRollMessage(current.getId(), roll, false, isPasch);
-                    String json = objectMapper.writeValueAsString(drm);
-                    callback.broadcast(json);
+            doFullMove(cur);
+        } finally {
+            game.getTurnLock().unlock();
+        }
+    }
 
-                    boolean passedGo = game.updatePlayerPosition(roll, current.getId());
-                    if (passedGo) {
-                        callback.broadcast("Player " + current.getName() + " passed GO and collected €200");
-                    }
-
-                    // Kaufentscheidung
-                    BaseProperty property = game.getPropertyService().getPropertyByPosition(current.getPosition());
-                    if (property != null && game.getPropertyTransactionService().canBuyProperty(current, property.getId())) {
-                        boolean bought = game.getPropertyTransactionService().buyProperty(current, property.getId());
-                        if (bought) {
-                            callback.broadcast("{\"type\":\"PROPERTY_BOUGHT\",\"message\":\"" +
-                                    current.getName() + " bought " + property.getName() + "\"}");
-                        }
-                    }
-
-                    // Zug beenden
-                    new Timer().schedule(new TimerTask() {
-                        @Override
-                        public void run() {
-                            logger.info("Bot ends turn.");
-                            game.nextPlayer();
-                            callback.updateGameState();
-
-                            // Prüfe gleich den nächsten Spieler → falls wieder Bot
-                            handleBotTurn();
-                        }
-                    }, 1000);
-
-                } catch (Exception e) {
-                    logger.log(Level.SEVERE, "Bot turn error: " + e.getMessage(), e);
-                }
+    /** Führt einen Zug speziell für den Bot mit <code>botId</code> aus. */
+    private void processSpecificBot(String botId) {
+        if (!game.getTurnLock().tryLock()) return;
+        try {
+            Player p = game.getPlayerById(botId).orElse(null);
+            if (p != null && p.isBot()) {
+                doFullMove(p);
             }
-        }, 1000);
+        } finally {
+            game.getTurnLock().unlock();
+        }
+    }
+
+    /** Ein *vollständiger* Bot-Zug (würfeln, ziehen, kaufen, evtl. Ende). */
+    private void doFullMove(Player bot) {
+
+        log.info(() -> "Bot-Turn für " + bot.getName());
+
+        DiceManagerInterface dm = game.getDiceManager();
+        int roll      = dm.rollDices();
+        boolean pasch = dm.isPasch();
+
+        cb.broadcast("BOT_ROLL:" + bot.getId() + ":" + dm.getLastRollValues());
+        log.info(() -> " → Würfel: " + dm.getLastRollValues() + (pasch ? " (Pasch)" : ""));
+
+        // Position + 200 € bei Los
+        boolean passedGo = game.updatePlayerPosition(roll, bot.getId());
+        if (passedGo) {
+            cb.broadcast("SYSTEM: " + bot.getName() + " passed GO and collected €200");
+        }
+
+        // Kaufen, falls möglich
+        tryBuyCurrentField(bot);
+
+        // Würfeln fertig
+        bot.setHasRolledThisTurn(true);
+        cb.updateGameState();      // Position + evtl. Besitz anzeigen
+
+        // Pasch → noch einmal; sonst Zugende
+        if (!pasch) {
+            game.nextPlayer();
+            cb.advanceToNextPlayer();
+        } else {
+            // Für den zweiten Wurf freigeben
+            bot.setHasRolledThisTurn(false);
+        }
+    }
+
+    /** Prüft, ob kaufbar, kauft und meldet das. */
+    private void tryBuyCurrentField(Player bot) {
+        int pos = bot.getPosition();
+
+        if (pts.canBuyProperty(bot, pos) && pts.buyProperty(bot, pos)) {
+            cb.broadcast("SYSTEM: " + bot.getName() + " bought property " + pos);
+            cb.updateGameState();
+            log.info(() -> "Bot kauft Feld " + pos);
+        }
     }
 }

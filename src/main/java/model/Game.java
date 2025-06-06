@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Data
 public class Game {
@@ -17,6 +18,7 @@ public class Game {
     private boolean isStarted;
     private int currentPlayerIndex;
     private Date startTime;
+    private final ReentrantLock turnLock = new ReentrantLock();
     private String winnerId;
     @Getter
     private final DiceManagerInterface diceManager = new DiceManager();
@@ -93,10 +95,10 @@ public class Game {
     public void nextPlayer() {
         if (players.isEmpty()) return;
 
+        int originalIndex = currentPlayerIndex;
         for (int i = 1; i <= players.size(); i++) {
             int nextIndex = (currentPlayerIndex + i) % players.size();
             Player next = players.get(nextIndex);
-
 
             if (next.isConnected() || next.isBot()) {
                 currentPlayerIndex = nextIndex;
@@ -104,7 +106,11 @@ public class Game {
                 return;
             }
         }
+
+        // Falls kein gültiger Spieler gefunden wurde → Spiel beenden
+        System.out.println("No connected players or bots found – ending game.");
     }
+
 
 
     public List<PlayerInfo> getPlayerInfo() {
@@ -241,7 +247,7 @@ public class Game {
             if (!player.isConnected() && !player.isBot()) {
                 player.setBot(true);
                 player.setConnected(true);
-                player.setName(player.getName() + " 🤖"); // Optional: Name sichtbar markieren
+                player.setName(player.getName() + " 🤖");
                 System.out.println("Replaced disconnected player with bot: " + player.getId());
             }
         });
@@ -256,4 +262,16 @@ public class Game {
         this.propertyTransactionService = propertyTransactionService;
     }
 
-}
+    public int handleDiceRoll(String playerId) {
+        Optional<Player> opt = getPlayerById(playerId);
+        if (opt.isEmpty()) return -1;
+
+        Player p = opt.get();
+        int roll = diceManager.rollDices();
+        p.setHasRolledThisTurn(true);   //  ←  wichtig
+        updatePlayerPosition(roll, playerId);
+
+        return roll;
+    }
+
+    }
