@@ -1,6 +1,7 @@
 package model;
 
 import at.aau.serg.monopoly.websoket.PropertyTransactionService;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import model.properties.BaseProperty;
@@ -84,6 +85,8 @@ public class BotManager {
             if (cur == null || !cur.isBot()) return;
 
             doFullMove(cur);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
         } finally {
             game.getTurnLock().unlock();
         }
@@ -97,13 +100,15 @@ public class BotManager {
             if (p != null && p.isBot()) {
                 doFullMove(p);
             }
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
         } finally {
             game.getTurnLock().unlock();
         }
     }
 
     /** Ein *vollständiger* Bot-Zug (würfeln, ziehen, kaufen, evtl. Ende). */
-    private void doFullMove(Player bot) {
+    private void doFullMove(Player bot) throws JsonProcessingException {
 
         log.info(() -> "Bot-Turn für " + bot.getName());
 
@@ -111,7 +116,18 @@ public class BotManager {
         int roll      = dm.rollDices();
         boolean pasch = dm.isPasch();
 
+        // BotManager.doFullMove (alt)
         cb.broadcast("BOT_ROLL:" + bot.getId() + ":" + dm.getLastRollValues());
+
+        // BotManager.doFullMove (neu)
+        ObjectNode rollMsg = mapper.createObjectNode();
+        rollMsg.put("type",       "DICE_ROLL");
+        rollMsg.put("playerId",   bot.getId());
+        rollMsg.put("value",      roll);
+        rollMsg.put("manual",     false);
+        rollMsg.put("isPasch",    pasch);
+        cb.broadcast(mapper.writeValueAsString(rollMsg));
+
         log.info(() -> " → Würfel: " + dm.getLastRollValues() + (pasch ? " (Pasch)" : ""));
 
         // Position + 200 € bei Los
@@ -133,7 +149,7 @@ public class BotManager {
         if (!pasch) {
             game.nextPlayer();
             cb.updateGameState();
-            cb.advanceToNextPlayer();
+
         } else {
             // Für den zweiten Wurf freigeben
             bot.setHasRolledThisTurn(false);
