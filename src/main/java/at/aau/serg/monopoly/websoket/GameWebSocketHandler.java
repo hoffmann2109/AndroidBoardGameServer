@@ -651,6 +651,15 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
             logger.info("Sent chat clear signal to all clients");
 
+            // Send a message to the client: Server is setting up a new game
+            ObjectNode resetMsg = objectMapper.createObjectNode();
+            resetMsg.put("type", "RESET");
+            broadcastMessage(objectMapper.writeValueAsString(resetMsg));
+
+            // Clear out the game state
+            resetGame();
+
+
         } catch (JsonProcessingException e) {
             logger.log(Level.SEVERE, "Error creating clear chat message: " + e.getMessage());
         }
@@ -795,6 +804,17 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             }
         }
     }
+
+    private void resetGame() {
+        game.getPlayers().clear();
+
+        // New INITs will now be accepted
+        sessionToUserId.clear();
+
+        diceManager = new DiceManager();
+        diceManager.initializeStandardDices();
+    }
+
 
 
 
