@@ -27,6 +27,7 @@ public class BotManager {
     /* ────────────────── Felder ────────────────── */
 
     private static final Logger log = Logger.getLogger(BotManager.class.getName());
+    private static final long BOT_DELAY_SEC = 3;
     private final ObjectMapper mapper = new ObjectMapper();
 
     private final Game game;
@@ -54,7 +55,7 @@ public class BotManager {
 
     /** startet die Dauerschleife (einmal nach Game-Start aufrufen) */
     public void start() {
-        exec.scheduleWithFixedDelay(this::processTurn, 500, 500, TimeUnit.MILLISECONDS);
+        exec.scheduleWithFixedDelay(this::processTurn, BOT_DELAY_SEC, BOT_DELAY_SEC, TimeUnit.SECONDS);
     }
 
     /** sofort beenden (z.B. wenn das Spiel endet) */
@@ -69,7 +70,10 @@ public class BotManager {
      * direkt der nächste Bot dran ist → sofort verarbeiten.
      */
     public void queueBotTurn(String botId) {
-        exec.execute(() -> processSpecificBot(botId));
+        exec.schedule(
+                () -> processSpecificBot(botId),
+                BOT_DELAY_SEC,
+                TimeUnit.SECONDS);
     }
 
 
@@ -112,12 +116,14 @@ public class BotManager {
 
         log.info(() -> "Bot-Turn für " + bot.getName());
 
+
         DiceManagerInterface dm = game.getDiceManager();
         int roll      = dm.rollDices();
         boolean pasch = dm.isPasch();
 
         // BotManager.doFullMove (alt)
         cb.broadcast("BOT_ROLL:" + bot.getId() + ":" + dm.getLastRollValues());
+
 
         // BotManager.doFullMove (neu)
         ObjectNode rollMsg = mapper.createObjectNode();

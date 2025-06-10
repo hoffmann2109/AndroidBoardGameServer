@@ -247,7 +247,6 @@ public class Game {
             if (!player.isConnected() && !player.isBot()) {
                 player.setBot(true);
                 player.setConnected(true);
-                player.setName(player.getName() + " 🤖");
                 System.out.println("Replaced disconnected player with bot: " + player.getId());
             }
         });
@@ -273,5 +272,25 @@ public class Game {
 
         return roll;
     }
+    public void reset() {
+        currentPlayerIndex = 0;
+        winnerId           = null;
+        isStarted          = false;
+        players.forEach(p -> {
+            p.setPosition(0);
+            p.setMoney(1500);
+            p.setInJail(false);
+            p.setJailTurns(0);
+            p.setBot(false);
+            p.setHasRolledThisTurn(false);
+        });
 
+        // Alle Grundstücke freimachen
+
+
+        // Würfel zurücksetzen, Karten mischen, …
+        diceManager.initializeStandardDices();
     }
+
+
+}

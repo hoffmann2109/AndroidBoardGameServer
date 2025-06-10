@@ -27,8 +27,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -42,6 +41,27 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     final Map<String, String> sessionToUserId = new ConcurrentHashMap<>();
     private final Game game = new Game();
     private final ObjectMapper objectMapper = new ObjectMapper();
+    // oben im Handler
+    private final ScheduledExecutorService disconnectExec =
+            Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "DisconnectTimer");
+                t.setDaemon(true);
+                return t;
+            });
+    private final Map<String, ScheduledFuture<?>> disconnectTasks = new ConcurrentHashMap<>();
+    private static final int DISCONNECT_GRACE_SEC = 5;
+
+    // Felder
+    private final ScheduledExecutorService turnTimerExec =
+            Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "TurnTimer");
+                t.setDaemon(true);
+                return t;
+            });
+    private final Map<String,ScheduledFuture<?>> turnTimers = new ConcurrentHashMap<>();
+    private static final int TURN_TIMEOUT_SEC = 30;
+
+
 
     @Autowired
     private GameHistoryService gameHistoryService;
@@ -66,9 +86,9 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     @PostConstruct
     public void init() {
         dealService.setGame(game);
+        game.getDiceManager().initializeStandardDices();
         game.setPropertyService(propertyService);
         game.setPropertyTransactionService(propertyTransactionService);
-        game.getDiceManager().initializeStandardDices();
         initializeBotManager();
     }
 
@@ -90,10 +110,18 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
 
     @Override
-    public void afterConnectionEstablished(@NonNull WebSocketSession session) {
+    public void afterConnectionEstablished(WebSocketSession session) {
         sessions.add(session);
-
+        // Falls noch ein Kick-Timer läuft, abbrechen
+        String userId = sessionToUserId.get(session.getId());
+        if (userId == null) {
+            sendMessageToSession(session, createJsonError("Send INIT message first"));
+            return;
+        }
+        Optional.ofNullable(disconnectTasks.remove(userId))
+                .ifPresent(f -> f.cancel(false));
     }
+
 
     protected void handleInitMessage(WebSocketSession session, JsonNode jsonNode) {
         try {
@@ -442,7 +470,9 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 }
 
     /* 4 ──────────────────────────────────────────────
-       Alles ok  →  Zug weitergeben                     */
+       Alles ok  →  Zug weitergeben
+                       */
+                cancelTurnTimer(userId);
                 advanceTurn();          // eigene Methode; s. unten
                 checkAllPlayersForBankruptcy();
             }
@@ -465,49 +495,72 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    @Override
-    public void afterConnectionClosed(@NonNull WebSocketSession session, @NonNull CloseStatus status) {
-        String userId = sessionToUserId.get(session.getId());
-        if (userId != null) {
-            // Spieler als disconnected markieren
-            game.markPlayerDisconnected(userId);
+  /*  @Override
+    public void afterConnectionClosed(
+            @NonNull WebSocketSession session,
+            @NonNull CloseStatus status) {
 
-            //  Prüfe, ob noch irgendein Spieler verbunden ist
-            boolean allDisconnected = game.getPlayers().stream().noneMatch(Player::isConnected);
+        String userId = sessionToUserId.remove(session.getId());
+        sessions.remove(session);
 
-            if (allDisconnected) {
-                logger.info("All players disconnected – ending game immediately.");
-                sessionToUserId.remove(session.getId());
-                sessions.remove(session);
-                handleEndGame();
-                return;
-            }
+        if (userId == null) return;
 
-            //Nur wenn nicht alle disconnected → Bot übernehmen
-            game.replaceDisconnectedWithBot(userId);
+        game.markPlayerDisconnected(userId);
 
-            // Sessions aktualisieren
-            sessionToUserId.remove(session.getId());
-            sessions.remove(session);
-
-            broadcastMessage("Player left: " + userId + " and was replaced by a bot.");
-            broadcastGameState();
-            checkAllPlayersForBankruptcy();
-            logger.log(Level.INFO, "Player disconnected and replaced with bot: {0}", userId);
-
-            // Falls der aktuelle Spieler gegangen ist → nächsten Spieler drannehmen
-            Player current = game.getCurrentPlayer();
-            if (current != null && current.getId().equals(userId)) {
-                new java.util.Timer().schedule(new java.util.TimerTask() {
-                    @Override
-                    public void run() {
-                        advanceToNextPlayer();
-                    }
-                }, 300);
-            }
+        // ➊  Prüfen, ob noch ein echter Spieler online ist
+        if (!anyHumanConnected()) {
+            logger.info("No human players connected – ending game.");
+            handleEndGame();          // beendet Spiel + stoppt BotManager
+            return;
         }
 
+        // ➋  Nur wenn noch Menschen da sind → Bot übernehmen
+        game.replaceDisconnectedWithBot(userId);
+        broadcastMessage("Player left: " + userId + " and was replaced by a bot.");
+        broadcastGameState();
+        checkAllPlayersForBankruptcy();
+
+        // ➌  Falls der Verlassende an der Reihe war → Zug weitergeben
+        if (game.getCurrentPlayer() != null &&
+                game.getCurrentPlayer().getId().equals(userId)) {
+            new Timer().schedule(new TimerTask() {
+                @Override public void run() { advanceToNextPlayer(); }
+            }, 300);
+        }
+    } */
+
+
+    @Override
+    public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
+
+        String userId = sessionToUserId.remove(session.getId());
+        sessions.remove(session);
+        if (userId == null) return;
+        game.markPlayerDisconnected(userId);
+        // ➊  Prüfen, ob noch ein echter Spieler online ist
+        if (!anyHumanConnected()) {
+            logger.info("No human players connected – ending game.");
+            handleEndGame();          // beendet Spiel + stoppt BotManager
+            return;
+        }
+
+
+        // ➜ 5-s-Timer statt sofort Bot
+        ScheduledFuture<?> task = disconnectExec.schedule(() -> {
+            // erst hier wirklich zum Bot machen
+            game.replaceDisconnectedWithBot(userId);
+            broadcastMessage("SYSTEM: " + userId
+                    + " hat die Verbindung verloren und wurde durch einen Bot ersetzt.");
+            broadcastGameState();
+            checkAllPlayersForBankruptcy();
+
+            if (game.isPlayerTurn(userId)) botManager.queueBotTurn(userId);;
+        }, DISCONNECT_GRACE_SEC, TimeUnit.SECONDS);
+
+        disconnectTasks.put(userId, task);
     }
+
+
 
 
     private void handleDiceRoll(WebSocketSession session, String userId) throws JsonProcessingException {
@@ -585,6 +638,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
     private void startGame() {
         try {
+            game.reset();
             // 1) kompletten Spielstand an alle schicken
             String gameState = objectMapper.writeValueAsString(game.getPlayerInfo());
             broadcastMessage("GAME_STATE:" + gameState);
@@ -598,9 +652,18 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             // 4) Spiel-Status setzen
             game.start();
 
-            // 5) Bot-Thread EINMAL starten (statt handleBotTurn)
+            // 5) Bot-Thread EINMAL starten (
+            if (botManager != null) {
+                botManager.shutdown();
+            }
+
+            initializeBotManager();
             botManager.start();
             logger.info("BotManager started");
+            Player current = game.getCurrentPlayer();
+            if (current != null && !current.isBot()) {
+                scheduleTurnTimer(current.getId());
+            }
 
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Error sending game state: {0}", e.getMessage());
@@ -634,6 +697,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 } else {
                     sendMessageToSession(session, createJsonError("Cannot buy property (insufficient funds or already owned)."));
                 }
+
             }
         } catch (NumberFormatException e) {
             sendMessageToSession(session, createJsonError("Invalid property ID format."));
@@ -743,6 +807,12 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         if (botManager != null) {
             botManager.shutdown();
         }
+
+        turnTimers.values().forEach(f -> f.cancel(false));
+        turnTimers.clear();
+
+        disconnectTasks.values().forEach(f -> f.cancel(false));
+        disconnectTasks.clear();
 
 
     }
@@ -953,9 +1023,10 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
         Player current = game.getCurrentPlayer();
         if (current == null) return;
+        scheduleTurnTimer(current.getId());
 
         if (current.isBot()) {
-            botManager.queueBotTurn(current.getId());   // <<< statt handleBotTurn()
+            botManager.queueBotTurn(current.getId());
         }
     }
 
@@ -964,17 +1035,22 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         // akt. Spieler zurücksetzen
         Player prev = game.getCurrentPlayer();
         prev.setHasRolledThisTurn(false);
+        cancelTurnTimer(prev.getId());
 
         game.nextPlayer();          // bestimmt den nächsten (überspringt offline-Spieler/Bots)
 
         broadcastMessage("PLAYER_TURN:" + game.getCurrentPlayer().getId());
-
-        // falls Bot: Bot-Zug in eigener Queue
+        scheduleTurnTimer(game.getCurrentPlayer().getId());   //  <-- hier
         if (game.getCurrentPlayer().isBot()) {
             botManager.queueBotTurn(game.getCurrentPlayer().getId());
         }
     }
 
+    private boolean anyHumanConnected() {
+        return game.getPlayers()
+                .stream()
+                .anyMatch(p -> p.isConnected() && !p.isBot());
+    }
 
 
 
@@ -992,4 +1068,33 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         }
         return null;
     }
+
+
+    private void scheduleTurnTimer(String playerId) {
+        cancelTurnTimer(playerId);
+
+        if (game.getPlayerById(playerId).map(Player::isBot).orElse(true)) return;
+
+        ScheduledFuture<?> t = turnTimerExec.schedule(() -> {
+            if (!game.isPlayerTurn(playerId)) return;          // Zug schon vorbei
+            if (game.getPlayerById(playerId).map(Player::isBot).orElse(true)) return;
+
+            game.markPlayerDisconnected(playerId);
+            game.replaceDisconnectedWithBot(playerId);
+            broadcastMessage("SYSTEM: " + playerId
+                    + " hat 30 Sekunden nicht beendet und wurde zum Bot.");
+            broadcastGameState();
+
+            if (game.isPlayerTurn(playerId)) botManager.queueBotTurn(playerId);
+        }, TURN_TIMEOUT_SEC, TimeUnit.SECONDS);
+
+        turnTimers.put(playerId, t);
+    }
+
+    private void cancelTurnTimer(String playerId) {
+        Optional.ofNullable(turnTimers.remove(playerId))
+                .ifPresent(f -> f.cancel(false));
+    }
+
+
 }
