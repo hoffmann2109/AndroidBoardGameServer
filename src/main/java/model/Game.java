@@ -283,6 +283,7 @@ public class Game {
             p.setMoney(1500);
             p.setInJail(false);
             p.setJailTurns(0);
+            p.setConnected(true);   //jeder aktive Socket zählt wieder
             p.setBot(false);
             p.setHasRolledThisTurn(false);
         });
