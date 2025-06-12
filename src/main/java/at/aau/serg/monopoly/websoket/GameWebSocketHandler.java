@@ -714,14 +714,14 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         }
 
         logger.log(Level.INFO, "Player {0} has given up", quittingUserId);
-        processPlayerGiveUp(quittingUserId);
+        processPlayerGiveUp(quittingUserId, 0,0);
     }
 
     // Helper method to handle giveUp
-    public void processPlayerGiveUp(String quittingUserId) {
+    public void processPlayerGiveUp(String quittingUserId, int durationMinutes, int endMoney) {
 
         //mark player as looser for firebase
-        gameHistoryService.markPlayerAsLoser(quittingUserId);
+        gameHistoryService.markPlayerAsLoser(quittingUserId, durationMinutes , endMoney);
 
         //handle give up in game logic
         game.giveUp(quittingUserId);
@@ -809,8 +809,9 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                             new Object[]{ pid, e.getMessage() });
                 }
 
+                int playedDuration = game.getDurationPlayed();
                 // Process GIVE_UP
-                processPlayerGiveUp(pid);
+                processPlayerGiveUp(pid, playedDuration, p.getMoney());
             }
         }
     }

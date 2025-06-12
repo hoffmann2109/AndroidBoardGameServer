@@ -119,33 +119,13 @@ public class GameHistoryService {
     }
 
     /**
-     * Speichert einen Spielabbruch (Give Up) als verlorenes Spiel für einen Spieler
+     * Speichert einen Spielabbruch (Give Up) und Bankrupt als verlorenes Spiel für einen Spieler
      */
-    public void markPlayerAsLoser(String userId) {
-        try {
-            ensureGameHistorySubcollection(userId);
+    public void markPlayerAsLoser(String userId, int durationMinutes, int endMoney) {
 
-            Firestore firestore = FirestoreClient.getFirestore();
+        saveGameHistory(userId, durationMinutes, endMoney, false);
 
-            GameHistory gameHistory = new GameHistory();
-            gameHistory.setId(UUID.randomUUID().toString());
-            gameHistory.setUserId(userId);
-            gameHistory.setDurationMinutes(0); // Spiel wurde aufgegeben - verhindert verfälschte Statistiken
-            gameHistory.setEndMoney(0); // damit nicht die Statistik verfälscht wird durch gezieltes Nutzten des mechanismus
-            gameHistory.setTimestamp(new Date());
-            gameHistory.setWon(false); // Spieler hat verloren
+        logger.info("Spielabbruch als Niederlage für " + userId + " gespeichert.");
 
-            ApiFuture<WriteResult> result = firestore.collection(COLLECTION_NAME)
-                    .document(userId)
-                    .collection(SUBCOLLECTION_NAME)
-                    .document(gameHistory.getId())
-                    .set(gameHistory);
-
-            result.get(); // warten auf Abschluss
-            logger.info("Spielabbruch als Niederlage für " + userId + " gespeichert.");
-        } catch (InterruptedException | ExecutionException e) {
-            logger.log(Level.SEVERE, "Fehler beim Speichern des Spielabbruchs für " + userId, e);
-            Thread.currentThread().interrupt();
-        }
     }
 }
