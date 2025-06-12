@@ -100,7 +100,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 new BotManager.BotCallback() {
                     @Override public void broadcast(String m)        { broadcastMessage(m); }
                     @Override public void updateGameState()          { broadcastGameState(); }
-                    @Override public void advanceToNextPlayer()      { advanceToNextPlayer(); }
+                    @Override public void advanceToNextPlayer()      { switchToNextPlayer(); }
                     @Override public void checkBankruptcy() {        // ➋ einfach durchreichen
                         checkAllPlayersForBankruptcy();
                     }
@@ -205,6 +205,9 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 broadcastMessage(PLAYER_PREFIX + userId + " passed GO and collected €200");
             }
 
+            if (game.isPlayerTurn(userId)) {
+                refreshTurnTimer(userId);
+            }
             broadcastGameState();
             checkAllPlayersForBankruptcy();
         } catch (NumberFormatException e) {
@@ -442,40 +445,42 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
             if (payload.trim().equalsIgnoreCase("Roll")) {
                 handleDiceRoll(session, userId);
-            } else if ("NEXT_TURN".equals(payload)) {
+            }else if ("NEXT_TURN".equals(payload)) {
                 logger.log(Level.INFO, "Received NEXT_TURN from {0}", userId);
 
-    /* 1 ──────────────────────────────────────────────
-       Gilt: Nur der aktuelle Spieler darf „NEXT_TURN“ schicken   */
+                /* A ───────── ist der Sender dran? ─────────────── */
                 if (!game.isPlayerTurn(userId)) {
                     sendMessageToSession(session, createJsonError("Not your turn!"));
                     return;
                 }
 
-    /* 2 ──────────────────────────────────────────────
-       Prüfen, ob schon gewürfelt wurde (und kein offener Pasch) */
                 Player current = game.getCurrentPlayer();
-                if (!current.isHasRolledThisTurn()) {
-                    sendMessageToSession(session, createJsonError("Roll the dice first!"));
-                    return;
-                }
+                if (current == null) return;
 
-    /* 3 ──────────────────────────────────────────────
-       Jail-Sonderfall: erst Jail-Zug runterzählen   */
+                /* 1 ─ Gefängnis zuerst behandeln ──────────────── */
                 if (current.isInJail()) {
                     current.reduceJailTurns();
                     if (!current.isInJail()) {
                         broadcastMessage("Player " + current.getName() + " is released from jail!");
                     }
+                    cancelTurnTimer(userId);
+                    switchToNextPlayer();          // Zug weitergeben
+                    checkAllPlayersForBankruptcy();
+                    return;                 // Rest überspringen
                 }
 
-    /* 4 ──────────────────────────────────────────────
-       Alles ok  →  Zug weitergeben
-                       */
-                cancelTurnTimer(userId);
-                advanceTurn();          // eigene Methode; s. unten
+                /* 2 ─ Hat gewürfelt? ──────────────────────────── */
+                if (!current.isHasRolledThisTurn()) {
+                    sendMessageToSession(session, createJsonError("Roll the dice first!"));
+                    return;
+                }
+
+                /* 3 ─ Alles ok → Zug weitergeben ──────────────── */
+                cancelTurnTimer(userId);        // Timer fürs Ende des Zugs
+                switchToNextPlayer();
                 checkAllPlayersForBankruptcy();
             }
+
             else if (payload.startsWith("MANUAL_ROLL:")) {
                 handleManualRoll(payload, userId, session);
             } else if (payload.startsWith("UPDATE_MONEY:")) {
@@ -547,14 +552,21 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
         // ➜ 5-s-Timer statt sofort Bot
         ScheduledFuture<?> task = disconnectExec.schedule(() -> {
-            // erst hier wirklich zum Bot machen
+
+            /* 1 ─ Mensch endgültig ersetzen */
+            cancelTurnTimer(userId);                //  ← laufenden 30-s-Timer stoppen
             game.replaceDisconnectedWithBot(userId);
-            broadcastMessage("SYSTEM: " + userId
-                    + " hat die Verbindung verloren und wurde durch einen Bot ersetzt.");
+
+            broadcastMessage("SYSTEM: " + userId +
+                    " hat die Verbindung verloren und wurde durch einen Bot ersetzt.");
             broadcastGameState();
             checkAllPlayersForBankruptcy();
 
-            if (game.isPlayerTurn(userId)) botManager.queueBotTurn(userId);;
+            /* 2 ─ Bot sofort loslegen lassen, falls er an der Reihe ist */
+            if (game.isPlayerTurn(userId)) {
+                botManager.queueBotTurn(userId);    //  ← jetzt BOT_DELAY_SEC später würfeln
+            }
+
         }, DISCONNECT_GRACE_SEC, TimeUnit.SECONDS);
 
         disconnectTasks.put(userId, task);
@@ -586,6 +598,9 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         /* ── 2. Würfeln über Game  */
         int roll   = game.handleDiceRoll(userId);               // zentrales Handling
         boolean pasch = game.getDiceManager().isPasch();
+        if (game.isPlayerTurn(userId)) {
+            refreshTurnTimer(userId);
+        }
 
         // Bei Pasch darf noch einmal gewürfelt werden
         if (pasch) {
@@ -638,41 +653,37 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
     private void startGame() {
         try {
+            /* 1 ─ Spielfeld zurücksetzen + Spielstand senden */
             game.reset();
-            // 1) kompletten Spielstand an alle schicken
+
             String gameState = objectMapper.writeValueAsString(game.getPlayerInfo());
             broadcastMessage("GAME_STATE:" + gameState);
-
-            // 2) kurze System-Meldung
             broadcastMessage("Game started! " + sessions.size() + " players are connected.");
-
-            // 3) Logging
             logger.log(Level.INFO, "Game started with {0} players!", sessions.size());
 
-            // 4) Spiel-Status setzen
+            /* 2 ─ Spielstatus umschalten */
             game.start();
 
-            // 5) Bot-Thread EINMAL starten (
-            if (botManager != null) {
-                botManager.shutdown();
-            }
+            /* 3 ─ Bot-Manager neu aufsetzen (alter Thread sauber beenden) */
+            if (botManager != null) botManager.shutdown();
+            initializeBotManager();   // erzeugt eine *neue* Instanz
+            botManager.start();       // kickt ggf. den ersten Bot an (Fix #1)
 
-            initializeBotManager();
-            botManager.start();
-            logger.info("BotManager started");
+            /* 4 ─ Zug-Timer nur, wenn jetzt ein Mensch dran ist */
             Player current = game.getCurrentPlayer();
             if (current != null && !current.isBot()) {
                 scheduleTurnTimer(current.getId());
             }
 
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error sending game state: {0}", e.getMessage());
+            logger.log(Level.SEVERE, "Error starting game: {0}", e.getMessage());
         }
     }
 
 
     private void handleBuyProperty(WebSocketSession session, String userId, String payload) {
         try {
+
             int propertyId = Integer.parseInt(payload.substring("BUY_PROPERTY:".length()));
 
             Optional<Player> playerOpt = game.getPlayerById(userId);
@@ -687,7 +698,11 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 if (success) {
                     broadcastMessage(createJsonMessage(PLAYER_PREFIX + userId + " bought property " + propertyId));
                     broadcastGameState();
+                    if (game.isPlayerTurn(userId)) {
+                        refreshTurnTimer(userId);
+                    }
                     checkAllPlayersForBankruptcy();
+
                 } else {
                     sendMessageToSession(session, createJsonError("Failed to buy property due to server error."));
                 }
@@ -728,6 +743,9 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             if (propertyTransactionService.sellProperty(player, propertyId)) {
                 broadcastMessage(createJsonMessage(PLAYER_PREFIX + userId + " sold property " + propertyId));
                 broadcastGameState();
+                if (game.isPlayerTurn(userId)) {
+                    refreshTurnTimer(userId);
+                }
                 checkAllPlayersForBankruptcy();
             } else {
                 sendMessageToSession(session, createJsonError("Cannot sell property (not owned by player)."));
@@ -1017,35 +1035,6 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    private void advanceToNextPlayer() {
-        game.nextPlayer();
-        broadcastGameState();
-
-        Player current = game.getCurrentPlayer();
-        if (current == null) return;
-        scheduleTurnTimer(current.getId());
-
-        if (current.isBot()) {
-            botManager.queueBotTurn(current.getId());
-        }
-    }
-
-
-    private void advanceTurn() {
-        // akt. Spieler zurücksetzen
-        Player prev = game.getCurrentPlayer();
-        prev.setHasRolledThisTurn(false);
-        cancelTurnTimer(prev.getId());
-
-        game.nextPlayer();          // bestimmt den nächsten (überspringt offline-Spieler/Bots)
-
-        broadcastMessage("PLAYER_TURN:" + game.getCurrentPlayer().getId());
-        scheduleTurnTimer(game.getCurrentPlayer().getId());   //  <-- hier
-        if (game.getCurrentPlayer().isBot()) {
-            botManager.queueBotTurn(game.getCurrentPlayer().getId());
-        }
-    }
-
     private boolean anyHumanConnected() {
         return game.getPlayers()
                 .stream()
@@ -1095,6 +1084,40 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         Optional.ofNullable(turnTimers.remove(playerId))
                 .ifPresent(f -> f.cancel(false));
     }
+
+    /** Wechselt auf den nächsten gültigen Spieler und kümmert sich um
+     *  - Flag‐Reset
+     *  - Timer stoppen/neu starten
+     *  - Broadcast
+     *  - ggf. Bot-Queue
+     */
+    private void switchToNextPlayer() {
+        Player prev = game.getCurrentPlayer();
+        if (prev != null) {
+            prev.setHasRolledThisTurn(false);
+            cancelTurnTimer(prev.getId());      // Timer des Vor-Spielers stoppen
+        }
+
+        game.nextPlayer();
+        Player current = game.getCurrentPlayer();
+        if (current == null) { handleEndGame(); return; }
+
+        broadcastGameState();
+
+        /* ─── HIER WIEDER EIN TIMER, ABER NUR FÜR MENSCHEN ─── */
+        if (!current.isBot()) {
+            scheduleTurnTimer(current.getId());
+        } else {                                // Bot → sofort in die Queue
+            botManager.queueBotTurn(current.getId());
+        }
+    }
+
+
+    private void refreshTurnTimer(String playerId) {
+        cancelTurnTimer(playerId);          // Alte Aufgabe löschen
+        scheduleTurnTimer(playerId);        // 30 s ab jetzt
+    }
+
 
 
 }
