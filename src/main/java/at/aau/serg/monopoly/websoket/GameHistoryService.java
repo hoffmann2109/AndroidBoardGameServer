@@ -51,12 +51,11 @@ public class GameHistoryService {
      * @param userId          Die ID des Spielers
      * @param durationMinutes Die Dauer des Spiels in Minuten
      * @param endMoney        Das Geld des Spielers am Ende
-     * @param levelGained     Die gewonnenen Level
      * @param won             Ob der Spieler gewonnen hat
      * @return true, wenn das Speichern erfolgreich war, sonst false
      */
     public boolean saveGameHistory(String userId, int durationMinutes, int endMoney,
-                                   int levelGained, boolean won) {
+                                   boolean won) {
 
 
 
@@ -69,7 +68,6 @@ public class GameHistoryService {
             gameHistory.setUserId(userId);
             gameHistory.setDurationMinutes(durationMinutes);
             gameHistory.setEndMoney(endMoney);
-            gameHistory.setLevelGained(levelGained);
             gameHistory.setTimestamp(new Date());
             gameHistory.setWon(won);
 
@@ -98,10 +96,9 @@ public class GameHistoryService {
      * @param players         Die Liste der Spieler
      * @param durationMinutes Die Dauer des Spiels in Minuten
      * @param winnerId        Die ID des Gewinners (oder null, wenn kein Gewinner)
-     * @param levelGained     Die gewonnenen Level
      */
     public void saveGameHistoryForAllPlayers(java.util.List<Player> players, int durationMinutes,
-                                             String winnerId, int levelGained) {
+                                             String winnerId) {
         if (players == null || players.isEmpty()) {
             logger.warning("Keine Spieler zum Speichern der Spielhistorie vorhanden");
             return;
@@ -114,7 +111,6 @@ public class GameHistoryService {
                     player.getId(),
                     durationMinutes,
                     player.getMoney(),
-                    levelGained,
                     won
             );
         }
@@ -136,7 +132,6 @@ public class GameHistoryService {
             gameHistory.setUserId(userId);
             gameHistory.setDurationMinutes(0); // Spiel wurde aufgegeben - verhindert verfälschte Statistiken
             gameHistory.setEndMoney(0); // damit nicht die Statistik verfälscht wird durch gezieltes Nutzten des mechanismus
-            gameHistory.setLevelGained(0); // kein Levelgewinn
             gameHistory.setTimestamp(new Date());
             gameHistory.setWon(false); // Spieler hat verloren
 
