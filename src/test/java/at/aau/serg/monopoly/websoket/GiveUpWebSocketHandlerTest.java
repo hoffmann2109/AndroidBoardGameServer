@@ -18,7 +18,7 @@ class GiveUpWebSocketHandlerTest {
         GameHistoryService service = new GameHistoryService();
 
         // Einfach aufrufen – mehr nicht
-        service.markPlayerAsLoser("test-user");
+        service.markPlayerAsLoser("test-user", 0,0);
 
         // Kein assert nötig – Test besteht, wenn keine Exception fliegt
         assertTrue(true, "Die Methode markPlayerAsLoser wurde ohne Exception ausgeführt");

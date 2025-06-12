@@ -108,7 +108,7 @@ class GameWebSocketHandlerEndGameTest {
 
 
         GameWebSocketHandler spyHandler = spy(handler);
-        doNothing().when(spyHandler).processPlayerGiveUp(anyString());
+        doNothing().when(spyHandler).processPlayerGiveUp(anyString(), anyInt(), anyInt());
 
         spyHandler.sessions.clear();
         spyHandler.sessions.add(session);
@@ -147,7 +147,7 @@ class GameWebSocketHandlerEndGameTest {
         ReflectionTestUtils.setField(handler, "objectMapper", spyMapper);
 
         GameWebSocketHandler spyHandler = spy(handler);
-        doNothing().when(spyHandler).processPlayerGiveUp(anyString());
+        doNothing().when(spyHandler).processPlayerGiveUp(anyString(),anyInt(), anyInt());
 
         spyHandler.sessions.clear();
         spyHandler.sessions.add(session);
