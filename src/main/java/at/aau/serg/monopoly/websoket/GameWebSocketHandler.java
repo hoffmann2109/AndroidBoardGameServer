@@ -1073,6 +1073,11 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             broadcastMessage("SYSTEM: " + playerId
                     + " hat 30 Sekunden nicht beendet und wurde zum Bot.");
             broadcastGameState();
+            if (!anyHumanConnected()) {          // ‼ keine Menschen mehr?
+                logger.info("All players are bots – ending game.");
+                handleEndGame();                 // Match stoppen
+                return;                          //  ←  NICHTS mehr anstoßen
+            }
 
             if (game.isPlayerTurn(playerId)) botManager.queueBotTurn(playerId);
         }, TURN_TIMEOUT_SEC, TimeUnit.SECONDS);
@@ -1102,6 +1107,10 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         Player current = game.getCurrentPlayer();
         if (current == null) { handleEndGame(); return; }
 
+        if (!anyHumanConnected()) {
+            handleEndGame();
+            return;
+        }
         broadcastGameState();
 
         /* ─── HIER WIEDER EIN TIMER, ABER NUR FÜR MENSCHEN ─── */
