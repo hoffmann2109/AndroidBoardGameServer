@@ -24,6 +24,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.*;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
+import model.ChatMessage;
+
 
 import java.io.IOException;
 import java.util.*;
@@ -43,6 +45,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     private final Game game = new Game();
     private final ObjectMapper objectMapper = new ObjectMapper();
     private DiceManagerInterface diceManager;
+    private final Map<String, Set<String>> kickVotes = new ConcurrentHashMap<>();
 
     @Autowired
     private GameHistoryService gameHistoryService;
@@ -233,8 +236,16 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 return;
             }
             if (payload.contains("\"type\":\"CHAT_MESSAGE\"")) {
-                logger.log(Level.INFO, "Received chat message from player {0}", userId);//bewusst geloggt aktuell
-                broadcastMessage(payload);
+                ChatMessage chat = objectMapper.readValue(payload, ChatMessage.class);
+
+                // Enthält die Nachricht KICK am Beginn?
+                if (chat.getMessage().startsWith("KICK ")) {
+                    logger.log(Level.INFO, "Received kick request from {0}: {1}", new Object[]{userId, chat.getMessage()});
+                    handleKickVote(session, chat.getMessage(), userId);
+                } else {
+                    // Sonst: Normale Chat-Nachricht
+                    broadcastMessage(payload);
+                }
                 return;
             }
             if (payload.contains("\"type\":\"TAX_PAYMENT\"")) {
@@ -826,7 +837,46 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         diceManager.initializeStandardDices();
     }
 
+    private void handleKickVote(WebSocketSession session, String payload, String voterId) {
+        String targetName = payload.substring("KICK ".length()).trim();
 
+        Optional<Player> targetOpt = game.getPlayers().stream()
+                .filter(p -> p.getName().equals(targetName))
+                .findFirst();
+
+        if (targetOpt.isEmpty()) {
+            sendMessageToSession(session,
+                    createJsonError("Player not found: " + targetName));
+            return;
+        }
+
+        String targetId = targetOpt.get().getId();
+
+        Optional<Player> voterOpt = game.getPlayerById(voterId);
+        if (voterOpt.isEmpty()) {
+            sendMessageToSession(session,
+                    createJsonError("Voting player not found: " + voterId));
+            return;
+        }
+        String voterName = voterOpt.get().getName();
+
+        kickVotes.computeIfAbsent(targetId, k -> ConcurrentHashMap.newKeySet())
+                .add(voterId);
+
+        int votesFor = kickVotes.get(targetId).size();
+        int totalPlayers = game.getPlayers().size();
+
+        // Broadcast:
+        broadcastMessage("SYSTEM: " + voterName
+                + " voted to kick " + targetName
+                + " (" + votesFor + "/" + totalPlayers + ")");
+
+        // Wenn mehr als 50% der Spieler voten -> GIVE_UP = KICK
+        if (votesFor > totalPlayers / 2.0) {
+            processPlayerGiveUp(targetId, 0, 0);
+            kickVotes.remove(targetId);
+        }
+    }
 
 
     private void handlePlayerLanding(Player player) {
