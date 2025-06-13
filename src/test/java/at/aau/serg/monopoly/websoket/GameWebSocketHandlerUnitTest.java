@@ -11,6 +11,7 @@ import org.springframework.web.socket.WebSocketSession;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -212,4 +213,36 @@ class GameWebSocketHandlerUnitTest {
                 ((TextMessage) msg).getPayload().contains("Player left")
         ));
     }
+
+    @Test
+    void testHandleKickVoteIfPlayerNotFound() throws Exception {
+        clearInvocations(session);
+        String kickJson = "{\"type\":\"CHAT_MESSAGE\",\"playerId\":\"1\",\"message\":\"KICK Unknown\"}";
+        gameWebSocketHandler.handleTextMessage(session, new TextMessage(kickJson));
+
+        verify(session).sendMessage(argThat(msg -> {
+            String payload = ((TextMessage) msg).getPayload();
+            return payload.contains("\"type\":\"ERROR\"")
+                    && payload.contains("Player not found: Unknown");
+        }));
+    }
+
+    @Test
+    void testHandleKickVoteSingleVoteBroadcastOnly() throws Exception {
+        WebSocketSession session2 = mock(WebSocketSession.class);
+        when(session2.getId()).thenReturn("2");
+        when(session2.isOpen()).thenReturn(true);
+        gameWebSocketHandler.afterConnectionEstablished(session2);
+        sendInit(session2, "2", "Player2");
+        clearInvocations(session);
+        clearInvocations(session2);
+
+        String vote1 = "{\"type\":\"CHAT_MESSAGE\",\"playerId\":\"1\",\"message\":\"KICK Player2\"}";
+        gameWebSocketHandler.handleTextMessage(session, new TextMessage(vote1));
+
+        String expected = "SYSTEM: Player1 voted to kick Player2 (1/2)";
+        verify(session).sendMessage(argThat(msg -> ((TextMessage) msg).getPayload().contains(expected)));
+        verify(session2).sendMessage(argThat(msg -> ((TextMessage) msg).getPayload().contains(expected)));
+    }
+
 }
