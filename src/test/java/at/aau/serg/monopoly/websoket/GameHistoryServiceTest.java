@@ -47,7 +47,7 @@ class GameHistoryServiceTest {
             client.when(FirestoreClient::getFirestore).thenReturn(firestore);
 
             GameHistoryService service = new GameHistoryService();
-            boolean result = service.saveGameHistory("123", 45, 1500, 1, false);
+            boolean result = service.saveGameHistory("123", 45, 1500,  false);
 
             assertTrue(result);
             verify(gameDoc).set(any(GameHistory.class));
@@ -80,7 +80,7 @@ class GameHistoryServiceTest {
             client.when(FirestoreClient::getFirestore).thenReturn(firestore);
 
             GameHistoryService service = new GameHistoryService();
-            boolean result = service.saveGameHistory("123", 30, 1000, 1, true);
+            boolean result = service.saveGameHistory("123", 30, 1000, true);
 
             assertFalse(result);
         }
@@ -111,7 +111,7 @@ class GameHistoryServiceTest {
             client.when(FirestoreClient::getFirestore).thenReturn(firestore);
 
             GameHistoryService service = new GameHistoryService();
-            boolean result = service.saveGameHistory("123", 30, 1000, 1, false);
+            boolean result = service.saveGameHistory("123", 30, 1000, false);
 
             assertFalse(result);
         }
@@ -120,8 +120,8 @@ class GameHistoryServiceTest {
     @Test
     void testSaveGameHistoryForAllPlayers_emptyList() {
         GameHistoryService service = new GameHistoryService();
-        assertDoesNotThrow(() -> service.saveGameHistoryForAllPlayers(null, 30, "winnerId", 1));
-        assertDoesNotThrow(() -> service.saveGameHistoryForAllPlayers(List.of(), 30, "winnerId", 1));
+        assertDoesNotThrow(() -> service.saveGameHistoryForAllPlayers(null, 30, "winnerId"));
+        assertDoesNotThrow(() -> service.saveGameHistoryForAllPlayers(List.of(), 30, "winnerId"));
     }
 
     @Test
@@ -154,7 +154,7 @@ class GameHistoryServiceTest {
             client.when(FirestoreClient::getFirestore).thenReturn(firestore);
 
             GameHistoryService service = new GameHistoryService();
-            service.saveGameHistoryForAllPlayers(List.of(p1, p2), 40, "p2", 2);
+            service.saveGameHistoryForAllPlayers(List.of(p1, p2), 40, "p2");
 
             verify(gameDoc, atLeastOnce()).set(any(GameHistory.class));
         }
@@ -191,7 +191,7 @@ class GameHistoryServiceTest {
             client.when(FirestoreClient::getFirestore).thenReturn(firestore);
 
             GameHistoryService service = new GameHistoryService();
-            boolean result = service.saveGameHistory("123", 45, 1500, 1, false);
+            boolean result = service.saveGameHistory("123", 45, 1500,  false);
 
             assertTrue(result);
             verify(userDoc).set(Collections.emptyMap());
@@ -225,7 +225,7 @@ class GameHistoryServiceTest {
             client.when(FirestoreClient::getFirestore).thenReturn(firestore);
 
             GameHistoryService service = new GameHistoryService();
-            boolean result = service.saveGameHistory("123", 30, 1000, 1, true);
+            boolean result = service.saveGameHistory("123", 30, 1000,  true);
 
             assertFalse(result);
         }
@@ -257,7 +257,7 @@ class GameHistoryServiceTest {
             client.when(FirestoreClient::getFirestore).thenReturn(firestore);
 
             GameHistoryService service = new GameHistoryService();
-            service.markPlayerAsLoser("123");
+            service.markPlayerAsLoser("123",0,0);
 
             ArgumentCaptor<GameHistory> captor = ArgumentCaptor.forClass(GameHistory.class);
             verify(gameDoc).set(captor.capture());
@@ -297,7 +297,7 @@ class GameHistoryServiceTest {
             client.when(FirestoreClient::getFirestore).thenReturn(firestore);
 
             GameHistoryService service = new GameHistoryService();
-            assertDoesNotThrow(() -> service.markPlayerAsLoser("123"));
+            assertDoesNotThrow(() -> service.markPlayerAsLoser("123",0,0));
         } finally {
             Thread.interrupted();
         }
@@ -329,7 +329,7 @@ class GameHistoryServiceTest {
             client.when(FirestoreClient::getFirestore).thenReturn(firestore);
 
             GameHistoryService service = new GameHistoryService();
-            assertDoesNotThrow(() -> service.markPlayerAsLoser("123"));
+            assertDoesNotThrow(() -> service.markPlayerAsLoser("123", 0, 0));
         } finally {
             Thread.interrupted();
         }

@@ -1,5 +1,6 @@
 package at.aau.serg.monopoly.websoket;
 
+import at.aau.serg.monopoly.firebase.UserStatisticsService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -59,6 +60,9 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     private CheatService cheatService;
     @Autowired
     private DealService dealService;
+    @Autowired
+    private UserStatisticsService userStatisticsService;
+
 
     @PostConstruct
     public void init() {
@@ -619,16 +623,22 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             // Beende das Spiel und erhalte die Spieldauer
             int durationMinutes = game.endGame(winnerId);
 
-            // Standard Level-Gewinn für alle Spieler
-            int levelGained = 1;
 
             // Speichere die Spielhistorie für alle Spieler
             gameHistoryService.saveGameHistoryForAllPlayers(
                     game.getPlayers(),
                     durationMinutes,
-                    winnerId,
-                    levelGained
+                    winnerId
             );
+
+
+            // Stats für beteiligte Spieler aktualisieren
+            List<String> playerIds = new ArrayList<>();
+            for (Player player : game.getPlayers()) {
+                playerIds.add(player.getId());
+            }
+            userStatisticsService.updateStatsForUsers(playerIds);
+
 
             // Informiere alle Spieler über das Spielende
             broadcastMessage(createJsonMessage("Das Spiel wurde beendet. Der Gewinner ist " +
@@ -704,14 +714,14 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         }
 
         logger.log(Level.INFO, "Player {0} has given up", quittingUserId);
-        processPlayerGiveUp(quittingUserId);
+        processPlayerGiveUp(quittingUserId, 0,0);
     }
 
     // Helper method to handle giveUp
-    public void processPlayerGiveUp(String quittingUserId) {
+    public void processPlayerGiveUp(String quittingUserId, int durationMinutes, int endMoney) {
 
         //mark player as looser for firebase
-        gameHistoryService.markPlayerAsLoser(quittingUserId);
+        gameHistoryService.markPlayerAsLoser(quittingUserId, durationMinutes , endMoney);
 
         //handle give up in game logic
         game.giveUp(quittingUserId);
@@ -799,8 +809,9 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                             new Object[]{ pid, e.getMessage() });
                 }
 
+                int playedDuration = game.getDurationPlayed();
                 // Process GIVE_UP
-                processPlayerGiveUp(pid);
+                processPlayerGiveUp(pid, playedDuration, p.getMoney());
             }
         }
     }
