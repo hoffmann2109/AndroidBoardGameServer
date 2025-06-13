@@ -243,6 +243,11 @@ public class Game {
         getPlayerById(userId).ifPresent(player -> player.setConnected(false));
     }
 
+    public void markPlayerConnected(String userId) {
+        getPlayerById(userId).ifPresent(player -> player.setConnected(true));
+    }
+
+
     public void replaceDisconnectedWithBot(String userId) {
         getPlayerById(userId).ifPresent(player -> {
             if (!player.isConnected() && !player.isBot()) {

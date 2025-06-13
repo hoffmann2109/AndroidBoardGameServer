@@ -301,7 +301,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 try {
                     RentPaymentMessage rentMsg = objectMapper.readValue(payload, RentPaymentMessage.class);
                     logger.info("Processing rent payment for property " + rentMsg.getPropertyId());
-                    
+
                     // Get the property
                     BaseProperty property = propertyTransactionService.findPropertyById(rentMsg.getPropertyId());
                     if (property == null) {
@@ -329,11 +329,11 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
                     // Create complete rent payment message
                     RentPaymentMessage completeRentMsg = new RentPaymentMessage(
-                        renter.getId(),
-                        owner.getId(),
-                        property.getId(),
-                        property.getName(),
-                        rentAmount
+                            renter.getId(),
+                            owner.getId(),
+                            property.getId(),
+                            property.getName(),
+                            rentAmount
                     );
                     String jsonRent = objectMapper.writeValueAsString(completeRentMsg);
                     broadcastMessage(jsonRent);
@@ -341,8 +341,8 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                     // Process the rent collection
                     boolean rentCollected = rentCollectionService.collectRent(renter, property, owner);
                     if (rentCollected) {
-                        logger.info("Rent of " + rentAmount + " collected from player " + renter.getId() + 
-                            " for property " + property.getName());
+                        logger.info("Rent of " + rentAmount + " collected from player " + renter.getId() +
+                                " for property " + property.getName());
                         broadcastGameState();
                         checkAllPlayersForBankruptcy();
                     } else {
@@ -1005,7 +1005,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 if (owner != null) {
                     // Calculate rent amount
                     int rentAmount = rentCalculationService.calculateRent(property, owner, player);
-                    
+
                     // Create and broadcast rent payment message
                     RentPaymentMessage rentMsg = new RentPaymentMessage(
                             player.getId(),
@@ -1016,12 +1016,12 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                     );
                     String jsonRent = objectMapper.writeValueAsString(rentMsg);
                     broadcastMessage(jsonRent);
-                    
+
                     // Now try to collect the rent
                     boolean rentCollected = rentCollectionService.collectRent(player, property, owner);
                     if (rentCollected) {
-                        logger.log(Level.INFO, "Rent of {0} collected from player {1} for property {2}", 
-                            new Object[]{rentAmount, player.getId(), property.getName()});
+                        logger.log(Level.INFO, "Rent of {0} collected from player {1} for property {2}",
+                                new Object[]{rentAmount, player.getId(), property.getName()});
                     } else {
                         logger.warning("Failed to collect rent for property " + property.getName());
                     }

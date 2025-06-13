@@ -8,6 +8,7 @@ import data.HasWonMessage;
 import model.BotManager;
 import model.Game;
 import model.Player;
+import org.mockito.ArgumentCaptor;
 import model.properties.HouseableProperty;
 import model.properties.TrainStation;
 import model.properties.Utility;
@@ -35,18 +36,32 @@ class GameWebSocketHandlerGiveUpTest {
     @InjectMocks
     private GameWebSocketHandler handler;
 
-    @Mock private Game game;
-    @Mock private WebSocketSession session;
-    @Mock private Player quittingPlayer;
-    @Mock private Player remainingPlayer;
-    @Mock private PropertyService propertyService;
-    @Mock private GameHistoryService gameHistoryService;
-    @Mock private CardDeckService cardDeckService;
-    @Mock private PropertyTransactionService propertyTransactionService;
-    @Mock private RentCollectionService rentCollectionService;
-    @Mock private RentCalculationService rentCalculationService;
-    @Mock private CheatService cheatService;
-    @Mock private DealService dealService;
+    @Mock
+    private Game game;
+    @Mock
+    private WebSocketSession session;
+    @Mock
+    private Player quittingPlayer;
+    @Mock
+    private Player remainingPlayer;
+    @Mock
+    private PropertyService propertyService;
+    @Mock
+    private GameHistoryService gameHistoryService;
+    @Mock
+    private CardDeckService cardDeckService;
+    @Mock
+    private PropertyTransactionService propertyTransactionService;
+    @Mock
+    private RentCollectionService rentCollectionService;
+    @Mock
+    private RentCalculationService rentCalculationService;
+    @Mock
+    private CheatService cheatService;
+    @Mock
+    private DealService dealService;
+    @Captor
+    private ArgumentCaptor<TextMessage> messageCaptor;
 
     private final ObjectMapper mapper = new ObjectMapper();
 
@@ -109,7 +124,7 @@ class GameWebSocketHandlerGiveUpTest {
         ReflectionTestUtils.setField(handler, "botManager", mockBotManager);
 
         // Act
-        handler.handleGiveUp(session, json);
+        handler.handleGiveUpFromClient(session, json);
 
         // Assert: game.giveUp called
         verify(game).giveUp("session1");
@@ -135,13 +150,14 @@ class GameWebSocketHandlerGiveUpTest {
         assertTrue(payloads.stream().anyMatch(p -> p.contains("\"type\":\"GIVE_UP\"")));
         assertTrue(payloads.stream().anyMatch(p -> p.startsWith("GAME_STATE:")));
         assertTrue(payloads.stream().anyMatch(p -> p.startsWith("PLAYER_TURN:")));
-    }
 
 
-        // 3rd message = PLAYER_TURN:
-        String turnPayload = sent.get(2).getPayload();
-        assertTrue(turnPayload.startsWith("PLAYER_TURN:remainingId"));
-    }
+
+    // 3rd message = PLAYER_TURN:
+    String turnPayload = sent.get(2).getPayload();
+
+    assertTrue(turnPayload.startsWith("PLAYER_TURN:remainingId"));
+}
 
     @Test
     void giveUp_lastPlayer_sendsGiveUpThenHasWonThenEndGameAndClearChat() throws Exception {

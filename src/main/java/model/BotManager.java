@@ -208,7 +208,7 @@ public class BotManager {
             return;                     // Sicherheits-Exit
         }
 
-  // 3. Nachricht an alle schicken
+        // 3. Nachricht an alle schicken
         try {
             ObjectNode msg = mapper.createObjectNode();
             msg.put("type", "PROPERTY_BOUGHT");

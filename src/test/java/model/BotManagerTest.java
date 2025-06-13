@@ -1,73 +1,84 @@
 package model;
 
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.mockito.Mockito.*;
 import static org.awaitility.Awaitility.await;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static org.mockito.Mockito.*;
 
+import at.aau.serg.monopoly.websoket.PropertyTransactionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import model.BotManager.BotCallback;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
 
-import java.util.concurrent.*;
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 @ExtendWith(MockitoExtension.class)
-@MockitoSettings(strictness = Strictness.LENIENT)
 class BotManagerTest {
 
+    /* ─── Mocks ────────────────────────────────────────── */
 
-    @Mock  Game                game;
-    @Mock  DiceManagerInterface diceManager;
-    @Mock  BotCallback         cb;
+    @Mock Game                 game;
+    @Mock DiceManagerInterface diceManager;
+    @Mock PropertyTransactionService pts;
+    @Mock BotCallback          cb;
 
-    private ScheduledExecutorService scheduler;   // unser echter Pool
-    private BotManager               botManager;
-    private Player                   bot;
+    /* ─── SUT ──────────────────────────────────────────── */
+
+    private BotManager botManager;
+    private Player     bot;
+
+    /* ─── Test-Setup ───────────────────────────────────── */
 
     @BeforeEach
     void init() {
-        scheduler = Executors.newSingleThreadScheduledExecutor();   // Pool anlegen
-
+        /* 1) Bot-Spieler anlegen */
         bot = new Player("p1", "Botty");
         bot.setBot(true);
         bot.setConnected(true);
 
+        /* 2) Spiel stutzen */
         when(game.getCurrentPlayer()).thenReturn(bot);
+        when(game.getPlayerById("p1")).thenReturn(Optional.of(bot));
+        when(game.getNextPlayer()).thenReturn(new Player("h1", "Human"));
         when(game.getDiceManager()).thenReturn(diceManager);
+        when(game.getTurnLock()).thenReturn(new ReentrantLock());
+
+        /* 3) Dice-Stub */
         when(diceManager.rollDices()).thenReturn(6);
         when(diceManager.isPasch()).thenReturn(false);
         when(game.updatePlayerPosition(anyInt(), anyString())).thenReturn(false);
 
-        botManager = new BotManager(game, new ObjectMapper(), cb, scheduler);
+        /* 4) Keine kaufbaren Felder */
+        when(pts.findPropertyByPosition(anyInt())).thenReturn(null);
+
+        /* 5) System-under-test */
+        botManager = new BotManager(game, pts, cb);
     }
 
-    @AfterEach
-    void tearDown() {
-        scheduler.shutdownNow();   // Threads sauber beenden
-    }
-    @Disabled ("Will be inspected later")
+    /* ─── Tests ────────────────────────────────────────── */
+
     @Test
     void botBroadcasts_whenConnected() {
-        botManager.handleBotTurn();
+        botManager.start();                                // Bot in die Queue
 
-        await().atMost(2, SECONDS)
+        await().atMost(4, TimeUnit.SECONDS)                // BOT_DELAY_SEC + Puffer
                 .untilAsserted(() ->
-                        verify(cb, atLeastOnce()).broadcast(anyString()));
+                        verify(cb, atLeastOnce())
+                                .broadcast(contains("\"type\":\"DICE_ROLL\"")));
     }
-    @Disabled ("Will be inspected later")
+
     @Test
     void botBroadcasts_evenWhenDisconnected() {
-        bot.setConnected(false);          // Bot gilt als "Offline"
-        botManager.handleBotTurn();
+        bot.setConnected(false);                           // offline, aber Bot bleibt Bot
 
-        await().atMost(2, SECONDS)
+        botManager.start();
+
+        await().atMost(4, TimeUnit.SECONDS)
                 .untilAsserted(() ->
-                        verify(cb, atLeastOnce()).broadcast(anyString()));
+                        verify(cb, atLeastOnce())
+                                .broadcast(contains("\"type\":\"DICE_ROLL\"")));
     }
-
 }
