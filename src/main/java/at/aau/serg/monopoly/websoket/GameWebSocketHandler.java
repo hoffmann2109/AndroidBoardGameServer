@@ -844,13 +844,21 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 .filter(p -> p.getName().equals(targetName))
                 .findFirst();
 
-        if (!targetOpt.isPresent()) {
+        if (targetOpt.isEmpty()) {
             sendMessageToSession(session,
                     createJsonError("Player not found: " + targetName));
             return;
         }
 
         String targetId = targetOpt.get().getId();
+
+        Optional<Player> voterOpt = game.getPlayerById(voterId);
+        if (voterOpt.isEmpty()) {
+            sendMessageToSession(session,
+                    createJsonError("Voting player not found: " + voterId));
+            return;
+        }
+        String voterName = voterOpt.get().getName();
 
         kickVotes.computeIfAbsent(targetId, k -> ConcurrentHashMap.newKeySet())
                 .add(voterId);
@@ -859,7 +867,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         int totalPlayers = game.getPlayers().size();
 
         // Broadcast:
-        broadcastMessage("SYSTEM: " + game.getPlayerById(voterId).get().getName()
+        broadcastMessage("SYSTEM: " + voterName
                 + " voted to kick " + targetName
                 + " (" + votesFor + "/" + totalPlayers + ")");
 
