@@ -164,6 +164,7 @@ public class BotManager {
         if (pasch) {
             bot.setHasRolledThisTurn(false);
             cb.updateGameState();
+            queueBotTurn(bot.getId());
             return;
         }
 
