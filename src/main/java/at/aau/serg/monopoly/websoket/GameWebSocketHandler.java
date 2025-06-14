@@ -793,8 +793,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             gameHistoryService.saveGameHistoryForAllPlayers(
                     game.getPlayers(),
                     durationMinutes,
-                    winnerId,
-                    levelGained
+                    winnerId
             );
 
             // Informiere alle Spieler über das Spielende
@@ -864,6 +863,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     }
 
     void handleGiveUpFromClient(WebSocketSession session, JsonNode jsonNode) {
+
         String quittingUserId = jsonNode.get("userId").asText();
 
         if (!game.isPlayerTurn(quittingUserId)) {
@@ -873,14 +873,27 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         }
 
         logger.log(Level.INFO, "Player {0} has given up", quittingUserId);
-        processPlayerGiveUp(quittingUserId);
+
+        int durationMinutes = 0;
+        if (game.getStartTime() != null) {
+            long diffMillis = new Date().getTime() - game.getStartTime().getTime();
+            durationMinutes = (int) (diffMillis / 1000 / 60);
+        }
+
+        int endMoney = game.getPlayerById(quittingUserId)
+                .map(Player::getMoney)
+                .orElse(0);
+
+        processPlayerGiveUp(quittingUserId, durationMinutes, endMoney);
     }
 
+
+
     // Helper method to handle giveUp
-    public void processPlayerGiveUp(String quittingUserId) {
+    public void processPlayerGiveUp(String quittingUserId, int durationMinutes, int endMoney) {
 
         //mark player as looser for firebase
-        gameHistoryService.markPlayerAsLoser(quittingUserId);
+        gameHistoryService.markPlayerAsLoser(quittingUserId, durationMinutes , endMoney);
 
         //handle give up in game logic
         game.giveUp(quittingUserId);
@@ -968,8 +981,9 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                             new Object[]{ pid, e.getMessage() });
                 }
 
+                int playedDuration = game.getDurationPlayed();
                 // Process GIVE_UP
-                processPlayerGiveUp(pid);
+                processPlayerGiveUp(pid, playedDuration, p.getMoney());
             }
         }
     }

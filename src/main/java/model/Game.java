@@ -215,6 +215,11 @@ public class Game {
         return (int) (durationMs / (60 * 1000));
     }
 
+    public int getDurationPlayed(){
+        long durationMs = new Date().getTime() - startTime.getTime();
+        return (int) (durationMs / (60 * 1000));
+    }
+
 
     public String determineWinner() {
         if (players.isEmpty()) {

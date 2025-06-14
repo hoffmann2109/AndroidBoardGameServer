@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import data.GiveUpMessage;
 import data.HasWonMessage;
-import model.BotManager;
 import model.Game;
 import model.Player;
 import org.mockito.ArgumentCaptor;
@@ -13,6 +12,7 @@ import model.properties.HouseableProperty;
 import model.properties.TrainStation;
 import model.properties.Utility;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
@@ -62,7 +62,6 @@ class GameWebSocketHandlerGiveUpTest {
     private DealService dealService;
     @Captor
     private ArgumentCaptor<TextMessage> messageCaptor;
-
     private final ObjectMapper mapper = new ObjectMapper();
 
     @BeforeEach
@@ -87,6 +86,8 @@ class GameWebSocketHandlerGiveUpTest {
         when(propertyService.getUtilities()).thenReturn(Collections.emptyList());
         when(quittingPlayer.getMoney()).thenReturn(1000);
         when(remainingPlayer.getMoney()).thenReturn(1000);
+        when(quittingPlayer.getId()).thenReturn("session1");
+        when(remainingPlayer.getId()).thenReturn("remainingId");
     }
 
     @Test
@@ -119,10 +120,6 @@ class GameWebSocketHandlerGiveUpTest {
         when(game.getCurrentPlayer()).thenReturn(remainingPlayer);
         when(remainingPlayer.getId()).thenReturn("remainingId");
 
-        // BotManager mocken, damit kein echter Bot-Zug passiert
-        BotManager mockBotManager = mock(BotManager.class);
-        ReflectionTestUtils.setField(handler, "botManager", mockBotManager);
-
         // Act
         handler.handleGiveUpFromClient(session, json);
 
@@ -142,10 +139,11 @@ class GameWebSocketHandlerGiveUpTest {
 
         List<String> payloads = captor.getAllValues().stream().map(TextMessage::getPayload).toList();
         // 1st message = GIVE_UP
-        String giveUpPayload = sent.get(0).getPayload();
-        GiveUpMessage parsedGiveUp = mapper.readValue(giveUpPayload, GiveUpMessage.class);
-        assertEquals("session1", parsedGiveUp.getUserId());
+        GiveUpMessage gu = mapper.readValue(sent.get(0).getPayload(), GiveUpMessage.class);
+        assertEquals("session1", gu.getUserId());
 
+        // 2nd message = GAME_STATE:
+        assertTrue(sent.get(1).getPayload().startsWith("GAME_STATE:"));
         // Prüfe, ob die gewünschten Typen enthalten sind
         assertTrue(payloads.stream().anyMatch(p -> p.contains("\"type\":\"GIVE_UP\"")));
         assertTrue(payloads.stream().anyMatch(p -> p.startsWith("GAME_STATE:")));
@@ -153,6 +151,9 @@ class GameWebSocketHandlerGiveUpTest {
 
 
 
+        // 3rd message = PLAYER_TURN:
+        assertTrue(sent.get(2).getPayload().startsWith("PLAYER_TURN:remainingId"));
+    }
     // 3rd message = PLAYER_TURN:
     String turnPayload = sent.get(2).getPayload();
 
