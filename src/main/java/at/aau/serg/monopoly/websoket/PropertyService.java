@@ -20,6 +20,10 @@ import java.util.logging.Logger;
 @Service
 public class PropertyService {
 
+    public PropertyService() {
+        // only for tests / fallback
+    }
+
     private static final Logger logger = Logger.getLogger(PropertyService.class.getName());
     private Game game;
     @Getter
