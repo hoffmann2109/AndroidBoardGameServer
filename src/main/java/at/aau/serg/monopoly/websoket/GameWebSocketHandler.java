@@ -783,46 +783,38 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         try {
             String winnerId = game.determineWinner();
 
-            // Beende das Spiel und erhalte die Spieldauer
             int durationMinutes = game.endGame(winnerId);
 
-            // Standard Level-Gewinn für alle Spieler
-            int levelGained = 1;
-
-            // Speichere die Spielhistorie für alle Spieler
             gameHistoryService.saveGameHistoryForAllPlayers(
                     game.getPlayers(),
                     durationMinutes,
                     winnerId
             );
 
-            // Informiere alle Spieler über das Spielende
             broadcastMessage(createJsonMessage("Das Spiel wurde beendet. Der Gewinner ist " +
                     game.getPlayerById(winnerId).map(Player::getName).orElse("unbekannt")));
 
-            logger.info("Spiel beendet und Spielhistorie gespeichert");//bewusst geloggt aktuell
+            logger.info("Spiel beendet und Spielhistorie gespeichert");
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Fehler beim Beenden des Spiels", e);//bewusst geloggt aktuell
+            logger.log(Level.SEVERE, "Fehler beim Beenden des Spiels", e);
         }
+
         try {
-            // Erstellen einer ClearChatMessage
             Map<String, String> clearChatMessage = new HashMap<>();
             clearChatMessage.put("type", "CLEAR_CHAT");
             clearChatMessage.put("reason", "Game has ended");
 
             String clearChatJson = objectMapper.writeValueAsString(clearChatMessage);
-
-            // Senden der Nachricht an alle Clients
             broadcastMessage(clearChatJson);
 
             logger.info("Sent chat clear signal to all clients");
-
         } catch (JsonProcessingException e) {
             logger.log(Level.SEVERE, "Error creating clear chat message: " + e.getMessage());
         }
 
         if (botManager != null) {
             botManager.shutdown();
+            botManager = null;
         }
 
         turnTimers.values().forEach(f -> f.cancel(false));
@@ -831,8 +823,14 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         disconnectTasks.values().forEach(f -> f.cancel(false));
         disconnectTasks.clear();
 
+        game.reset(); // setzt Spielerstatus zurück
+        game.getPlayers().clear();        // entfernt Spielerobjekte
+        game.setStarted(false);           // nur falls nicht schon in reset()
 
+        sessionToUserId.clear();          // Verknüpfung WebSocket ↔ Spieler-ID löschen
+        sessions.clear();                 // WebSocket-Sitzungen verwerfen → Lobby ist leer
     }
+
 
 
     private void sendMessageToSession(WebSocketSession session, String message) {
@@ -955,13 +953,11 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
     // Helper method to check if any player is bankrupt
     private void checkAllPlayersForBankruptcy() {
-        // Copy of the players list
         List<Player> snapshot = new ArrayList<>(game.getPlayers());
 
         for (Player p : snapshot) {
             String pid = p.getId();
 
-            // Net worth: cash + sum(property)
             int cash = p.getMoney();
             int assets = sumLiquidationValueOfOwnedProperties(pid);
             int netWorth = cash + assets;
@@ -970,7 +966,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 logger.log(Level.INFO, "Player {0} is bankrupt (net worth {1}). Forcing GIVE_UP.",
                         new Object[]{ pid, netWorth });
 
-                // Broadcast an IS_BANKRUPT
+                // Broadcast: Spieler ist bankrott
                 try {
                     ObjectNode bankruptNotice = objectMapper.createObjectNode();
                     bankruptNotice.put("type", "IS_BANKRUPT");
@@ -981,8 +977,8 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                             new Object[]{ pid, e.getMessage() });
                 }
 
+                // Zwinge Spieler zur Aufgabe
                 int playedDuration = game.getDurationPlayed();
-                // Process GIVE_UP
                 processPlayerGiveUp(pid, playedDuration, p.getMoney());
             }
         }
@@ -990,48 +986,53 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
 
 
+
     private void handlePlayerLanding(Player player) {
         try {
-
             int position = player.getPosition();
 
-            // Check for tax squares
+            // 1. Steuerfelder behandeln
             if (position == 30) {
                 game.sendToJail(player.getId());
                 broadcastMessage("Player " + player.getId() + " goes to jail!");
-            }
-            else if (position == 4) {  // Einkommensteuer
-                game.updatePlayerMoney(player.getId(), -200);  // Deduct money first
+            } else if (position == 4) {  // Einkommensteuer
+                if (player.getMoney() < 200) {
+                    processPlayerGiveUp(player.getId(), game.getDurationPlayed(), player.getMoney());
+                    return;
+                }
+                game.updatePlayerMoney(player.getId(), -200);
                 TaxPaymentMessage taxMsg = new TaxPaymentMessage(player.getId(), 200, "EINKOMMENSTEUER");
                 String jsonTax = objectMapper.writeValueAsString(taxMsg);
                 broadcastMessage(jsonTax);
             } else if (position == 38) {  // Zusatzsteuer
-                game.updatePlayerMoney(player.getId(), -100);  // Deduct money first
+                if (player.getMoney() < 100) {
+                    processPlayerGiveUp(player.getId(), game.getDurationPlayed(), player.getMoney());
+                    return;
+                }
+                game.updatePlayerMoney(player.getId(), -100);
                 TaxPaymentMessage taxMsg = new TaxPaymentMessage(player.getId(), 100, "ZUSATZSTEUER");
                 String jsonTax = objectMapper.writeValueAsString(taxMsg);
                 broadcastMessage(jsonTax);
             }
-            // Check for property and collect rent if applicable
+
+            // 2. Miete für besetzte Felder einsammeln
             BaseProperty property = propertyService.getPropertyByPosition(position);
             if (property != null) {
-                // Get the property owner first
                 Player owner = game.getPlayerById(property.getOwnerId()).orElse(null);
-                if (owner != null) {
-                    // Calculate rent amount
+                if (owner != null && !owner.getId().equals(player.getId())) {
                     int rentAmount = rentCalculationService.calculateRent(property, owner, player);
 
-                    // Create and broadcast rent payment message
+                    if (player.getMoney() < rentAmount) {
+                        processPlayerGiveUp(player.getId(), game.getDurationPlayed(), player.getMoney());
+                        return;
+                    }
+
                     RentPaymentMessage rentMsg = new RentPaymentMessage(
-                            player.getId(),
-                            owner.getId(),
-                            property.getId(),
-                            property.getName(),
-                            rentAmount
+                            player.getId(), owner.getId(), property.getId(), property.getName(), rentAmount
                     );
                     String jsonRent = objectMapper.writeValueAsString(rentMsg);
                     broadcastMessage(jsonRent);
 
-                    // Now try to collect the rent
                     boolean rentCollected = rentCollectionService.collectRent(player, property, owner);
                     if (rentCollected) {
                         logger.log(Level.INFO, "Rent of {0} collected from player {1} for property {2}",
@@ -1048,6 +1049,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             logger.log(Level.SEVERE, "Error handling player landing: {0}", e.getMessage());
         }
     }
+
 
     private boolean anyHumanConnected() {
         return game.getPlayers()
