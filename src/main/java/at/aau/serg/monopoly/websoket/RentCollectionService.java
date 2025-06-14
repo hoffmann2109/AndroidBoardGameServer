@@ -60,9 +60,28 @@ public class RentCollectionService {
      * @return true if rent was collected successfully, false otherwise
      */
     public boolean collectRent(Player renter, BaseProperty property, Player owner) {
-        logger.log(Level.INFO, "Attempting to collect rent for property {0} from player {1}", 
-            new Object[]{property.getName(), renter.getId()});
-            
+        logRentingAttempt(renter, property);
+
+        if (!validateRentPreconditions(renter, property, owner)){
+            return false;
+        }
+
+        int rentAmount = calculateRentAmount(renter, property, owner);
+
+        if (!checkRenterHasEnoughFunds(renter, rentAmount)){
+            return false;
+        }
+
+        return processRentPayment(renter, property, owner, rentAmount);
+    }
+
+    // New helper methods
+    private void logRentingAttempt(Player renter, BaseProperty property){
+        logger.log(Level.INFO, "Attempting to collect rent for property {0} from player {1}",
+                new Object[]{property.getName(), renter.getId()});
+    }
+
+    private boolean validateRentPreconditions(Player renter, BaseProperty property, Player owner){
         if (!canCollectRent(renter, property)) {
             logger.log(Level.WARNING, "Cannot collect rent for property {0}", property.getName());
             return false;
@@ -72,25 +91,31 @@ public class RentCollectionService {
             logger.log(Level.WARNING, "Property owner not found for property {0}", property.getName());
             return false;
         }
+        return true;
+    }
 
-        // Calculate rent amount
+    private int calculateRentAmount(Player renter, BaseProperty property, Player owner){
         int rentAmount = rentCalculationService.calculateRent(property, owner, renter);
         logger.log(Level.INFO, "Calculated rent amount: {0} for property {1}", new Object[]{rentAmount, property.getName()});
-        
-        // Check if renter has enough money
+        return rentAmount;
+    }
+
+    private boolean checkRenterHasEnoughFunds(Player renter, int rentAmount){
         if (renter.getMoney() < rentAmount) {
-            logger.log(Level.INFO, "Player {0} has insufficient funds to pay rent. Has: {1}, Needs: {2}", 
-                new Object[]{renter.getId(), renter.getMoney(), rentAmount});
+            logger.log(Level.INFO, "Player {0} has insufficient funds to pay rent. Has: {1}, Needs: {2}",
+                    new Object[]{renter.getId(), renter.getMoney(), rentAmount});
             return false;
         }
+        return true;
+    }
 
-        // Process rent payment
+    private boolean processRentPayment(Player renter, BaseProperty property, Player owner, int rentAmount){
         try {
             renter.subtractMoney(rentAmount);
             owner.addMoney(rentAmount);
-            
-            logger.log(Level.INFO, "Rent of {0} collected from player {1} for property {2}. New balances - Renter: {3}, Owner: {4}", 
-                new Object[]{rentAmount, renter.getId(), property.getName(), renter.getMoney(), owner.getMoney()});
+            logger.log(Level.INFO, "Rent of {0} collected from player {1} for property {2}. New balances - Renter: {3}, Owner: {4}",
+                    new Object[]{rentAmount, renter.getId(), property.getName(), renter.getMoney(), owner.getMoney()});
+
             return true;
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Error processing rent payment: {0}", e.getMessage());
