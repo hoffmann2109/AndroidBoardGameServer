@@ -111,30 +111,5 @@ public class PropertyService {
                 .findFirst()
                 .orElse(null);
     }
-
-    public static class PropertyDataWrapper {
-        private List<HouseableProperty> properties;
-        private List<TrainStation> trainStations;
-        private List<Utility> utilities;
-
-        public List<HouseableProperty> getProperties() {
-            return properties;
-        }
-        public void setProperties(List<HouseableProperty> properties) {
-            this.properties = properties;
-        }
-        public List<TrainStation> getTrainStations() {
-            return trainStations;
-        }
-        public void setTrainStations(List<TrainStation> trainStations) {
-            this.trainStations = trainStations;
-        }
-        public List<Utility> getUtilities() {
-            return utilities;
-        }
-        public void setUtilities(List<Utility> utilities) {
-            this.utilities = utilities;
-        }
-    }
 }
 
