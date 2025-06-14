@@ -1,5 +1,6 @@
 package model;
 import java.util.Date;
+import data.PlayerInfo;
 import lombok.Data;
 import java.util.ArrayList;
 import java.util.List;
