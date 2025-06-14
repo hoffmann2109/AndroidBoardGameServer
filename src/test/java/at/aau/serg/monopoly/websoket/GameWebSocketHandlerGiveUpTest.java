@@ -123,14 +123,13 @@ class GameWebSocketHandlerGiveUpTest {
         assertTrue(sent.get(2).getPayload().startsWith("PLAYER_TURN:remainingId"));
     }
 
-    @Disabled
+    @Disabled("Currently disabled due to a bug")
     @Test
     void testWhenLastPlayerGivesUpBroadcastFullEndGameFlow() throws Exception {
         // Arrange: it's your turn
         JsonNode json = mapper.readTree("{\"userId\":\"session1\"}");
         when(game.isPlayerTurn("session1")).thenReturn(true);
         // after removal only one player left
-        List<Player> onePlayer = Collections.singletonList(remainingPlayer);
         List<Player> winnerList = new ArrayList<>();
         winnerList.add(remainingPlayer);
         when(game.getPlayers()).thenReturn(winnerList);
@@ -173,7 +172,7 @@ class GameWebSocketHandlerGiveUpTest {
         assertTrue(payloads.get(4).contains("\"type\":\"RESET\""));
     }
 
-    @Disabled
+    @Disabled("Currently disabled due to a bug")
     @Test
     void testSerializationErrorWhenGivingUpOnlySendsEndGame() throws Exception {
         // Arrange

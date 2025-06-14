@@ -4,10 +4,10 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class PlayerTest {
+class PlayerTest {
 
     @Test
-    public void testPositionIsInitializedToZero() {
+    void testPositionIsInitializedToZero() {
         Player player = new Player("12345", "TestPlayer");
         assertEquals(0, player.getPosition());
     }

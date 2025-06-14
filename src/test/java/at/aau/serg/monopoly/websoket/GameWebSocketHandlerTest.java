@@ -20,7 +20,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -267,7 +266,7 @@ class GameWebSocketHandlerTest {
     }
 
     @Test
-    @Disabled
+    @Disabled("Temporarily Disabled due to a bug")
     void testPlayerLandingOnGoToJail() throws Exception {
         // Arrange
         when(game.isPlayerTurn("player1")).thenReturn(true);
@@ -292,7 +291,7 @@ class GameWebSocketHandlerTest {
     }
 
     @Test
-    @Disabled
+    @Disabled("Temporarily Disabled due to a bug")
     void testJailReleaseAfterThreeTurns() throws Exception {
         // Arrange
         when(game.isPlayerTurn("player1")).thenReturn(true);
@@ -324,7 +323,7 @@ class GameWebSocketHandlerTest {
     }
 
     @Test
-    void testJailTurnReduction() throws Exception {
+    void testJailTurnReduction() {
         // Arrange
         when(game.isPlayerTurn("player1")).thenReturn(true); // FIX: Set player's turn
         when(player.isInJail()).thenReturn(true);

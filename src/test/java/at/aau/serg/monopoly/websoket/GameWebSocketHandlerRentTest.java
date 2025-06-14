@@ -34,7 +34,6 @@ class GameWebSocketHandlerRentTest {
     private PropertyService propertyService;
 
     private GameWebSocketHandler handler;
-    private ObjectMapper objectMapper;
     private Player renter;
     private Player owner;
     private BaseProperty property;
@@ -50,7 +49,7 @@ class GameWebSocketHandlerRentTest {
         handler = new GameWebSocketHandler();
         
         // Initialize objectMapper first
-        objectMapper = new ObjectMapper();
+        ObjectMapper objectMapper = new ObjectMapper();
         
         // Use reflection to set private fields
         setPrivateField(handler, "propertyTransactionService", propertyTransactionService);
@@ -106,7 +105,7 @@ class GameWebSocketHandlerRentTest {
     }
 
     @Test
-    void handleRentPayment_WhenValid_CollectsRent() throws IOException {
+    void handleRentPayment_WhenValid_CollectsRent() {
         // Setup
         when(game.getPlayerById(RENTER_ID)).thenReturn(Optional.of(renter));
         when(game.getPlayerById(OWNER_ID)).thenReturn(Optional.of(owner));
@@ -132,7 +131,7 @@ class GameWebSocketHandlerRentTest {
     }
 
     @Test
-    void handleRentPayment_WhenPropertyNotFound_LogsWarning() throws IOException {
+    void handleRentPayment_WhenPropertyNotFound_LogsWarning() {
         // Setup
         when(propertyTransactionService.findPropertyById(1)).thenReturn(null);
 
@@ -153,7 +152,7 @@ class GameWebSocketHandlerRentTest {
     }
 
     @Test
-    void handleRentPayment_WhenRenterNotFound_LogsWarning() throws IOException {
+    void handleRentPayment_WhenRenterNotFound_LogsWarning() {
         // Setup
         when(propertyTransactionService.findPropertyById(1)).thenReturn(property);
         when(game.getPlayerById(RENTER_ID)).thenReturn(Optional.empty());
@@ -176,7 +175,7 @@ class GameWebSocketHandlerRentTest {
     }
 
     @Test
-    void handleRentPayment_WhenOwnerNotFound_LogsWarning() throws IOException {
+    void handleRentPayment_WhenOwnerNotFound_LogsWarning() {
         // Setup
         when(propertyTransactionService.findPropertyById(1)).thenReturn(property);
         when(game.getPlayerById(RENTER_ID)).thenReturn(Optional.of(renter));
@@ -200,7 +199,7 @@ class GameWebSocketHandlerRentTest {
     }
 
     @Test
-    void handleRentPayment_WhenRentCollectionFails_LogsWarning() throws IOException {
+    void handleRentPayment_WhenRentCollectionFails_LogsWarning() {
         // Setup
         when(game.getPlayerById(RENTER_ID)).thenReturn(Optional.of(renter));
         when(game.getPlayerById(OWNER_ID)).thenReturn(Optional.of(owner));
@@ -226,7 +225,7 @@ class GameWebSocketHandlerRentTest {
     }
 
     @Test
-    void handlePlayerLanding_WhenPropertyNotFound_NoRentCollection() throws IOException {
+    void handlePlayerLanding_WhenPropertyNotFound_NoRentCollection() {
         // Setup
         int position = 1;
         when(propertyService.getPropertyByPosition(position)).thenReturn(null);
@@ -245,7 +244,7 @@ class GameWebSocketHandlerRentTest {
     }
 
     @Test
-    void handlePlayerLanding_WhenOwnerNotFound_NoRentCollection() throws IOException {
+    void handlePlayerLanding_WhenOwnerNotFound_NoRentCollection() {
         // Setup
         int position = 1;
         when(propertyService.getPropertyByPosition(position)).thenReturn(property);
@@ -265,7 +264,7 @@ class GameWebSocketHandlerRentTest {
     }
 
     @Test
-    void handlePlayerLanding_WhenRentCollectionFails_LogsWarning() throws IOException {
+    void handlePlayerLanding_WhenRentCollectionFails_LogsWarning() {
         // Setup
         int position = 1;
         when(propertyService.getPropertyByPosition(position)).thenReturn(property);

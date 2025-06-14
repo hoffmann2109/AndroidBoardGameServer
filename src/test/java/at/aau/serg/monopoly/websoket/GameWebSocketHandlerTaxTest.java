@@ -96,7 +96,7 @@ class GameWebSocketHandlerTaxTest {
     }
 
     @Test
-    void testHandleInvalidTaxPaymentMessage() throws Exception {
+    void testHandleInvalidTaxPaymentMessage() {
         // Arrange
         String invalidMessage = "{\"type\":\"TAX_PAYMENT\",\"invalid\":\"json\"}";
         TextMessage message = new TextMessage(invalidMessage);

@@ -35,9 +35,9 @@ public class RentCalculationService {
 
         // Calculate rent based on property type
         if (property instanceof HouseableProperty) {
-            return calculateHouseablePropertyRent((HouseableProperty) property, owner);
+            return calculateHouseablePropertyRent((HouseableProperty) property);
         } else if (property instanceof TrainStation) {
-            return calculateTrainStationRent((TrainStation) property, owner);
+            return calculateTrainStationRent((TrainStation) property);
         } else if (property instanceof Utility) {
             return calculateUtilityRent((Utility) property, owner);
         }
@@ -49,10 +49,9 @@ public class RentCalculationService {
     /**
      * Calculates rent for a houseable property based on number of houses/hotels
      * @param property The houseable property
-     * @param owner The owner of the property
      * @return The calculated rent amount
      */
-    private int calculateHouseablePropertyRent(HouseableProperty property, Player owner) {
+    private int calculateHouseablePropertyRent(HouseableProperty property) {
         // For now, just return base rent
         return property.getBaseRent();
     }
@@ -60,10 +59,9 @@ public class RentCalculationService {
     /**
      * Calculates rent for a train station based on number of stations owned
      * @param station The train station
-     * @param owner The owner of the property
      * @return The calculated rent amount
      */
-    private int calculateTrainStationRent(TrainStation station, Player owner) {
+    private int calculateTrainStationRent(TrainStation station) {
         // For now, just return base rent
         return station.getBaseRent();
     }

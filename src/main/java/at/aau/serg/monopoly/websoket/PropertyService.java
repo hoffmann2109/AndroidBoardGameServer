@@ -8,16 +8,22 @@ import model.properties.BaseProperty;
 import model.properties.HouseableProperty;
 import model.properties.TrainStation;
 import model.properties.Utility;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 @Service
 public class PropertyService {
+
+    public PropertyService() {
+        // only for tests / fallback
+    }
 
     private static final Logger logger = Logger.getLogger(PropertyService.class.getName());
     private Game game;
@@ -28,27 +34,25 @@ public class PropertyService {
     @Getter
     private List<Utility> utilities;
 
-    public PropertyService() {
-        // Default constructor for cases where Game is not needed
-    }
 
+    @Autowired(required = false)
     public PropertyService(Game game) {
         this.game = game;
     }
 
     @PostConstruct
-    public void init() throws RuntimeException {
+    public void init() {
         ObjectMapper mapper = new ObjectMapper();
         try (InputStream is = getClass().getClassLoader().getResourceAsStream("propertyData.json")) {
             if (is == null) {
-                throw new RuntimeException("propertyData.json not found in resources folder");
+                throw new IllegalStateException("propertyData.json not found in resources folder");
             }
             PropertyDataWrapper wrapper = mapper.readValue(is, PropertyDataWrapper.class);
             this.houseableProperties = wrapper.getProperties();
             this.trainStations = wrapper.getTrainStations();
             this.utilities = wrapper.getUtilities();
         } catch (IOException e) {
-            throw new RuntimeException("Failed to initialize property data", e);
+            throw new UncheckedIOException("Failed to initialize property data", e);
         }
     }
 
@@ -110,31 +114,6 @@ public class PropertyService {
                 .filter(p -> p.getPosition() == position)
                 .findFirst()
                 .orElse(null);
-    }
-
-    public static class PropertyDataWrapper {
-        private List<HouseableProperty> properties;
-        private List<TrainStation> trainStations;
-        private List<Utility> utilities;
-
-        public List<HouseableProperty> getProperties() {
-            return properties;
-        }
-        public void setProperties(List<HouseableProperty> properties) {
-            this.properties = properties;
-        }
-        public List<TrainStation> getTrainStations() {
-            return trainStations;
-        }
-        public void setTrainStations(List<TrainStation> trainStations) {
-            this.trainStations = trainStations;
-        }
-        public List<Utility> getUtilities() {
-            return utilities;
-        }
-        public void setUtilities(List<Utility> utilities) {
-            this.utilities = utilities;
-        }
     }
 }
 

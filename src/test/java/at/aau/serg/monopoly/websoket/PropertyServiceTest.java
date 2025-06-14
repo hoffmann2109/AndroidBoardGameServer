@@ -22,7 +22,7 @@ import java.util.Arrays;
 import java.util.Collections;
 
 @ExtendWith(MockitoExtension.class)
-public class PropertyServiceTest {
+class PropertyServiceTest {
 
     @Mock
     private Game game;
@@ -76,7 +76,7 @@ public class PropertyServiceTest {
 
     @Test
     void testInitException() {
-        PropertyService brokenService = new PropertyService() {
+        PropertyService brokenService = new PropertyService(null) {
             @Override
             public void init() {
                 try {

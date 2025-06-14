@@ -31,7 +31,7 @@ class GameWebSocketHandlerPullTest {
     GameWebSocketHandler handler;
 
     @BeforeEach
-    void setUp() throws Exception {
+    void setUp() {
         handler = spy(new GameWebSocketHandler());
 
         // Inject:
