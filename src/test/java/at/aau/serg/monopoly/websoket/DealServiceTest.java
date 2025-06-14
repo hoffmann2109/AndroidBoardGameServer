@@ -141,10 +141,11 @@ class DealServiceTest {
         when(game.getPlayerById("to")).thenReturn(Optional.of(toPlayer));
         when(propertyTransactionService.findPropertyById(1)).thenReturn(null);
 
-        DealResponseMessage msg = new DealResponseMessage("DEAL_RESPONSE", "from", "to", DealResponseType.ACCEPT, List.of(1), 0);
+        DealResponseMessage msg = new DealResponseMessage(
+                "DEAL_RESPONSE", "from", "to", DealResponseType.ACCEPT, List.of(1), 0
+        );
 
-        dealService.executeTrade(msg);
-        // Should skip property, but still work
+        assertDoesNotThrow(() -> dealService.executeTrade(msg));
     }
 
     @Test
