@@ -391,4 +391,19 @@ class PropertyTransactionServiceTest {
         assertEquals(initialMoney + (150 / 2), testPlayer.getMoney()); // Money should be increased by half the purchase price
         assertNull(utility.getOwnerId()); // Owner ID should be cleared
     }
+
+    @Test
+    void canBuyProperty_PropertyIsNull_ReturnsFalse() {
+        // Arrange
+        testPlayer.setPosition(1);
+        testPlayer.setMoney(PURCHASE_PRICE);
+        when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(null); // Property = null
+
+        // Act
+        boolean result = propertyTransactionService.canBuyProperty(testPlayer, PROPERTY_ID);
+
+        // Assert
+        assertFalse(result);
+    }
+
 }

@@ -3,6 +3,8 @@ package at.aau.serg.monopoly.websoket;
 import model.Player;
 import model.properties.BaseProperty;
 import model.properties.HouseableProperty;
+import model.properties.TrainStation;
+import model.properties.Utility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -86,5 +88,27 @@ class RentCalculationServiceTest {
 
         // Assert
         assertEquals(0, rent, "Rent should be zero when renter is null");
+    }
+    @Test
+    void calculateRent_WithTrainStation_ReturnsCorrectRent() {
+        TrainStation station = new TrainStation(
+                2, "owner123", "Test Station", 200, 50, 100, 150, 200,
+                100, false, "suedbahnhof_bild", 5
+        );
+
+        int rent = rentCalculationService.calculateRent(station, owner, renter);
+
+        assertEquals(50, rent);
+    }
+    @Test
+    void calculateRent_WithUtility_ReturnsCorrectRent() {
+        Utility utility = new Utility(
+                3, "owner123", "Test Utility", 150,
+                4, 10, 75, false, "utility_image", 12
+        );
+
+        int rent = rentCalculationService.calculateRent(utility, owner, renter);
+
+        assertTrue(rent >= 0);
     }
 } 
