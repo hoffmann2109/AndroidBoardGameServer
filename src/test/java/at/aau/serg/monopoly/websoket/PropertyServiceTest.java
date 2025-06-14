@@ -76,7 +76,7 @@ public class PropertyServiceTest {
 
     @Test
     void testInitException() {
-        PropertyService brokenService = new PropertyService() {
+        PropertyService brokenService = new PropertyService(null) {
             @Override
             public void init() {
                 try {

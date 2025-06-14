@@ -8,6 +8,7 @@ import model.properties.BaseProperty;
 import model.properties.HouseableProperty;
 import model.properties.TrainStation;
 import model.properties.Utility;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import jakarta.annotation.PostConstruct;
 import java.io.IOException;
@@ -28,10 +29,8 @@ public class PropertyService {
     @Getter
     private List<Utility> utilities;
 
-    public PropertyService() {
-        // Default constructor for cases where Game is not needed
-    }
 
+    @Autowired(required = false)
     public PropertyService(Game game) {
         this.game = game;
     }
