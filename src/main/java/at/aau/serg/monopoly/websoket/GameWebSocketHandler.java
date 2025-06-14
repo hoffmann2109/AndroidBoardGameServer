@@ -46,6 +46,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private DiceManagerInterface diceManager;
     private final Map<String, Set<String>> kickVotes = new ConcurrentHashMap<>();
+    private static final String BOUGHT_PROPERTY_MSG = " bought property ";
 
     @Autowired
     private GameHistoryService gameHistoryService;
@@ -360,13 +361,13 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                     if (proposal != null) {
                         // Für jedes Property von Sender -> Empfänger:
                         for (int propId : proposal.getOfferedPropertyIds()) {
-                            String msg = "Player " + proposal.getToPlayerId() + " bought property " + propId;
+                            String msg = "Player " + proposal.getToPlayerId() + BOUGHT_PROPERTY_MSG + propId;
                             broadcastMessage(createJsonMessage(msg));
                         }
 
                         // Für jedes Property von Empfänger -> Sender:
                         for (int propId : proposal.getRequestedPropertyIds()) {
-                            String msg = "Player " + proposal.getFromPlayerId() + " bought property " + propId;
+                            String msg = "Player " + proposal.getFromPlayerId() + BOUGHT_PROPERTY_MSG + propId;
                             broadcastMessage(createJsonMessage(msg));
                         }
                     }
@@ -552,7 +553,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             if (propertyTransactionService.canBuyProperty(player, propertyId)) {
                 boolean success = propertyTransactionService.buyProperty(player, propertyId);
                 if (success) {
-                    broadcastMessage(createJsonMessage(PLAYER_PREFIX + userId + " bought property " + propertyId));
+                    broadcastMessage(createJsonMessage(PLAYER_PREFIX + userId + BOUGHT_PROPERTY_MSG + propertyId));
                     broadcastGameState();
                     checkAllPlayersForBankruptcy();
                 } else {
