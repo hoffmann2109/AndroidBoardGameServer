@@ -4,88 +4,85 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import at.aau.serg.monopoly.websoket.CardDeckService;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import java.lang.reflect.Field;
 import java.util.*;
 
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class CardDeckServiceTest {
-    ObjectMapper realMapper = new ObjectMapper();
-    ObjectMapper badMapper = mock(ObjectMapper.class);
+    private ObjectMapper realMapper = new ObjectMapper();
+    private ObjectMapper badMapper = mock(ObjectMapper.class);
 
-    CardDeckService realService;
-    CardDeckService failService;
+    private CardDeckService service;
+    private Map<CardType, Deque<Card>> decks;
+    private Map<CardType, List<Card>> discards;
+    private CardType sampleType;
 
-    @BeforeEach
-    void setUp() {
-        realService = new CardDeckService(realMapper);
-        failService = new CardDeckService(badMapper);
-    }
-
-    @Test
-    void init_successLoadsAllDecksAndEmptyDiscards() throws Exception {
-        realService.init();
+    @BeforeAll
+    void initService() throws Exception {
+        service = new CardDeckService(realMapper);
+        service.init();
 
         Field decksF = CardDeckService.class.getDeclaredField("decks");
-        Field discF = CardDeckService.class.getDeclaredField("discards");
+        Field discF  = CardDeckService.class.getDeclaredField("discards");
         decksF.setAccessible(true);
         discF.setAccessible(true);
 
-        @SuppressWarnings("unchecked")
-        Map<CardType, Deque<Card>> decks =
-                (Map<CardType, Deque<Card>>) decksF.get(realService);
-        @SuppressWarnings("unchecked")
-        Map<CardType, List<Card>> discards =
-                (Map<CardType, List<Card>>) discF.get(realService);
+        decks    = (Map<CardType, Deque<Card>>) decksF.get(service);
+        discards = (Map<CardType, List<Card>>) discF.get(service);
 
-        // One Entry per card type:
+        sampleType = CardType.values()[0];
+    }
+
+    @Test
+    @Order(1)
+    void init_populatesAllDecksAndLeavesDiscardsEmpty() {
         for (CardType type : CardType.values()) {
-            assertTrue(decks.containsKey(type), "deck missing " + type);
-            assertTrue(decks.get(type).size() > 0, "no cards for " + type);
-            assertTrue(discards.containsKey(type), "discards missing " + type);
-            assertTrue(discards.get(type).isEmpty(), "discards not empty for " + type);
+            Deque<Card> deck = decks.get(type);
+            List<Card> discard = discards.get(type);
+
+            assertNotNull(deck,    "deck map missing key " + type);
+            assertFalse(deck.isEmpty(), "deck for " + type + " should not be empty");
+
+            assertNotNull(discard, "discard map missing key " + type);
+            assertTrue(discard.isEmpty(), "discards for " + type + " should start empty");
         }
     }
 
     @Test
-    void drawCard_popsAndDiscartsAndReshufflesWhenEmpty() throws Exception {
-        realService.init();
+    @Order(2)
+    void drawCard_movesOneCardFromDeckToDiscards() {
+        int beforeSize = decks.get(sampleType).size();
+        Card drawn = service.drawCard(sampleType);
 
-        CardType someType = CardType.values()[0];
+        assertNotNull(drawn);
+        assertEquals(beforeSize - 1, decks.get(sampleType).size(),
+                "draw removes exactly one card from deck");
+        assertEquals(1, discards.get(sampleType).size(),
+                "drawn card should appear in discards");
+        assertSame(drawn, discards.get(sampleType).get(0),
+                "the same card object should be moved to discards");
+    }
 
-        Field decksF = CardDeckService.class.getDeclaredField("decks");
-        Field discF = CardDeckService.class.getDeclaredField("discards");
-        decksF.setAccessible(true);
-        discF.setAccessible(true);
-        @SuppressWarnings("unchecked")
-        Map<CardType, Deque<Card>> decks =
-                (Map<CardType, Deque<Card>>) decksF.get(realService);
-        @SuppressWarnings("unchecked")
-        Map<CardType, List<Card>> discards =
-                (Map<CardType, List<Card>>) discF.get(realService);
+    @Test
+    @Order(3)
+    void drawCard_whenDeckEmpty_reshufflesDiscardsBackIntoDeck() {
+        Deque<Card> deck = decks.get(sampleType);
+        List<Card> discard = discards.get(sampleType);
 
-        // test normal draw
-        int before = decks.get(someType).size();
-        Card first = realService.drawCard(someType);
-        assertNotNull(first);
-        assertEquals(before - 1, decks.get(someType).size());
-        assertEquals(1, discards.get(someType).size());
-        assertSame(first, discards.get(someType).get(0));
-
-        // move all remaining cards to discards to force reshuffle
-        while (!decks.get(someType).isEmpty()) {
-            discards.get(someType).add(decks.get(someType).pop());
+        while (!deck.isEmpty()) {
+            discard.add(deck.pop());
         }
-        assertTrue(decks.get(someType).isEmpty());
-        assertTrue(discards.get(someType).size() > 1);
+        assertTrue(deck.isEmpty(), "deck must now be empty");
+        assertTrue(discard.size() > 1, "discard must contain multiple cards");
 
-        // now draw again: should reshuffle discards back into deck
-        Card reshuffled = realService.drawCard(someType);
-        assertNotNull(reshuffled);
-        // after pop from reshuffled deck, exactly (originalDiscardCount - 1) remain in deck
-        assertEquals(1, discards.get(someType).size(),
-                "after reshuffle+draw, discards should have only the drawn card");
-        // make sure the drawn card is now in discards
-        assertSame(reshuffled, discards.get(someType).get(0));
+        Card next = service.drawCard(sampleType);
+        assertNotNull(next);
+
+        assertEquals(1, discard.size(),
+                "after reshuffle and draw, discards should contain only the drawn card");
+        assertSame(next, discard.get(0),
+                "the newly drawn card should now live in discards");
     }
 }
