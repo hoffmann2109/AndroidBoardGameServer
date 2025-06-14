@@ -47,6 +47,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     private DiceManagerInterface diceManager;
     private final Map<String, Set<String>> kickVotes = new ConcurrentHashMap<>();
     private static final String BOUGHT_PROPERTY_MSG = " bought property ";
+    private final String USER_ID = "userId";
 
     @Autowired
     private GameHistoryService gameHistoryService;
@@ -83,7 +84,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
     protected void handleInitMessage(WebSocketSession session, JsonNode jsonNode) {
         try {
-            String userId = jsonNode.get("userId").asText();
+            String userId = jsonNode.get(USER_ID).asText();
             String name = jsonNode.get("name").asText();
 
             if (userId == null || sessionToUserId.containsValue(userId)) {
@@ -112,7 +113,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     private void handleTaxPayment(String payload, String userId) {
         try {
             TaxPaymentMessage taxMsg = objectMapper.readValue(payload, TaxPaymentMessage.class);
-            logger.info("Player " + taxMsg.getPlayerId()
+            logger.info(PLAYER_PREFIX + taxMsg.getPlayerId()
                     + " has to pay taxes"); //bewusst geloggt aktuell
 
             if (taxMsg.getPlayerId().equals(userId)) {
@@ -311,7 +312,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             }
             if (payload.contains("\"type\":\"PULL_CARD\"")) {
                 PullCardMessage pull = objectMapper.readValue(payload, PullCardMessage.class);
-                logger.info("Player " + pull.getPlayerId()
+                logger.info(PLAYER_PREFIX + pull.getPlayerId()
                         + " requested a " + pull.getCardType() + " card");//bewusst geloggt aktuell
 
                 model.cards.CardType deckType = model.cards.CardType.valueOf(pull.getCardType());
@@ -327,7 +328,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                     );
                     String jsonReply = objectMapper.writeValueAsString(reply);
                     sendMessageToSession(session, jsonReply);
-                    logger.info("Player " + pull.getPlayerId() + " received a drawn card");//bewusst geloggt aktuell
+                    logger.info(PLAYER_PREFIX + pull.getPlayerId() + " received a drawn card");//bewusst geloggt aktuell
                     broadcastGameState();
                     checkAllPlayersForBankruptcy();
                 }
@@ -361,13 +362,13 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                     if (proposal != null) {
                         // Für jedes Property von Sender -> Empfänger:
                         for (int propId : proposal.getOfferedPropertyIds()) {
-                            String msg = "Player " + proposal.getToPlayerId() + BOUGHT_PROPERTY_MSG + propId;
+                            String msg = PLAYER_PREFIX + proposal.getToPlayerId() + BOUGHT_PROPERTY_MSG + propId;
                             broadcastMessage(createJsonMessage(msg));
                         }
 
                         // Für jedes Property von Empfänger -> Sender:
                         for (int propId : proposal.getRequestedPropertyIds()) {
-                            String msg = "Player " + proposal.getFromPlayerId() + BOUGHT_PROPERTY_MSG + propId;
+                            String msg = PLAYER_PREFIX + proposal.getFromPlayerId() + BOUGHT_PROPERTY_MSG + propId;
                             broadcastMessage(createJsonMessage(msg));
                         }
                     }
@@ -416,7 +417,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                     if (player.isInJail()) {
                         player.reduceJailTurns();
                         if (!player.isInJail()) {
-                            broadcastMessage("Player " + userId + " is released from jail!");
+                            broadcastMessage(PLAYER_PREFIX + userId + " is released from jail!");
                         }
                         // Always advance to next player after jail turn
                         game.nextPlayer();
@@ -717,7 +718,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     }
 
     void handleGiveUpFromClient(WebSocketSession session, JsonNode jsonNode) {
-        String quittingUserId = jsonNode.get("userId").asText();
+        String quittingUserId = jsonNode.get(USER_ID).asText();
 
         if (!game.isPlayerTurn(quittingUserId)) {
             sendMessageToSession(session,
@@ -814,7 +815,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 try {
                     ObjectNode bankruptNotice = objectMapper.createObjectNode();
                     bankruptNotice.put("type", "IS_BANKRUPT");
-                    bankruptNotice.put("userId", pid);
+                    bankruptNotice.put(USER_ID, pid);
                     broadcastMessage(objectMapper.writeValueAsString(bankruptNotice));
                 } catch (JsonProcessingException e) {
                     logger.log(Level.SEVERE, "Error serializing IS_BANKRUPT for {0}: {1}",
@@ -888,7 +889,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             // Check for tax squares
             if (position == 30) {
                 game.sendToJail(player.getId());
-                broadcastMessage("Player " + player.getId() + " goes to jail!");
+                broadcastMessage(PLAYER_PREFIX + player.getId() + " goes to jail!");
             }
             else if (position == 4) {  // Einkommensteuer
                 game.updatePlayerMoney(player.getId(), -200);  // Deduct money first

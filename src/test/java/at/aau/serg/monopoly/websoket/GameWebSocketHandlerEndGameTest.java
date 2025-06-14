@@ -19,7 +19,6 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -39,7 +38,7 @@ class GameWebSocketHandlerEndGameTest {
     private final ObjectMapper mapper = new ObjectMapper();
 
     @BeforeEach
-    void setUp() throws Exception {
+    void setUp() {
         ReflectionTestUtils.setField(handler, "game", mockGame);
         ReflectionTestUtils.setField(handler, "propertyService", propertyService);
 

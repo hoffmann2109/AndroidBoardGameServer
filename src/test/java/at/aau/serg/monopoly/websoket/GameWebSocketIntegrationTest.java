@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-public class GameWebSocketIntegrationTest {
+class GameWebSocketIntegrationTest {
     @LocalServerPort
     private int port;
     private static StandardWebSocketClient client1;

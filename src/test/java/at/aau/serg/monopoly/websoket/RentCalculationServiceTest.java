@@ -1,7 +1,6 @@
 package at.aau.serg.monopoly.websoket;
 
 import model.Player;
-import model.properties.BaseProperty;
 import model.properties.HouseableProperty;
 import model.properties.TrainStation;
 import model.properties.Utility;
@@ -13,7 +12,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class RentCalculationServiceTest {

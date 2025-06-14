@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -40,18 +41,18 @@ public class PropertyService {
     }
 
     @PostConstruct
-    public void init() throws RuntimeException {
+    public void init() {
         ObjectMapper mapper = new ObjectMapper();
         try (InputStream is = getClass().getClassLoader().getResourceAsStream("propertyData.json")) {
             if (is == null) {
-                throw new RuntimeException("propertyData.json not found in resources folder");
+                throw new IllegalStateException("propertyData.json not found in resources folder");
             }
             PropertyDataWrapper wrapper = mapper.readValue(is, PropertyDataWrapper.class);
             this.houseableProperties = wrapper.getProperties();
             this.trainStations = wrapper.getTrainStations();
             this.utilities = wrapper.getUtilities();
         } catch (IOException e) {
-            throw new RuntimeException("Failed to initialize property data", e);
+            throw new UncheckedIOException("Failed to initialize property data", e);
         }
     }
 
