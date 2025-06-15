@@ -4,8 +4,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import org.junit.jupiter.api.Test;
 
-public class CardTest {
+class CardTest {
 
+    // Class is just added for test coverage
     @Test
     void lombokGettersAndSetters_work() {
         MoneyCard mc = new MoneyCard();
@@ -15,7 +16,7 @@ public class CardTest {
 
         assertEquals(42, mc.getId());
         assertEquals("You found a treasure", mc.getDescription());
-        assertSame(ActionType.GET_MONEY, mc.getAction());
+        assertEquals(ActionType.GET_MONEY, mc.getAction());
 
         MoveCard mv = new MoveCard();
         mv.setId(7);
@@ -26,7 +27,7 @@ public class CardTest {
         assertEquals(7, mv.getId());
         assertEquals(5, (int) mv.getSpaces());
         assertEquals("Go forward", mv.getDescription());
-        assertSame(ActionType.MOVE, mv.getAction());
+        assertEquals(ActionType.MOVE, mv.getAction());
     }
 }
 

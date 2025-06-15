@@ -50,6 +50,7 @@ class GameWebSocketHandlerUnitTest {
         when(session.getId()).thenReturn("1");
         when(session.isOpen()).thenReturn(true);
 
+        // Establish connection and send INIT
         gameWebSocketHandler.afterConnectionEstablished(session);
         sendInit(session, "1", "Player1");
         clearInvocations(session);
@@ -86,6 +87,7 @@ class GameWebSocketHandlerUnitTest {
 
     @Test
     void testAfterConnectionEstablished() throws Exception {
+        // No messages after setup
         verify(session, never()).sendMessage(any());
     }
 
@@ -165,7 +167,6 @@ class GameWebSocketHandlerUnitTest {
             assertTrue(foundMessage);
         });
     }
-
 
     @Test
     void testHandleUpdateMoneyMessage() throws IOException {
@@ -255,9 +256,13 @@ class GameWebSocketHandlerUnitTest {
         sessionsField.setAccessible(true);
         ((CopyOnWriteArrayList<WebSocketSession>) sessionsField.get(handler)).add(session);
 
+        // Init
         handler.handleTextMessage(session, new TextMessage("{\"type\":\"INIT\",\"userId\":\"user123\",\"name\":\"TestUser\"}"));
+
+        // Now send invalid message
         handler.handleTextMessage(session, new TextMessage("INVALID_MESSAGE"));
 
+        // Verify broadcast fallback (not an error!)
         verify(session).sendMessage(argThat(msg ->
                 ((TextMessage) msg).getPayload().contains("Player user123: INVALID_MESSAGE")
         ));
@@ -317,6 +322,38 @@ class GameWebSocketHandlerUnitTest {
             assertTrue(found);
         });
     }
+
+    @Test
+    void testHandleKickVoteIfPlayerNotFound() throws Exception {
+        clearInvocations(session);
+        String kickJson = "{\"type\":\"CHAT_MESSAGE\",\"playerId\":\"1\",\"message\":\"KICK Unknown\"}";
+        gameWebSocketHandler.handleTextMessage(session, new TextMessage(kickJson));
+
+        verify(session).sendMessage(argThat(msg -> {
+            String payload = ((TextMessage) msg).getPayload();
+            return payload.contains("\"type\":\"ERROR\"")
+                    && payload.contains("Player not found: Unknown");
+        }));
+    }
+
+    @Test
+    void testHandleKickVoteSingleVoteBroadcastOnly() throws Exception {
+        WebSocketSession session2 = mock(WebSocketSession.class);
+        when(session2.getId()).thenReturn("2");
+        when(session2.isOpen()).thenReturn(true);
+        gameWebSocketHandler.afterConnectionEstablished(session2);
+        sendInit(session2, "2", "Player2");
+        clearInvocations(session);
+        clearInvocations(session2);
+
+        String vote1 = "{\"type\":\"CHAT_MESSAGE\",\"playerId\":\"1\",\"message\":\"KICK Player2\"}";
+        gameWebSocketHandler.handleTextMessage(session, new TextMessage(vote1));
+
+        String expected = "SYSTEM: Player1 voted to kick Player2 (1/2)";
+        verify(session).sendMessage(argThat(msg -> ((TextMessage) msg).getPayload().contains(expected)));
+        verify(session2).sendMessage(argThat(msg -> ((TextMessage) msg).getPayload().contains(expected)));
+    }
+
 
 
 

@@ -3,6 +3,7 @@ package at.aau.serg.monopoly.websoket;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
 import com.google.firebase.cloud.FirestoreClient;
+import data.GameHistoryRequest;
 import model.GameHistory;
 import model.Player;
 import org.junit.jupiter.api.Test;
@@ -47,7 +48,7 @@ class GameHistoryServiceTest {
             client.when(FirestoreClient::getFirestore).thenReturn(firestore);
 
             GameHistoryService service = new GameHistoryService();
-            boolean result = service.saveGameHistory("123", 45, 1500,  false);
+            boolean result = service.saveGameHistory(new GameHistoryRequest("123", 45, 1500, false));
 
             assertTrue(result);
             verify(gameDoc).set(any(GameHistory.class));
@@ -80,8 +81,7 @@ class GameHistoryServiceTest {
             client.when(FirestoreClient::getFirestore).thenReturn(firestore);
 
             GameHistoryService service = new GameHistoryService();
-            boolean result = service.saveGameHistory("123", 30, 1000, true);
-
+            boolean result = service.saveGameHistory(new GameHistoryRequest("123", 30, 1000, true));
             assertFalse(result);
         }
     }
@@ -111,7 +111,7 @@ class GameHistoryServiceTest {
             client.when(FirestoreClient::getFirestore).thenReturn(firestore);
 
             GameHistoryService service = new GameHistoryService();
-            boolean result = service.saveGameHistory("123", 30, 1000, false);
+            boolean result = service.saveGameHistory(new GameHistoryRequest("123", 30, 1000, false));
 
             assertFalse(result);
         }
@@ -191,7 +191,7 @@ class GameHistoryServiceTest {
             client.when(FirestoreClient::getFirestore).thenReturn(firestore);
 
             GameHistoryService service = new GameHistoryService();
-            boolean result = service.saveGameHistory("123", 45, 1500,  false);
+            boolean result = service.saveGameHistory(new GameHistoryRequest("123", 45, 1500, false));
 
             assertTrue(result);
             verify(userDoc).set(Collections.emptyMap());
@@ -225,7 +225,7 @@ class GameHistoryServiceTest {
             client.when(FirestoreClient::getFirestore).thenReturn(firestore);
 
             GameHistoryService service = new GameHistoryService();
-            boolean result = service.saveGameHistory("123", 30, 1000,  true);
+            boolean result = service.saveGameHistory(new GameHistoryRequest("123", 30, 1000, true));
 
             assertFalse(result);
         }

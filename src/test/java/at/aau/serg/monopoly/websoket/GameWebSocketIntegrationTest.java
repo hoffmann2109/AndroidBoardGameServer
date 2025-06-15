@@ -1,7 +1,7 @@
 package at.aau.serg.monopoly.websoket;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import model.PlayerInfo;
+import data.PlayerInfo;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-public class GameWebSocketIntegrationTest {
+class GameWebSocketIntegrationTest {
     @LocalServerPort
     private int port;
     private static StandardWebSocketClient client1;

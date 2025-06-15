@@ -1,6 +1,7 @@
 package at.aau.serg.monopoly.websoket;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import data.TaxPaymentMessage;
 import model.Game;
 import model.Player;
 import model.DiceManagerInterface;
@@ -107,8 +108,7 @@ class GameWebSocketHandlerTaxTest {
 
         Field diceManagerField = GameWebSocketHandler.class.getDeclaredField("diceManager");
         diceManagerField.setAccessible(true);
-        DiceManagerInterface diceManager = mock(DiceManagerInterface.class);
-        diceManagerField.set(handler, diceManager);
+        diceManagerField.set(handler, mockDiceManager);
 
         when(diceManager.rollDices()).thenReturn(5);
         when(diceManager.isPasch()).thenReturn(false);
@@ -169,6 +169,7 @@ class GameWebSocketHandlerTaxTest {
 
         assertEquals(initialMoney - 200, player.getMoney());
     }
+
     @Test
     void testTaxPaymentOnZusatzsteuerPosition() throws Exception {
         Player player = game.getPlayerById(TEST_USER_ID).orElseThrow();
@@ -183,5 +184,40 @@ class GameWebSocketHandlerTaxTest {
         assertEquals(initialMoney - 100, player.getMoney());
     }
 
+    @Test
+    void testTaxPaymentWithMultiplePlayers() throws Exception {
+        // Arrange
+        Game spyGame = spy(new Game());
+        spyGame.addPlayer(TEST_USER_ID, "TestPlayer");
+        String otherPlayerId = "otherPlayerId";
+        spyGame.addPlayer(otherPlayerId, "Other Player");
+
+        Field gameField = GameWebSocketHandler.class.getDeclaredField("game");
+        gameField.setAccessible(true);
+        gameField.set(handler, spyGame);
+
+        Player currentPlayer = spyGame.getPlayerById(TEST_USER_ID).orElseThrow();
+        Player otherPlayer = spyGame.getPlayerById(otherPlayerId).orElseThrow();
+
+        currentPlayer.setPosition(0); // Start at 0
+        int currentPlayerInitialMoney = currentPlayer.getMoney();
+        int otherPlayerInitialMoney = otherPlayer.getMoney();
 
 }
+
+        Field diceManagerField = GameWebSocketHandler.class.getDeclaredField("diceManager");
+        diceManagerField.setAccessible(true);
+        diceManagerField.set(handler, mockDiceManager);
+
+
+        doReturn(true).when(spyGame).updatePlayerPosition(4, TEST_USER_ID);
+        currentPlayer.setPosition(4);
+
+        // Act
+        handler.handleTextMessage(session, new TextMessage("Roll"));
+
+        // Assert
+        assertEquals(currentPlayerInitialMoney - 200, currentPlayer.getMoney()); // Steuern gezahlt
+        assertEquals(otherPlayerInitialMoney, otherPlayer.getMoney());           // Andere bleibt gleich
+    }
+} 

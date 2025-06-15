@@ -1,6 +1,6 @@
 package model.cards;
 
-// TODO: Add a card that needs this class - currently not in the stack
+// Can be used later if a card of this type will be added to the game
 
 import lombok.Data;
 import model.Game;

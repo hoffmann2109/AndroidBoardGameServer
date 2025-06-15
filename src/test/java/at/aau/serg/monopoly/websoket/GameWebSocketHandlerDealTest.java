@@ -27,7 +27,7 @@ class GameWebSocketHandlerDealTest {
     private ObjectMapper objectMapper;
 
     @BeforeEach
-    void setUp() throws Exception {
+    void setUp() {
         handler = new GameWebSocketHandler();
         dealService = mock(DealService.class);
         Game game = new Game();

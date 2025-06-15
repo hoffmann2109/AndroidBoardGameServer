@@ -6,10 +6,10 @@ import org.springframework.http.ResponseEntity;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class BrightnessControllerTest {
+class BrightnessControllerTest {
 
     @Test
-    public void testSaveBrightness() {
+    void testSaveBrightness() {
 
         BrightnessController brightnessController = new BrightnessController();
 
@@ -24,7 +24,7 @@ public class BrightnessControllerTest {
     }
 
     @Test
-    public void testGetBrightness() {
+    void testGetBrightness() {
 
         BrightnessController brightnessController = new BrightnessController();
 

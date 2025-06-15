@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class HasWonMessage {
-    private final String type = "HAS_WON";
+    private static final String type = "HAS_WON";
     private final String userId;
 
     @JsonCreator

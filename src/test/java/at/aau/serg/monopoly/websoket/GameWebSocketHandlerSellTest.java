@@ -22,8 +22,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -42,7 +40,7 @@ class GameWebSocketHandlerSellTest {
     private static final String TEST_PLAYER_NAME = "Test Player";
 
     @BeforeEach
-    void setUp() throws Exception {
+    void setUp() {
         handler = new GameWebSocketHandler();
         mapper = new ObjectMapper();
 

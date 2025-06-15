@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
+import java.util.logging.Level;
 
 @Service
 public class DealService {
@@ -30,17 +31,17 @@ public class DealService {
 
     public void saveProposal(DealProposalMessage deal) {
         pendingDeals.put(deal.getToPlayerId(), deal);
-        logger.info("DealProposal saved for receiver " + deal.getToPlayerId());
+        logger.log(Level.INFO, "DealProposal saved for receiver {0}", deal.getToPlayerId());
     }
 
     public void saveCounterProposal(CounterProposalMessage counter) {
         pendingDeals.put(counter.getToPlayerId(), counter);
-        logger.info("CounterProposal saved for receiver " + counter.getToPlayerId());
+        logger.log(Level.INFO, "CounterProposal saved for receiver {0}", counter.getToPlayerId());
     }
 
     public void removeProposal(String playerId) {
         pendingDeals.remove(playerId);
-        logger.info("DealProposal removed for " + playerId);
+        logger.log(Level.INFO, "DealProposal removed for {0}", playerId);
     }
 
     private DealProposalMessage getPendingDeal(DealResponseMessage response) {
