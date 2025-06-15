@@ -3,6 +3,7 @@ import java.util.Date;
 
 import at.aau.serg.monopoly.websoket.PropertyService;
 import at.aau.serg.monopoly.websoket.PropertyTransactionService;
+import data.PlayerInfo;
 import lombok.Data;
 import lombok.Getter;
 
@@ -122,7 +123,6 @@ public class Game {
 
     /**
      * Finds a player by their unique ID.
-     *
      * @param id The ID of the player to find.
      * @return An Optional containing the Player if found, otherwise empty.
      */
@@ -134,7 +134,6 @@ public class Game {
 
     /**
      * Checks if it's the specified player's turn
-     *
      * @param playerId The ID of the player to check
      * @return true if it's the player's turn, false otherwise
      */
@@ -146,8 +145,9 @@ public class Game {
     }
 
     /**
+     *
      * @param roll The result of roll dice.
-     * @param id   The ID of the player to find.
+     * @param id The ID of the player to find.
      * @return If the player passes the Start field the method returns true, otherwise false.
      */
     public boolean updatePlayerPosition(int roll, String id) {
@@ -198,7 +198,6 @@ public class Game {
 
     /**
      * Beendet das Spiel und setzt den Gewinner
-     *
      * @param winnerId Die ID des Gewinners
      * @return Die Dauer des Spiels in Minuten
      */
@@ -282,6 +281,17 @@ public class Game {
         updatePlayerPosition(roll, playerId);
 
         return roll;
+    }
+    public void resetForNewMatch() {
+        players.forEach(p -> {
+            p.setPosition(0);
+            p.setMoney(1500);
+            p.setInJail(false);
+            p.setHasRolledThisTurn(false);
+            // … weitere Flags
+        });
+        currentPlayerIndex = 0;
+        isStarted = true;
     }
 
     public void reset() {
