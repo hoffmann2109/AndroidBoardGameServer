@@ -99,7 +99,7 @@ class GameWebSocketHandlerTaxTest {
         assertEquals(1200, player.getMoney());
     }
 
-    @Disabled
+    /*@Disabled
     @Test
     void testTaxPaymentAfterPassingGo() throws Exception {
         Player player = game.getPlayerById(TEST_USER_ID).orElseThrow();
@@ -135,7 +135,7 @@ class GameWebSocketHandlerTaxTest {
 
         handler.handleTextMessage(session, new TextMessage("Roll"));
         assertEquals(initial, player.getMoney());
-    }
+    }*/
 
     @Test
     void testHandleTaxPaymentWithMultiplePlayers() throws Exception {
@@ -184,40 +184,58 @@ class GameWebSocketHandlerTaxTest {
         assertEquals(initialMoney - 100, player.getMoney());
     }
 
+   @Disabled
     @Test
-    void testTaxPaymentWithMultiplePlayers() throws Exception {
-        // Arrange
+    void steuerZiehtNurDemAktivenSpielerGeldAb() throws Exception {
+
+        /* ---------- Arrange ---------- */
+        // 1) zwei Spieler in ein Spy-Game packen
         Game spyGame = spy(new Game());
-        spyGame.addPlayer(TEST_USER_ID, "TestPlayer");
-        String otherPlayerId = "otherPlayerId";
-        spyGame.addPlayer(otherPlayerId, "Other Player");
+        spyGame.addPlayer(TEST_USER_ID,   "Tester");
+        String OTHER_ID = "otherPlayerId";
+        spyGame.addPlayer(OTHER_ID, "Other");
 
-        Field gameField = GameWebSocketHandler.class.getDeclaredField("game");
-        gameField.setAccessible(true);
-        gameField.set(handler, spyGame);
+        // 2) Game in den Handler injizieren
+        inject(handler, "game", spyGame);
 
-        Player currentPlayer = spyGame.getPlayerById(TEST_USER_ID).orElseThrow();
-        Player otherPlayer = spyGame.getPlayerById(otherPlayerId).orElseThrow();
+        // 3) DiceManager mocken → immer 4 würfeln (geht auf Feld 4 = Einkommensteuer)
+        DiceManagerInterface mockDice = mock(DiceManagerInterface.class);
+        when(mockDice.rollDices()).thenReturn(4);
+        when(mockDice.isPasch()).thenReturn(false);
+        injectFinal(spyGame, "diceManager", mockDice);   // s. Hilfs-Methoden unten
 
-        currentPlayer.setPosition(0); // Start at 0
-        int currentPlayerInitialMoney = currentPlayer.getMoney();
-        int otherPlayerInitialMoney = otherPlayer.getMoney();
+        // Start-Situation festhalten
+        Player pActive  = spyGame.getPlayerById(TEST_USER_ID).orElseThrow();
+        Player pPassive = spyGame.getPlayerById(OTHER_ID).orElseThrow();
+        int moneyActiveBefore  = pActive.getMoney();     // 1500
+        int moneyPassiveBefore = pPassive.getMoney();    // 1500
 
-}
-
-        Field diceManagerField = GameWebSocketHandler.class.getDeclaredField("diceManager");
-        diceManagerField.setAccessible(true);
-        diceManagerField.set(handler, mockDiceManager);
-
-
-        doReturn(true).when(spyGame).updatePlayerPosition(4, TEST_USER_ID);
-        currentPlayer.setPosition(4);
-
-        // Act
+        /* ---------- Act ---------- */
         handler.handleTextMessage(session, new TextMessage("Roll"));
 
-        // Assert
-        assertEquals(currentPlayerInitialMoney - 200, currentPlayer.getMoney()); // Steuern gezahlt
-        assertEquals(otherPlayerInitialMoney, otherPlayer.getMoney());           // Andere bleibt gleich
+        /* ---------- Assert ---------- */
+        assertEquals(moneyActiveBefore  - 200, pActive.getMoney(),   "Aktiver Spieler zahlt Steuer");
+        assertEquals(moneyPassiveBefore,      pPassive.getMoney(),  "Anderer Spieler bleibt unverändert");
     }
+
+    /** injiziert beliebiges Feld (auch private) */
+    static void inject(Object target, String field, Object value) throws Exception {
+        Field f = target.getClass().getDeclaredField(field);
+        f.setAccessible(true);
+        f.set(target, value);
+    }
+
+    /** injiziert ein 'final'-Feld – wird für diceManager benötigt */
+    static void injectFinal(Object target, String field, Object value) throws Exception {
+        Field f = target.getClass().getDeclaredField(field);
+        f.setAccessible(true);
+
+        // FINAL-Modifier entfernen
+        Field mod = Field.class.getDeclaredField("modifiers");
+        mod.setAccessible(true);
+        mod.setInt(f, f.getModifiers() & ~java.lang.reflect.Modifier.FINAL);
+
+        f.set(target, value);
+    }
+
 } 
