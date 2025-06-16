@@ -221,4 +221,13 @@ class LeaderboardServiceTest {
         ));
     }
 
+    @Test
+    void testUpdateAllLeaderboards_firestoreNull() {
+        firestoreClientMock.when(FirestoreClient::getFirestore).thenReturn(null);
+
+        leaderboardService.updateAllLeaderboards();
+
+        // kein Fehler → passt
+    }
+
 }
