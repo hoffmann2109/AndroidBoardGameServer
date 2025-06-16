@@ -85,27 +85,6 @@ public class BotManager {
                 TimeUnit.SECONDS);
     }
 
-
-
-    private void processTurn() {
-        // 1) Spiel läuft überhaupt?
-        if (!game.isStarted()) return;
-
-        // 2) Lock versuchen (nicht blockierend)
-        if (!game.getTurnLock().tryLock()) return;
-        try {
-            Player cur = game.getCurrentPlayer();
-            if (cur == null || !cur.isBot()) return;
-
-            doFullMove(cur);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        } finally {
-            game.getTurnLock().unlock();
-        }
-    }
-
-
     private void processSpecificBot(String botId) {
         if (!game.getTurnLock().tryLock()) return;
         try {

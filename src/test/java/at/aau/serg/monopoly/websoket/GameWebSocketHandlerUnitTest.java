@@ -415,6 +415,36 @@ class GameWebSocketHandlerUnitTest {
         assertFalse(player.isInJail());
     }
 
+    @Test
+    void nextTurn_withoutRolling_shouldSendError() throws Exception {
+        GameWebSocketHandler handler = spy(new GameWebSocketHandler());
+        WebSocketSession session = mock(WebSocketSession.class);
+        String userId = "user123";
+        String sessionId = "session-abc";
+
+        Player player = new Player(userId, "Player1");
+        player.setHasRolledThisTurn(false); // wichtig!
+        player.setInJail(false);
+
+        Game game = mock(Game.class);
+        when(game.getCurrentPlayer()).thenReturn(player);
+        when(game.isPlayerTurn(userId)).thenReturn(true);
+        when(game.getPlayerById(userId)).thenReturn(Optional.of(player));
+
+        when(session.getId()).thenReturn(sessionId);
+        handler.sessionToUserId.put(sessionId, userId);
+
+        ReflectionTestUtils.setField(handler, "game", game);
+
+        handler.handleTextMessage(session, new TextMessage("NEXT_TURN"));
+
+        // prüfen, dass keine Weitergabe erfolgt
+        verify(handler, never()).switchToNextPlayer();
+        verify(handler).sendMessageToSession(eq(session), contains("Roll the dice first"));
+    }
+
+
+
 
 
 

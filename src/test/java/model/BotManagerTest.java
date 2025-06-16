@@ -4,6 +4,7 @@ import at.aau.serg.monopoly.websoket.PropertyTransactionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import model.BotManager.BotCallback;
+import model.properties.BaseProperty;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -37,6 +38,9 @@ class BotManagerTest {
 
         pts = mock(PropertyTransactionService.class);
         cb = mock(BotCallback.class);
+        Player nextPlayer = new Player("p2", "Mensch");
+        nextPlayer.setBot(false);
+        when(game.getNextPlayer()).thenReturn(nextPlayer);
 
         // Unser Bot-Player
         bot = new Player("bot-id", "Bot 🤖");
@@ -162,4 +166,49 @@ class BotManagerTest {
         verify(cb).checkBankruptcy();
         verify(cb).advanceToNextPlayer();
     }
+
+    @Test
+    void botManager_shouldAdvanceToNextPlayer_ifNoPasch() throws Exception {
+        // Setup Game & Player
+        Game game = mock(Game.class);
+        PropertyTransactionService pts = mock(PropertyTransactionService.class);
+        Player bot = new Player("bot123", "Bot 🤖");
+        bot.setBot(true);
+        bot.setMoney(1000);
+        bot.setPosition(1);
+
+        BaseProperty property = mock(BaseProperty.class);
+        when(property.getId()).thenReturn(42);
+        when(property.getOwnerId()).thenReturn(null);
+        when(pts.findPropertyByPosition(bot.getPosition())).thenReturn(property);
+        when(pts.canBuyProperty(bot, 42)).thenReturn(false); // kein Kauf
+
+        when(game.getPlayerById("bot123")).thenReturn(Optional.of(bot));
+        when(game.getCurrentPlayer()).thenReturn(bot);
+        when(game.getNextPlayer()).thenReturn(new Player("p2", "Mensch"));
+
+        DiceManagerInterface diceManager = mock(DiceManagerInterface.class);
+        when(diceManager.rollDices()).thenReturn(4);
+        when(diceManager.isPasch()).thenReturn(false);
+        when(game.getDiceManager()).thenReturn(diceManager);
+        when(game.updatePlayerPosition(4, "bot123")).thenReturn(false);
+
+        when(game.getTurnLock()).thenReturn(new ReentrantLock()); // Lock vermeiden
+
+        // Callback-Mock
+        BotManager.BotCallback cb = mock(BotManager.BotCallback.class);
+
+        // BotManager initialisieren
+        BotManager botManager = new BotManager(game, pts, cb);
+
+        // doFullMove direkt aufrufen
+        Method m = BotManager.class.getDeclaredMethod("doFullMove", Player.class);
+        m.setAccessible(true);
+        m.invoke(botManager, bot);
+
+        // Verifizieren
+        verify(cb).advanceToNextPlayer();
+        verify(cb, atLeastOnce()).updateGameState();
+    }
+
 }

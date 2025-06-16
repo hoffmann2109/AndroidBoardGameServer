@@ -842,7 +842,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
 
 
-    private void sendMessageToSession(WebSocketSession session, String message) {
+    void sendMessageToSession(WebSocketSession session, String message) {
         try {
             if (session.isOpen()) {
                 session.sendMessage(new TextMessage(message));
