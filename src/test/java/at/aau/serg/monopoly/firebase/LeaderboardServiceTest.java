@@ -122,4 +122,22 @@ class LeaderboardServiceTest {
 
         // Kein Exceptionwurf = Erfolg
     }
+
+    @Test
+    void testUpdateAllLeaderboards_success() {
+        LeaderboardService spyService = Mockito.spy(leaderboardService);
+        doNothing().when(spyService).updateWinsLeaderboard(any());
+        doNothing().when(spyService).updateLevelLeaderboard(any());
+        doNothing().when(spyService).updateMoneyLeaderboard(any());
+        doNothing().when(spyService).updateHighMoneyLeaderboard(any());
+        doNothing().when(spyService).updateGamesPlayedLeaderboard(any());
+
+        spyService.updateAllLeaderboards();
+
+        verify(spyService).updateWinsLeaderboard(any());
+        verify(spyService).updateLevelLeaderboard(any());
+        verify(spyService).updateMoneyLeaderboard(any());
+        verify(spyService).updateHighMoneyLeaderboard(any());
+        verify(spyService).updateGamesPlayedLeaderboard(any());
+    }
 }
