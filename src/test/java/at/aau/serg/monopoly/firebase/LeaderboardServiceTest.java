@@ -176,4 +176,49 @@ class LeaderboardServiceTest {
         verify(lb, never()).document(anyString());
     }
 
+    @Test
+    void testUpdateLeaderboard_missingUserFields() throws Exception {
+        Firestore firestore = mock(Firestore.class);
+        firestoreClientMock.when(FirestoreClient::getFirestore).thenReturn(firestore);
+
+        CollectionReference users = mock(CollectionReference.class);
+        Query query = mock(Query.class);
+        Query limitedQuery = mock(Query.class);
+        ApiFuture<QuerySnapshot> future = mock(ApiFuture.class);
+        QuerySnapshot snapshot = mock(QuerySnapshot.class);
+        QueryDocumentSnapshot userDoc = mock(QueryDocumentSnapshot.class);
+
+        when(userDoc.getId()).thenReturn("abc");
+        when(userDoc.getData()).thenReturn(new HashMap<>()); // leerer Datensatz
+
+        when(firestore.collection("users")).thenReturn(users);
+        when(users.orderBy(eq("wins"), any())).thenReturn(query);
+        when(query.limit(50)).thenReturn(limitedQuery);
+        when(limitedQuery.get()).thenReturn(future);
+        when(future.get()).thenReturn(snapshot);
+        when(snapshot.getDocuments()).thenReturn(List.of(userDoc));
+
+        CollectionReference lb = mock(CollectionReference.class);
+        DocumentReference docRef = mock(DocumentReference.class);
+        Query lbLimit = mock(Query.class);
+        ApiFuture<QuerySnapshot> lbFuture = mock(ApiFuture.class);
+        QuerySnapshot lbSnapshot = mock(QuerySnapshot.class);
+
+        when(firestore.collection("leaderboard_wins")).thenReturn(lb);
+        when(lb.limit(100)).thenReturn(lbLimit);
+        when(lbLimit.get()).thenReturn(lbFuture);
+        when(lbFuture.get()).thenReturn(lbSnapshot);
+        when(lbSnapshot.getDocuments()).thenReturn(Collections.emptyList());
+        when(lb.document(anyString())).thenReturn(docRef);
+
+        leaderboardService.updateLeaderboard(firestore, "wins", "leaderboard_wins");
+
+        verify(docRef).set(argThat((Map<String, Object> m) ->
+                m.get("userId").equals("abc") &&
+                        m.get("name").equals("Unbekannt") &&
+                        m.get("wins").equals(0) &&
+                        m.get("rank").equals(1)
+        ));
+    }
+
 }
