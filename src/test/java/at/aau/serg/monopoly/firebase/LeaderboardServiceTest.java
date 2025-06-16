@@ -230,4 +230,43 @@ class LeaderboardServiceTest {
         // kein Fehler → passt
     }
 
+    @Test
+    void testUpdateLeaderboard_nullUserData() throws Exception {
+        Firestore firestore = mock(Firestore.class);
+        firestoreClientMock.when(FirestoreClient::getFirestore).thenReturn(firestore);
+
+        CollectionReference users = mock(CollectionReference.class);
+        Query query = mock(Query.class);
+        Query limitedQuery = mock(Query.class);
+        ApiFuture<QuerySnapshot> future = mock(ApiFuture.class);
+        QuerySnapshot snapshot = mock(QuerySnapshot.class);
+        QueryDocumentSnapshot userDoc = mock(QueryDocumentSnapshot.class);
+
+        when(userDoc.getData()).thenReturn(null); // <== das ist der Clou
+
+        when(firestore.collection("users")).thenReturn(users);
+        when(users.orderBy(eq("wins"), any())).thenReturn(query);
+        when(query.limit(50)).thenReturn(limitedQuery);
+        when(limitedQuery.get()).thenReturn(future);
+        when(future.get()).thenReturn(snapshot);
+        when(snapshot.getDocuments()).thenReturn(List.of(userDoc));
+
+        CollectionReference lb = mock(CollectionReference.class);
+        Query lbLimit = mock(Query.class);
+        ApiFuture<QuerySnapshot> lbFuture = mock(ApiFuture.class);
+        QuerySnapshot lbSnapshot = mock(QuerySnapshot.class);
+
+        when(firestore.collection("leaderboard_wins")).thenReturn(lb);
+        when(lb.limit(100)).thenReturn(lbLimit);
+        when(lbLimit.get()).thenReturn(lbFuture);
+        when(lbFuture.get()).thenReturn(lbSnapshot);
+        when(lbSnapshot.getDocuments()).thenReturn(Collections.emptyList());
+
+        leaderboardService.updateLeaderboard(firestore, "wins", "leaderboard_wins");
+
+        // sollte keine neuen Dokumente schreiben
+        verify(lb, never()).document(anyString());
+    }
+
+
 }
