@@ -34,7 +34,11 @@ import java.util.logging.Logger;
 public class GameWebSocketHandler extends TextWebSocketHandler {
 
     private static final String PLAYER_PREFIX = "Player ";
+    private static final String BOUGHT_PROPERTY_MSG = " bought property ";
+    private static final String SYSTEM_PREFIX = "SYSTEM: ";
     private final Logger logger = Logger.getLogger(GameWebSocketHandler.class.getName());
+
+
     protected final CopyOnWriteArrayList<WebSocketSession> sessions = new CopyOnWriteArrayList<>();
     final Map<String, String> sessionToUserId = new ConcurrentHashMap<>();
     private final Game game = new Game();
@@ -60,9 +64,9 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     private static final int TURN_TIMEOUT_SEC = 30;
 
 
-    private DiceManagerInterface diceManager;
+
     private final Map<String, Set<String>> kickVotes = new ConcurrentHashMap<>();
-    private static final String BOUGHT_PROPERTY_MSG = " bought property ";
+
     private final String USER_ID = "userId";
 
     @Autowired
@@ -160,7 +164,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             sessionToUserId.put(session.getId(), userId);
 
             logger.log(Level.INFO, "Player connected: {0} | Name: {1}", new Object[]{userId, name}); //bewusst geloggt aktuell
-            broadcastMessage("SYSTEM: " + name + " (" + userId + ") joined the game");
+            broadcastMessage(SYSTEM_PREFIX + name + " (" + userId + ") joined the game");
 
             // Spielstart-Logik anpassen
             if (!game.isStarted() && sessionToUserId.size() >= 2 && sessionToUserId.size() <= 4) {
@@ -468,7 +472,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 if (current.isInJail()) {
                     current.reduceJailTurns();
                     if (!current.isInJail()) {
-                        broadcastMessage("Player " + current.getName() + " is released from jail!");
+                        broadcastMessage(PLAYER_PREFIX+ current.getName() + " is released from jail!");
                     }
                     cancelTurnTimer(userId);
                     switchToNextPlayer();
@@ -546,7 +550,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             cancelTurnTimer(userId);                //  ← laufenden 30-s-Timer stoppen
             game.replaceDisconnectedWithBot(userId);
 
-            broadcastMessage("SYSTEM: " + userId +
+            broadcastMessage(SYSTEM_PREFIX + userId +
                     " hat die Verbindung verloren und wurde durch einen Bot ersetzt.");
             broadcastGameState();
             checkAllPlayersForBankruptcy();
@@ -682,7 +686,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             if (propertyTransactionService.canBuyProperty(player, propertyId)) {
                 boolean success = propertyTransactionService.buyProperty(player, propertyId);
                 if (success) {
-                    broadcastMessage(createJsonMessage(PLAYER_PREFIX + userId + " bought property " + propertyId));
+                    broadcastMessage(createJsonMessage(PLAYER_PREFIX + userId + BOUGHT_PROPERTY_MSG + propertyId));
                     broadcastGameState();
                     if (game.isPlayerTurn(userId)) {
                         refreshTurnTimer(userId);
@@ -992,15 +996,6 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    private void resetGame() {
-        game.getPlayers().clear();
-
-        // New INITs will now be accepted
-        sessionToUserId.clear();
-
-        diceManager = new DiceManager();
-        diceManager.initializeStandardDices();
-    }
 
     private void handleKickVote(WebSocketSession session, String payload, String voterId) {
         String targetName = payload.substring("KICK ".length()).trim();
@@ -1032,7 +1027,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         int totalPlayers = game.getPlayers().size();
 
         // Broadcast:
-        broadcastMessage("SYSTEM: " + voterName
+        broadcastMessage(SYSTEM_PREFIX + voterName
                 + " voted to kick " + targetName
                 + " (" + votesFor + "/" + totalPlayers + ")");
 
@@ -1052,7 +1047,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 // Check for tax squares
                 if (position == 30) {
                     game.sendToJail(player.getId());
-                    broadcastMessage("Player " + player.getId() + " goes to jail!");
+                    broadcastMessage(PLAYER_PREFIX + player.getId() + " goes to jail!");
                 }   else if (position == 4) {  // Einkommensteuer
                     game.updatePlayerMoney(player.getId(), -200);  // Deduct money first
                     TaxPaymentMessage taxMsg = new TaxPaymentMessage(player.getId(), 200, "EINKOMMENSTEUER");
@@ -1139,7 +1134,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
                 game.markPlayerDisconnected(playerId);
                 game.replaceDisconnectedWithBot(playerId);
-                broadcastMessage("SYSTEM: " + playerId
+                broadcastMessage(SYSTEM_PREFIX+ playerId
                         + " hat 30 Sekunden nicht beendet und wurde zum Bot.");
                 broadcastGameState();
                 if (!anyHumanConnected()) {          // ‼ keine Menschen mehr?
@@ -1159,12 +1154,6 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                     .ifPresent(f -> f.cancel(false));
         }
 
-        /** Wechselt auf den nächsten gültigen Spieler und kümmert sich um
-         *  - Flag‐Reset
-         *  - Timer stoppen/neu starten
-         *  - Broadcast
-         *  - ggf. Bot-Queue
-         */
          void switchToNextPlayer() {
             Player prev = game.getCurrentPlayer();
             if (prev != null) {

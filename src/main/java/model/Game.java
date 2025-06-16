@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.Getter;
 
 import java.util.ArrayList;
+import java.util.logging.Logger;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -15,6 +16,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 @Data
 public class Game {
+    private static final Logger logger = Logger.getLogger(Game.class.getName());
     private List<Player> players;
     private boolean isStarted;
     private int currentPlayerIndex;
@@ -95,8 +97,6 @@ public class Game {
 
     public void nextPlayer() {
         if (players.isEmpty()) return;
-
-        int originalIndex = currentPlayerIndex;
         for (int i = 1; i <= players.size(); i++) {
             int nextIndex = (currentPlayerIndex + i) % players.size();
             Player next = players.get(nextIndex);
@@ -109,7 +109,9 @@ public class Game {
         }
 
         // Falls kein gültiger Spieler gefunden wurde → Spiel beenden
-        System.out.println("No connected players or bots found – ending game.");
+        logger.info("No connected players or bots found – ending game.");
+
+
     }
 
 
@@ -257,7 +259,8 @@ public class Game {
             if (!player.isConnected() && !player.isBot()) {
                 player.setBot(true);
                 player.setConnected(true);
-                System.out.println("Replaced disconnected player with bot: " + player.getId());
+                logger.info("Replaced disconnected player with bot: " + player.getId());
+
             }
         });
     }
