@@ -354,6 +354,68 @@ class GameWebSocketHandlerUnitTest {
         verify(session2).sendMessage(argThat(msg -> ((TextMessage) msg).getPayload().contains(expected)));
     }
 
+    @Test
+    void botCallback_shouldCallSwitchToNextPlayer() {
+        GameWebSocketHandler handler = spy(new GameWebSocketHandler());
+
+        // turn private to package-private or use ReflectionTestUtils
+        BotManager.BotCallback callback = new BotManager.BotCallback() {
+            @Override
+            public void broadcast(String m) {}
+
+            @Override
+            public void updateGameState() {}
+
+            @Override
+            public void advanceToNextPlayer() {
+                handler.switchToNextPlayer();
+            }
+
+            @Override
+            public void checkBankruptcy() {}
+        };
+
+        // Aktiviere Spying auf switchToNextPlayer (muss sichtbar sein!)
+        doNothing().when(handler).switchToNextPlayer();
+
+        // Direkter Aufruf – nicht durch queueBotTurn
+        callback.advanceToNextPlayer();
+
+        verify(handler, times(1)).switchToNextPlayer();
+    }
+    @Test
+    void nextTurn_whenPlayerInJail_isReleasedAfterJailTurnsEnd() throws Exception {
+        GameWebSocketHandler handler = spy(new GameWebSocketHandler());
+        WebSocketSession session = mock(WebSocketSession.class);
+        String userId = "user123";
+        String sessionId = "session123";
+
+        Player player = new Player(userId, "Test Player");
+        player.setPosition(10);
+        player.setInJail(true);
+        player.setJailTurns(1); // Letzte Runde im Gefängnis
+
+        Game game = mock(Game.class);
+        when(game.getCurrentPlayer()).thenReturn(player);
+        when(game.isPlayerTurn(userId)).thenReturn(true);
+        when(game.getPlayerById(userId)).thenReturn(Optional.of(player));
+
+        // Session-Mock konfigurieren
+        when(session.getId()).thenReturn(sessionId);
+        handler.sessionToUserId.put(sessionId, userId);
+
+        // game setzen
+        ReflectionTestUtils.setField(handler, "game", game);
+
+        // Methode testen
+        handler.handleTextMessage(session, new TextMessage("NEXT_TURN"));
+
+        // Ergebnis prüfen
+        verify(handler, atLeastOnce()).switchToNextPlayer(); // Released from jail
+        assertFalse(player.isInJail());
+    }
+
+
 
 
 

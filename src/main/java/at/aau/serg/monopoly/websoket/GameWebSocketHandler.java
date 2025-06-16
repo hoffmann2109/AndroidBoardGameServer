@@ -1165,7 +1165,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
          *  - Broadcast
          *  - ggf. Bot-Queue
          */
-        private void switchToNextPlayer() {
+         void switchToNextPlayer() {
             Player prev = game.getCurrentPlayer();
             if (prev != null) {
                 prev.setHasRolledThisTurn(false);
