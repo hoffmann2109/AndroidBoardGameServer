@@ -226,60 +226,81 @@ public class BotManager {
         cb.updateGameState();
     }
 
-    /** Bot-Logik für einen Zug im Gefängnis */
+
+    /** Bot-Zug im Gefängnis */
     private void handleJailTurn(Player bot) throws JsonProcessingException {
 
-        log.info(() -> "Bot " + bot.getName() + " sitzt im Gefängnis (" +
-                bot.getJailTurns() + " turns left)");
-
-        boolean freed = false;
-
-        /* 1) Versucht Pasch zu würfeln, wenn noch Versuche übrig */
+        /* 1) Würfeln und Ergebnis an alle melden ---------- */
         DiceManagerInterface dm = game.getDiceManager();
-        int roll = dm.rollDices();
+        int  roll  = dm.rollDices();
         boolean pasch = dm.isPasch();
 
-        ObjectNode rollMsg = mapper.createObjectNode();
-        rollMsg.put("type",     "DICE_ROLL");
-        rollMsg.put("playerId", bot.getId());
-        rollMsg.put("value",    roll);
-        rollMsg.put("manual",   false);
-        rollMsg.put("isPasch",  pasch);
-        cb.broadcast(mapper.writeValueAsString(rollMsg));
+        ObjectNode msg = mapper.createObjectNode();
+        msg.put("type",     "DICE_ROLL");
+        msg.put("playerId", bot.getId());
+        msg.put("value",    roll);
+        msg.put("manual",   false);
+        msg.put("isPasch",  pasch);
+        cb.broadcast(mapper.writeValueAsString(msg));
 
+        /*  2) Pasch? → sofort frei + normales Weiterziehen */
         if (pasch) {
-            // Sofort raus und weiterziehen
             bot.setInJail(false);
             bot.setJailTurns(0);
-            freed = true;
-            cb.broadcast("SYSTEM: " + bot.getName() + " 🤖 rolled doubles and is free!");
-            // ⚠️ danach normal weiterziehen:
-            game.updatePlayerPosition(roll, bot.getId());
+
+            cb.broadcast("SYSTEM: " + bot.getName() + " 🤖 würfelt Pasch und ist frei!");
+            game.updatePlayerPosition(roll, bot.getId());    // normal ziehen
             tryBuyCurrentField(bot);
-        } else {
-            // Kein Pasch: Jail-Counter runter
-            bot.reduceJailTurns();
-            if (!bot.isInJail()) {
-                // Nach 3 Runden automatisch frei + 50 € zahlen
-                game.updatePlayerMoney(bot.getId(), -50);
-                cb.broadcast("SYSTEM: " + bot.getName() +
-                        " 🤖 paid €50 bail and is free!");
-                freed = true;
-                game.updatePlayerPosition(roll, bot.getId());
-                tryBuyCurrentField(bot);
-            }
+
+            cb.updateGameState();
+            cb.checkBankruptcy();
+
+            /* noch einmal würfeln, weil Pasch ⇒ Bot bleibt am Zug */
+            queueBotTurn(bot.getId());
+            return;
         }
+
+        /* ---------- 3) Kein Pasch: Runden-Counter herunterzählen ---------- */
+        bot.reduceJailTurns();          // -> 2 … 0
+
+        if (bot.isInJail()) {
+            // sitzt weiter (Runde 1 oder 2)
+            cb.broadcast("SYSTEM: " + bot.getName() + " 🤖 sitzt im Gefängnis (" +
+                    bot.getJailTurns() + " Runde(n) übrig)");
+            cb.updateGameState();
+
+            /* Zug beenden: nächster Spieler */
+            cb.advanceToNextPlayer();
+            planNextBotIfNeeded();      // siehe Hilfsmethode unten
+            return;
+        }
+
+
+        bot.setInJail(false);
+        game.updatePlayerMoney(bot.getId(), -50);
+
+        cb.broadcast("SYSTEM: " + bot.getName() +
+                " 🤖 zahlt €50 Kaution und ist frei!");
+
+
+        game.updatePlayerPosition(roll, bot.getId());
+        tryBuyCurrentField(bot);
 
         cb.updateGameState();
         cb.checkBankruptcy();
 
-        /* Zug beenden bzw. in Pasch-Fall eventuell neuen Wurf ermöglichen */
-        if (freed && pasch) {
-            // Pasch ⇒ Bot darf noch einmal, aber Flag bleibt false
-            bot.setHasRolledThisTurn(false);
-        } else {
-            cb.advanceToNextPlayer();
+        /* Zug ist vorbei (kein Pasch) → nächster Spieler */
+        cb.advanceToNextPlayer();
+        planNextBotIfNeeded();
+    }
+
+    /* Hilfsmethode: falls der neue Current-Player ein Bot ist → einplanen */
+    private void planNextBotIfNeeded() {
+        Player next = game.getCurrentPlayer();
+        if (next != null && next.isBot()) {
+            queueBotTurn(next.getId());
         }
     }
+
 
 }

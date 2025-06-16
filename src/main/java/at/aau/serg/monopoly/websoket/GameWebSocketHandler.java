@@ -1164,32 +1164,30 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
          *  - Broadcast
          *  - ggf. Bot-Queue
          */
-        private void switchToNextPlayer () {
+        private void switchToNextPlayer() {
             Player prev = game.getCurrentPlayer();
             if (prev != null) {
                 prev.setHasRolledThisTurn(false);
-                cancelTurnTimer(prev.getId());      // Timer des Vor-Spielers stoppen
+                cancelTurnTimer(prev.getId());   // Timer des Vor-Spielers stoppen
             }
 
             game.nextPlayer();
             Player current = game.getCurrentPlayer();
-            if (current == null) {
+
+            if (current == null || !anyHumanConnected()) {
                 handleEndGame();
                 return;
             }
 
-            if (!anyHumanConnected()) {
-                handleEndGame();
-                return;
-            }
-            broadcastGameState();
-
-            /* ─── HIER WIEDER EIN TIMER, ABER NUR FÜR MENSCHEN ─── */
+            // Erst neuen Timer setzen …
             if (!current.isBot()) {
                 scheduleTurnTimer(current.getId());
-            } else {                                // Bot → sofort in die Queue
+            } else if (botManager != null) {
                 botManager.queueBotTurn(current.getId());
             }
+
+
+            broadcastGameState();
         }
 
 
