@@ -11,6 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.lang.reflect.Field;
+import java.util.Date;
 import java.util.Optional;
 
 class GameTest {
@@ -528,7 +529,7 @@ class GameTest {
     }
 
     @Test
-    void testStartAndDurationPlayed() throws Exception {
+    void testStartAndDurationPlayed(){
         assertFalse(game.isStarted());
         game.start();
         assertTrue(game.isStarted());
@@ -538,14 +539,20 @@ class GameTest {
     }
 
     @Test
-    void testEndGameSetsWinnerAndReturnsDuration() throws Exception {
+    void testEndGameSetsWinnerAndReturnsDuration() {
         game.start();
-        Thread.sleep(10);
+
+        // Manipuliere den Startzeitpunkt direkt (z. B. 2 Minuten früher)
+        long fakeStart = System.currentTimeMillis() - (2 * 60 * 1000);
+        game.setStartTime(new Date(fakeStart));
+
         int duration = game.endGame("playerX");
+
         assertFalse(game.isStarted());
         assertEquals("playerX", game.getWinnerId());
-        assertTrue(duration >= 0, "endGame should return >= 0");
+        assertTrue(duration >= 2, "endGame should return at least 2 minutes");
     }
+
 
     @Test
     void testResetForNewMatch() {

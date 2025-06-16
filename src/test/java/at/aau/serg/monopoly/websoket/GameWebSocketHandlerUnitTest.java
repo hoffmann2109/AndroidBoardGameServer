@@ -19,6 +19,7 @@ import org.springframework.web.socket.WebSocketSession;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -443,6 +444,69 @@ class GameWebSocketHandlerUnitTest {
         verify(handler).sendMessageToSession(eq(session), contains("Roll the dice first"));
     }
 
+    @Test
+    void handleShakeRequest_shouldBroadcastDiceRollMessage() throws Exception {
+        GameWebSocketHandler handler = new GameWebSocketHandler();
+
+        // Mocks
+        WebSocketSession session = mock(WebSocketSession.class);
+        PropertyService propertyService = mock(PropertyService.class);
+        RentCalculationService rentCalculationService = mock(RentCalculationService.class);
+        RentCollectionService rentCollectionService = mock(RentCollectionService.class);
+
+        String userId = "u1";
+        String sessionId = "session-123";
+
+        when(session.getId()).thenReturn(sessionId);
+        when(session.isOpen()).thenReturn(true);
+
+        Game game = new Game();
+        Player player = new Player(userId, "Player1");
+        player.setBot(true);
+        player.setMoney(1000);
+        game.addPlayer(userId, player.getName());
+        game.start();
+
+        ReflectionTestUtils.setField(handler, "game", game);
+        ReflectionTestUtils.setField(handler, "sessions", new CopyOnWriteArrayList<>(List.of(session)));
+        ReflectionTestUtils.setField(handler, "sessionToUserId", Map.of(sessionId, userId));
+        ReflectionTestUtils.setField(handler, "propertyService", propertyService);
+        ReflectionTestUtils.setField(handler, "rentCalculationService", rentCalculationService);
+        ReflectionTestUtils.setField(handler, "rentCollectionService", rentCollectionService);
+
+        // Nachricht simulieren
+        String shakeMessage = "{\"type\":\"SHAKE_REQUEST\", \"playerId\":\"" + userId + "\"}";
+        handler.handleTextMessage(session, new TextMessage(shakeMessage));
+
+        // Erwartung prüfen
+        verify(session, atLeastOnce()).sendMessage(any(TextMessage.class));
+    }
+
+    @Test
+    void nextTurnWithoutRolling_shouldSendErrorMessage() throws Exception {
+        GameWebSocketHandler handler = spy(new GameWebSocketHandler());
+        WebSocketSession session = mock(WebSocketSession.class);
+        String userId = "u1";
+
+        Player player = new Player(userId, "Tester");
+        player.setHasRolledThisTurn(false);
+        Game game = mock(Game.class);
+
+        when(game.getCurrentPlayer()).thenReturn(player);
+        when(game.isPlayerTurn(userId)).thenReturn(true);
+        when(game.getPlayerById(userId)).thenReturn(Optional.of(player));
+
+        ReflectionTestUtils.setField(handler, "game", game);
+        Map<String, String> sessionToUserId = new HashMap<>();
+        sessionToUserId.put(session.getId(), userId);
+        ReflectionTestUtils.setField(handler, "sessionToUserId", sessionToUserId);
+
+        doNothing().when(handler).sendMessageToSession(eq(session), contains("Roll the dice first"));
+
+        handler.handleTextMessage(session, new TextMessage("NEXT_TURN"));
+
+        verify(handler).sendMessageToSession(eq(session), contains("Roll the dice first"));
+    }
 
 
 
