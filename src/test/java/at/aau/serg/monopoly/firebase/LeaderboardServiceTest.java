@@ -267,6 +267,12 @@ class LeaderboardServiceTest {
         // sollte keine neuen Dokumente schreiben
         verify(lb, never()).document(anyString());
     }
+    @Test
+    void testUpdateAllLeaderboards_withMockedFirestore() {
+        Firestore firestore = mock(Firestore.class);
+        firestoreClientMock.when(FirestoreClient::getFirestore).thenReturn(firestore);
 
-
+        // Methode aufrufen – wir prüfen nur, ob’s crasht
+        leaderboardService.updateAllLeaderboards();
+    }
 }
