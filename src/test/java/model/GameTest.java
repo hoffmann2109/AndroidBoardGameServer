@@ -1,5 +1,6 @@
 package model;
 
+
 import model.cards.MoveCard;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -524,6 +525,84 @@ class GameTest {
         game.nextPlayer();
 
         assertEquals("A", game.getCurrentPlayer().getId());
+    }
+
+    @Test
+    void testStartAndDurationPlayed() throws Exception {
+        assertFalse(game.isStarted());
+        game.start();
+        assertTrue(game.isStarted());
+        assertNotNull(game.getStartTime());
+        int dur = game.getDurationPlayed();
+        assertTrue(dur >= 0, "Duration should be >= 0");
+    }
+
+    @Test
+    void testEndGameSetsWinnerAndReturnsDuration() throws Exception {
+        game.start();
+        Thread.sleep(10);
+        int duration = game.endGame("playerX");
+        assertFalse(game.isStarted());
+        assertEquals("playerX", game.getWinnerId());
+        assertTrue(duration >= 0, "endGame should return >= 0");
+    }
+
+    @Test
+    void testResetForNewMatch() {
+        game.addPlayer("A","A");
+        game.addPlayer("B","B");
+        // muck around
+        game.updatePlayerPosition(5,"A");
+        game.sendToJail("B");
+        game.resetForNewMatch();
+        assertTrue(game.isStarted());
+        assertEquals(0, game.getCurrentPlayerIndex());
+        for (Player p : game.getPlayers()) {
+            assertEquals(0, p.getPosition());
+            assertEquals(1500, p.getMoney());
+            assertFalse(p.isInJail());
+            assertFalse(p.hasRolledThisTurn());
+        }
+    }
+
+    @Test
+    void testReset() {
+        game.addPlayer("A","A");
+        game.addPlayer("B","B");
+        game.start();
+        game.endGame("A");
+        game.updatePlayerPosition(10,"A");
+        game.sendToJail("B");
+        game.reset();
+        assertFalse(game.isStarted());
+        assertNull(game.getWinnerId());
+        assertEquals(0, game.getCurrentPlayerIndex());
+        for (Player p : game.getPlayers()) {
+            assertEquals(0, p.getPosition());
+            assertEquals(1500, p.getMoney());
+            assertFalse(p.isInJail());
+            assertEquals(0, p.getJailTurns());
+            assertTrue(p.isConnected());
+            assertFalse(p.isBot());
+            assertFalse(p.hasRolledThisTurn());
+        }
+    }
+
+    @Test
+    void testGetNextPlayerThrowsWhenEmpty() {
+        Game empty = new Game();
+        assertThrows(IllegalStateException.class, empty::getNextPlayer);
+    }
+
+    @Test
+    void testGetNextPlayerSkipsDisconnectedHumans() {
+        game.addPlayer("A","A");
+        game.addPlayer("B","B");
+        game.addPlayer("C","C");
+        game.setCurrentPlayerIndex(0);
+        game.markPlayerDisconnected("B");
+        Player next = game.getNextPlayer();
+        assertEquals("C", next.getId());
     }
 
 }

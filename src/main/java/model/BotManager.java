@@ -7,7 +7,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import model.properties.BaseProperty;
 
 import java.util.concurrent.*;
-import java.util.logging.Handler;
 import java.util.logging.Logger;
 
 

@@ -7,21 +7,22 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import data.*;
 import data.deals.CounterProposalMessage;
-import jakarta.annotation.PostConstruct;
-import lombok.NonNull;
-import model.*;
-import model.properties.BaseProperty;
 import data.deals.DealProposalMessage;
 import data.deals.DealResponseMessage;
 import data.deals.DealResponseType;
+import jakarta.annotation.PostConstruct;
+import model.*;
+import model.properties.BaseProperty;
 import model.properties.HouseableProperty;
 import model.properties.TrainStation;
 import model.properties.Utility;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.springframework.web.socket.*;
+import org.springframework.web.socket.CloseStatus;
+import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
-import model.ChatMessage;
+
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
@@ -1196,23 +1197,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             scheduleTurnTimer(playerId);        // 30 s ab jetzt
         }
 
-    /** Trennt alle noch offenen Verbindungen sauber. */
-    private void closeAllClientSessions() {
-        for (WebSocketSession s : new ArrayList<>(sessions)) {
-            try {
-                if (s.isOpen()) {
-                    // 1000 = NORMAL_CLOSURE
-                    s.close(CloseStatus.NORMAL);
-                }
-            } catch (Exception ex) {
-                logger.log(Level.WARNING,
-                        "Error while closing session {0}: {1}",
-                        new Object[]{s.getId(), ex.getMessage()});
-            }
-        }
-        sessions.clear();          // Liste jetzt wirklich leer
-        sessionToUserId.clear();   // Zuordnungen löschen
-    }
+
 
 
 
