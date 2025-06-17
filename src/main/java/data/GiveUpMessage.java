@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class GiveUpMessage {
-    private final String type = "GIVE_UP";
+    private static final String type = "GIVE_UP";
     private final String userId;
 
     @JsonCreator
