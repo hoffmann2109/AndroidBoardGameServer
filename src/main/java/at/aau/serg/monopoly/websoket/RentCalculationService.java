@@ -22,9 +22,10 @@ public class RentCalculationService {
 
     /**
      * Calculates the rent for a property based on its type and owner
+     *
      * @param property The property to calculate rent for
-     * @param owner The owner of the property
-     * @param renter The player who landed on the property
+     * @param owner    The owner of the property
+     * @param renter   The player who landed on the property
      * @return The calculated rent amount
      */
     public int calculateRent(BaseProperty property, Player owner, Player renter) {
@@ -36,8 +37,8 @@ public class RentCalculationService {
         // Calculate rent based on property type
         if (property instanceof HouseableProperty houseableProperty) {
             return calculateHouseablePropertyRent(houseableProperty);
-        } else if (property instanceof TrainStation) {
-            return calculateTrainStationRent((TrainStation) property);
+        } else if (property instanceof TrainStation trainStation) {
+            return calculateTrainStationRent(trainStation);
         } else if (property instanceof Utility) {
             return calculateUtilityRent((Utility) property, owner);
         }
@@ -48,6 +49,7 @@ public class RentCalculationService {
 
     /**
      * Calculates rent for a houseable property based on number of houses/hotels
+     *
      * @param property The houseable property
      * @return The calculated rent amount
      */
@@ -58,6 +60,7 @@ public class RentCalculationService {
 
     /**
      * Calculates rent for a train station based on number of stations owned
+     *
      * @param station The train station
      * @return The calculated rent amount
      */
@@ -68,8 +71,9 @@ public class RentCalculationService {
 
     /**
      * Calculates rent for a utility based on number of utilities owned
+     *
      * @param utility The utility property
-     * @param owner The owner of the property
+     * @param owner   The owner of the property
      * @return The calculated rent amount
      */
     private int calculateUtilityRent(Utility utility, Player owner) {
@@ -80,8 +84,8 @@ public class RentCalculationService {
                 .size();
 
         // Calculate rent based on number of utilities owned
-        return ownedUtilities == 1 ? 
-            utility.getRentOneUtilityMultiplier() : 
-            utility.getRentTwoUtilitiesMultiplier();
+        return ownedUtilities == 1 ?
+                utility.getRentOneUtilityMultiplier() :
+                utility.getRentTwoUtilitiesMultiplier();
     }
 }
