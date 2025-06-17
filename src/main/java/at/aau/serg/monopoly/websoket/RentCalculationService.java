@@ -39,8 +39,8 @@ public class RentCalculationService {
             return calculateHouseablePropertyRent(houseableProperty);
         } else if (property instanceof TrainStation trainStation) {
             return calculateTrainStationRent(trainStation);
-        } else if (property instanceof Utility) {
-            return calculateUtilityRent((Utility) property, owner);
+        } else if (property instanceof Utility utility) {
+            return calculateUtilityRent(utility, owner);
         }
 
         logger.log(Level.WARNING, "Unknown property type for rent calculation: {0}", property.getClass().getName());
