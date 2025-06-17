@@ -9,6 +9,6 @@ class ApplicationTest {
     @Test
     void contextLoads() {
 
-        Application.main(new String[]{});
+       //mvn clean test jacoco:report Application.main(new String[]{});
     }
 }

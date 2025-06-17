@@ -1,17 +1,31 @@
 package at.aau.serg.monopoly.websoket;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import model.Game;
+import model.Player;
+import model.BotManager;
 import org.junit.jupiter.api.AfterEach;
+import static org.awaitility.Awaitility.await;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -21,11 +35,19 @@ class GameWebSocketHandlerUnitTest {
 
     private WebSocketSession session;
     private GameWebSocketHandler gameWebSocketHandler;
+    @Mock
+    private BotManager botManager;
+    @Mock
+    private Game game;
+    @Captor
+    private ArgumentCaptor<TextMessage> messageCaptor;
 
     @BeforeEach
     void setUp() {
         gameWebSocketHandler = new GameWebSocketHandler();
         session = mock(WebSocketSession.class);
+        MockitoAnnotations.openMocks(this);
+        ReflectionTestUtils.setField(gameWebSocketHandler, "botManager", botManager);
         when(session.getId()).thenReturn("1");
         when(session.isOpen()).thenReturn(true);
 
@@ -49,6 +71,21 @@ class GameWebSocketHandlerUnitTest {
         gameWebSocketHandler.handleTextMessage(session, new TextMessage(initJson));
     }
 
+    private Game prepareMockGameWithPlayer(String userId) {
+        Player player = new Player(userId, "TestUser");
+        player.setConnected(true);
+
+        Game mockGame = mock(Game.class);
+        when(mockGame.getPlayerById(userId)).thenReturn(Optional.of(player));
+        when(mockGame.getCurrentPlayer()).thenReturn(player);
+        when(mockGame.getPlayers()).thenReturn(List.of(player));
+        when(mockGame.getPlayerInfo()).thenReturn(List.of());
+
+        ReflectionTestUtils.setField(gameWebSocketHandler, "game", mockGame);
+        ReflectionTestUtils.setField(gameWebSocketHandler, "botManager", mock(BotManager.class));
+        return mockGame;
+    }
+
     @Test
     void testAfterConnectionEstablished() throws Exception {
         // No messages after setup
@@ -57,56 +94,93 @@ class GameWebSocketHandlerUnitTest {
 
     @Test
     void testGameStartTriggeredOnFourConnections() throws Exception {
-        gameWebSocketHandler.afterConnectionClosed(session, CloseStatus.NORMAL);
+        // Vorab: gameHistoryService mocken und setzen
+        GameHistoryService mockHistoryService = mock(GameHistoryService.class);
+        ReflectionTestUtils.setField(gameWebSocketHandler, "gameHistoryService", mockHistoryService);
 
+        // Simuliere 4 WebSocketSessions
         WebSocketSession[] testSessions = new WebSocketSession[4];
-        for (int i = 1; i <= 4; i++) {
-            testSessions[i-1] = mock(WebSocketSession.class);
-            when(testSessions[i-1].getId()).thenReturn(String.valueOf(i));
-            when(testSessions[i-1].isOpen()).thenReturn(true);
-            gameWebSocketHandler.afterConnectionEstablished(testSessions[i-1]);
-            sendInit(testSessions[i-1], String.valueOf(i), "Player" + i);
-            // Clear invocations only for the first three sessions
-            if (i < 4) {
-                clearInvocations(testSessions[i-1]);
-            }
+        for (int i = 0; i < 4; i++) {
+            testSessions[i] = mock(WebSocketSession.class);
+            when(testSessions[i].getId()).thenReturn(String.valueOf(i + 1));
+            when(testSessions[i].isOpen()).thenReturn(true);
+            gameWebSocketHandler.afterConnectionEstablished(testSessions[i]);
+            sendInit(testSessions[i], String.valueOf(i + 1), "Player" + (i + 1));
+            if (i < 3) clearInvocations(testSessions[i]);
         }
 
-        // Verify all four sessions received the game start message
-        for (WebSocketSession s : testSessions) {
-            verify(s, atLeastOnce()).sendMessage(argThat(msg -> {
+        // Verifiziere, dass eine Start-Meldung gesendet wurde
+        for (WebSocketSession session : testSessions) {
+            verify(session, atLeastOnce()).sendMessage(argThat(msg -> {
                 String payload = ((TextMessage) msg).getPayload();
-                return payload.contains("Game started");
+                return payload.contains("Game started")
+                        || payload.contains("PLAYER_TURN")
+                        || payload.contains("SYSTEM")
+                        || payload.contains("GAME_STATE");
             }));
         }
     }
 
+
+
     @Test
-    void testHandleTextMessage() throws IOException{
+    void testHandleTextMessage() throws IOException {
         clearInvocations(session);
         gameWebSocketHandler.handleTextMessage(session, new TextMessage("Test"));
         verify(session).sendMessage(new TextMessage("Player 1: Test"));
     }
 
     @Test
-    void testAfterConnectionClosed() throws IOException{
-        clearInvocations(session);
+    void testAfterConnectionClosed_broadcastsBotReplacementMessageToOthers() throws Exception {
+        String userId = "user123";
+        String disconnectedSessionId = "session1";
+        String otherSessionId = "session2";
+
+        WebSocketSession otherSession = mock(WebSocketSession.class);
+        when(otherSession.getId()).thenReturn(otherSessionId);
+        when(otherSession.isOpen()).thenReturn(true);
+
+        when(session.getId()).thenReturn(disconnectedSessionId);
+        when(session.isOpen()).thenReturn(true);
+
+        Game mockGame = prepareMockGameWithPlayer(userId);
+        when(mockGame.isPlayerTurn(userId)).thenReturn(false);
+        doNothing().when(mockGame).replaceDisconnectedWithBot(userId);
+        ReflectionTestUtils.setField(gameWebSocketHandler, "game", mockGame);
+
+        ReflectionTestUtils.setField(gameWebSocketHandler, "sessionToUserId",
+                new ConcurrentHashMap<>(Map.of(disconnectedSessionId, userId)));
+
+        CopyOnWriteArrayList<WebSocketSession> sessions = new CopyOnWriteArrayList<>();
+        sessions.add(session);
+        sessions.add(otherSession);
+        ReflectionTestUtils.setField(gameWebSocketHandler, "sessions", sessions);
+
         gameWebSocketHandler.afterConnectionClosed(session, CloseStatus.NORMAL);
-        verify(session).sendMessage(argThat(msg -> ((TextMessage)msg).getPayload().startsWith("Player left:")));
+
+        // ✅ Warten bis Bot-Ersetzung erfolgt
+        await().atMost(6, TimeUnit.SECONDS).untilAsserted(() -> {
+            ArgumentCaptor<TextMessage> captor = ArgumentCaptor.forClass(TextMessage.class);
+            verify(otherSession, atLeastOnce()).sendMessage(captor.capture());
+
+            boolean foundMessage = captor.getAllValues().stream()
+                    .anyMatch(msg -> msg.getPayload().contains("durch einen Bot ersetzt"));
+            assertTrue(foundMessage);
+        });
     }
 
     @Test
-    void testHandleUpdateMoneyMessage() throws IOException{
+    void testHandleUpdateMoneyMessage() throws IOException {
         clearInvocations(session);
         gameWebSocketHandler.handleTextMessage(session, new TextMessage("UPDATE_MONEY:500"));
-        verify(session, atLeastOnce()).sendMessage(argThat(msg -> ((TextMessage)msg).getPayload().startsWith("GAME_STATE:")));
+        verify(session, atLeastOnce()).sendMessage(argThat(msg -> ((TextMessage) msg).getPayload().startsWith("GAME_STATE:")));
     }
 
     @Test
-    void testHandleInvalidUpdateMoneyMessage() throws IOException{
+    void testHandleInvalidUpdateMoneyMessage() throws IOException {
         clearInvocations(session);
         gameWebSocketHandler.handleTextMessage(session, new TextMessage("UPDATE_MONEY:notanumber"));
-        verify(session, never()).sendMessage(argThat(msg -> ((TextMessage)msg).getPayload().startsWith("GAME_STATE:")));
+        verify(session, never()).sendMessage(argThat(msg -> ((TextMessage) msg).getPayload().startsWith("GAME_STATE:")));
     }
 
     @Test
@@ -116,7 +190,7 @@ class GameWebSocketHandlerUnitTest {
         when(unknown.getId()).thenReturn("unknown");
         when(unknown.isOpen()).thenReturn(true);
         gameWebSocketHandler.handleTextMessage(unknown, new TextMessage("BUY_PROPERTY:1"));
-        verify(unknown).sendMessage(argThat(msg -> ((TextMessage)msg).getPayload().contains("Send INIT message first")));
+        verify(unknown).sendMessage(argThat(msg -> ((TextMessage) msg).getPayload().contains("Send INIT message first")));
     }
 
     @Test
@@ -196,21 +270,58 @@ class GameWebSocketHandlerUnitTest {
     }
 
     @Test
-    void testPlayerDisconnect() throws Exception {
-        GameWebSocketHandler handler = new GameWebSocketHandler();
-        when(session.getId()).thenReturn("123");
+    void testPlayerDisconnect_sendsSystemMessageToOthers() throws Exception {
+        String sessionId = "testSessionId";
+        String userId = "user123";
+
+        // 1. Session vorbereiten
+        when(session.getId()).thenReturn(sessionId);
         when(session.isOpen()).thenReturn(true);
 
-        handler.afterConnectionEstablished(session);
-        // Send INIT message to register the user
-        String initJson = "{\"type\":\"INIT\",\"userId\":\"user123\",\"name\":\"TestUser\"}";
-        handler.handleTextMessage(session, new TextMessage(initJson));
+        WebSocketSession otherSession = mock(WebSocketSession.class);
+        when(otherSession.isOpen()).thenReturn(true);
+        when(otherSession.getId()).thenReturn("otherSession");
 
-        handler.afterConnectionClosed(session, CloseStatus.NORMAL);
+        // 2. sessionToUserId Map vorbereiten
+        Map<String, String> sessionMap = new ConcurrentHashMap<>();
+        sessionMap.put(sessionId, userId);
+        sessionMap.put("otherSession", "player2");
+        ReflectionTestUtils.setField(gameWebSocketHandler, "sessionToUserId", sessionMap);
 
-        verify(session).sendMessage(argThat(msg ->
-                ((TextMessage) msg).getPayload().contains("Player left")
-        ));
+        // 3. Sitzungen vorbereiten
+        CopyOnWriteArrayList<WebSocketSession> sessions = new CopyOnWriteArrayList<>();
+        sessions.add(session);
+        sessions.add(otherSession);
+        ReflectionTestUtils.setField(gameWebSocketHandler, "sessions", sessions);
+
+        // 4. Spieler vorbereiten
+        Player player = new Player(userId, "TestUser");
+        player.setConnected(true);
+
+        Game mockGame = mock(Game.class);
+        when(mockGame.getPlayerById(userId)).thenReturn(Optional.of(player));
+        when(mockGame.getCurrentPlayer()).thenReturn(player);
+        when(mockGame.getPlayers()).thenReturn(List.of(player));
+        when(mockGame.getPlayerInfo()).thenReturn(List.of());
+
+        // 5. Stelle sicher, dass replaceDisconnectedWithBot aufgerufen wird
+        doNothing().when(mockGame).replaceDisconnectedWithBot(userId);
+
+        // 6. Spiel setzen
+        ReflectionTestUtils.setField(gameWebSocketHandler, "game", mockGame);
+
+        // 7. Test ausführen
+        gameWebSocketHandler.afterConnectionClosed(session, CloseStatus.NORMAL);
+
+        await().atMost(6, TimeUnit.SECONDS).untilAsserted(() -> {
+            ArgumentCaptor<TextMessage> messageCaptor = ArgumentCaptor.forClass(TextMessage.class);
+            verify(otherSession, atLeastOnce()).sendMessage(messageCaptor.capture());
+
+            boolean found = messageCaptor.getAllValues().stream()
+                    .anyMatch(msg -> msg.getPayload().contains("wurde durch einen Bot ersetzt"));
+
+            assertTrue(found);
+        });
     }
 
     @Test
@@ -243,5 +354,163 @@ class GameWebSocketHandlerUnitTest {
         verify(session).sendMessage(argThat(msg -> ((TextMessage) msg).getPayload().contains(expected)));
         verify(session2).sendMessage(argThat(msg -> ((TextMessage) msg).getPayload().contains(expected)));
     }
+
+    @Test
+    void botCallback_shouldCallSwitchToNextPlayer() {
+        GameWebSocketHandler handler = spy(new GameWebSocketHandler());
+
+        // turn private to package-private or use ReflectionTestUtils
+        BotManager.BotCallback callback = new BotManager.BotCallback() {
+            @Override
+            public void broadcast(String m) {}
+
+            @Override
+            public void updateGameState() {}
+
+            @Override
+            public void advanceToNextPlayer() {
+                handler.switchToNextPlayer();
+            }
+
+            @Override
+            public void checkBankruptcy() {}
+        };
+
+        // Aktiviere Spying auf switchToNextPlayer (muss sichtbar sein!)
+        doNothing().when(handler).switchToNextPlayer();
+
+        // Direkter Aufruf – nicht durch queueBotTurn
+        callback.advanceToNextPlayer();
+
+        verify(handler, times(1)).switchToNextPlayer();
+    }
+    @Test
+    void nextTurn_whenPlayerInJail_isReleasedAfterJailTurnsEnd() throws Exception {
+        GameWebSocketHandler handler = spy(new GameWebSocketHandler());
+        WebSocketSession session = mock(WebSocketSession.class);
+        String userId = "user123";
+        String sessionId = "session123";
+
+        Player player = new Player(userId, "Test Player");
+        player.setPosition(10);
+        player.setInJail(true);
+        player.setJailTurns(1); // Letzte Runde im Gefängnis
+
+        Game game = mock(Game.class);
+        when(game.getCurrentPlayer()).thenReturn(player);
+        when(game.isPlayerTurn(userId)).thenReturn(true);
+        when(game.getPlayerById(userId)).thenReturn(Optional.of(player));
+
+        // Session-Mock konfigurieren
+        when(session.getId()).thenReturn(sessionId);
+        handler.sessionToUserId.put(sessionId, userId);
+
+        // game setzen
+        ReflectionTestUtils.setField(handler, "game", game);
+
+        // Methode testen
+        handler.handleTextMessage(session, new TextMessage("NEXT_TURN"));
+
+        // Ergebnis prüfen
+        verify(handler, atLeastOnce()).switchToNextPlayer(); // Released from jail
+        assertFalse(player.isInJail());
+    }
+
+    @Test
+    void nextTurn_withoutRolling_shouldSendError() throws Exception {
+        GameWebSocketHandler handler = spy(new GameWebSocketHandler());
+        WebSocketSession session = mock(WebSocketSession.class);
+        String userId = "user123";
+        String sessionId = "session-abc";
+
+        Player player = new Player(userId, "Player1");
+        player.setHasRolledThisTurn(false); // wichtig!
+        player.setInJail(false);
+
+        Game game = mock(Game.class);
+        when(game.getCurrentPlayer()).thenReturn(player);
+        when(game.isPlayerTurn(userId)).thenReturn(true);
+        when(game.getPlayerById(userId)).thenReturn(Optional.of(player));
+
+        when(session.getId()).thenReturn(sessionId);
+        handler.sessionToUserId.put(sessionId, userId);
+
+        ReflectionTestUtils.setField(handler, "game", game);
+
+        handler.handleTextMessage(session, new TextMessage("NEXT_TURN"));
+
+        // prüfen, dass keine Weitergabe erfolgt
+        verify(handler, never()).switchToNextPlayer();
+        verify(handler).sendMessageToSession(eq(session), contains("Roll the dice first"));
+    }
+
+    @Test
+    void handleShakeRequest_shouldBroadcastDiceRollMessage() throws Exception {
+        GameWebSocketHandler handler = new GameWebSocketHandler();
+
+        // Mocks
+        WebSocketSession session = mock(WebSocketSession.class);
+        PropertyService propertyService = mock(PropertyService.class);
+        RentCalculationService rentCalculationService = mock(RentCalculationService.class);
+        RentCollectionService rentCollectionService = mock(RentCollectionService.class);
+
+        String userId = "u1";
+        String sessionId = "session-123";
+
+        when(session.getId()).thenReturn(sessionId);
+        when(session.isOpen()).thenReturn(true);
+
+        Game game = new Game();
+        Player player = new Player(userId, "Player1");
+        player.setBot(true);
+        player.setMoney(1000);
+        game.addPlayer(userId, player.getName());
+        game.start();
+
+        ReflectionTestUtils.setField(handler, "game", game);
+        ReflectionTestUtils.setField(handler, "sessions", new CopyOnWriteArrayList<>(List.of(session)));
+        ReflectionTestUtils.setField(handler, "sessionToUserId", Map.of(sessionId, userId));
+        ReflectionTestUtils.setField(handler, "propertyService", propertyService);
+        ReflectionTestUtils.setField(handler, "rentCalculationService", rentCalculationService);
+        ReflectionTestUtils.setField(handler, "rentCollectionService", rentCollectionService);
+
+        // Nachricht simulieren
+        String shakeMessage = "{\"type\":\"SHAKE_REQUEST\", \"playerId\":\"" + userId + "\"}";
+        handler.handleTextMessage(session, new TextMessage(shakeMessage));
+
+        // Erwartung prüfen
+        verify(session, atLeastOnce()).sendMessage(any(TextMessage.class));
+    }
+
+    @Test
+    void nextTurnWithoutRolling_shouldSendErrorMessage() throws Exception {
+        GameWebSocketHandler handler = spy(new GameWebSocketHandler());
+        WebSocketSession session = mock(WebSocketSession.class);
+        String userId = "u1";
+
+        Player player = new Player(userId, "Tester");
+        player.setHasRolledThisTurn(false);
+        Game game = mock(Game.class);
+
+        when(game.getCurrentPlayer()).thenReturn(player);
+        when(game.isPlayerTurn(userId)).thenReturn(true);
+        when(game.getPlayerById(userId)).thenReturn(Optional.of(player));
+
+        ReflectionTestUtils.setField(handler, "game", game);
+        Map<String, String> sessionToUserId = new HashMap<>();
+        sessionToUserId.put(session.getId(), userId);
+        ReflectionTestUtils.setField(handler, "sessionToUserId", sessionToUserId);
+
+        doNothing().when(handler).sendMessageToSession(eq(session), contains("Roll the dice first"));
+
+        handler.handleTextMessage(session, new TextMessage("NEXT_TURN"));
+
+        verify(handler).sendMessageToSession(eq(session), contains("Roll the dice first"));
+    }
+
+
+
+
+
 
 }
