@@ -4,7 +4,6 @@ package at.aau.serg.monopoly.websoket;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import model.Game;
-import model.Player;
 import model.cards.Card;
 import model.cards.CardType;
 import org.junit.jupiter.api.BeforeEach;
