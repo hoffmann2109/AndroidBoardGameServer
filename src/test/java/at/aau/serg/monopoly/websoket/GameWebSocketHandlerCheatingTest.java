@@ -73,7 +73,7 @@ class GameWebSocketHandlerCheatingTest {
     void handleCheatMessage_invalidNumber_doesNotUpdate() throws JsonProcessingException {
         // Arrange
         String payload = "{\"type\":\"CHEAT_MESSAGE\",\"message\":\"NaN\"}";
-        when(cheatService.getAmount(eq("NaN"), eq(1000)))
+        when(cheatService.getAmount("NaN", 1000))
                 .thenThrow(new NumberFormatException("bad"));
 
         // Act
