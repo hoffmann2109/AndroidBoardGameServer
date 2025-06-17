@@ -87,7 +87,7 @@ class GameWebSocketHandlerCheatingTest {
     void handleTextMessage_onCheatMessage_callsCheatAndBroadcastsState() throws Exception {
         // Arrange
         String payload = "{\"type\":\"CHEAT_MESSAGE\",\"message\":\"42\"}";
-        when(cheatService.getAmount(eq("42"), eq(1000))).thenReturn(42);
+        when(cheatService.getAmount("42", 1000)).thenReturn(42);
 
         // Act
         handler.handleTextMessage(session, new TextMessage(payload));
