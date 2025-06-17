@@ -1,7 +1,6 @@
 package at.aau.serg.monopoly.websoket;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import data.TaxPaymentMessage;
 import model.Game;
 import model.Player;
 import model.DiceManagerInterface;
