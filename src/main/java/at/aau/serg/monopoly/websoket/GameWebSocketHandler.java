@@ -67,7 +67,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
     private final Map<String, Set<String>> kickVotes = new ConcurrentHashMap<>();
 
-    private final String userId = "userId";
+    private static final String userId = "userId";
 
     @Autowired
     private GameHistoryService gameHistoryService;
