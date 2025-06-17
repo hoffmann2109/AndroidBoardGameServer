@@ -59,7 +59,7 @@ class GameWebSocketHandlerCheatingTest {
     void handleCheatMessage_successfulParsingAndUpdate() throws JsonProcessingException {
         // Arrange
         String payload = "{\"type\":\"CHEAT_MESSAGE\",\"message\":\"100\"}";
-        when(cheatService.getAmount(eq("100"), eq(1000))).thenReturn(100);
+        when(cheatService.getAmount("100", 1000)).thenReturn(100);
 
         // Act
         handler.handleCheatMessage(payload, "session1");
