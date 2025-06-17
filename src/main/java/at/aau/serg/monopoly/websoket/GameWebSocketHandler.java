@@ -67,7 +67,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
     private final Map<String, Set<String>> kickVotes = new ConcurrentHashMap<>();
 
-    private final String USER_ID = "userId";
+    private final String userId = "userId";
 
     @Autowired
     private GameHistoryService gameHistoryService;
@@ -145,7 +145,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
     protected void handleInitMessage(WebSocketSession session, JsonNode jsonNode) {
         try {
-            String userId = jsonNode.get(USER_ID).asText();
+            String userId = jsonNode.get(this.userId).asText();
             String name = jsonNode.get("name").asText();
 
             if (userId == null || sessionToUserId.containsValue(userId)) {
@@ -874,7 +874,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     }
 
     void handleGiveUpFromClient(WebSocketSession session, JsonNode jsonNode) {
-        String quittingUserId = jsonNode.get(USER_ID).asText();
+        String quittingUserId = jsonNode.get(userId).asText();
 
         if (!game.isPlayerTurn(quittingUserId)) {
             sendMessageToSession(session,
