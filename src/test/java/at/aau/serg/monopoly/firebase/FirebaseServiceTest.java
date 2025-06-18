@@ -213,5 +213,21 @@ class FirebaseServiceTest {
         }
     }
 
+    @Test
+    void testHandleFirebaseInitialization_serviceAccountCloseFailsSilently() throws Exception {
+        InputStream faultyStream = new ByteArrayInputStream("{}".getBytes()) {
+            @Override
+            public void close() throws IOException {
+                throw new IOException("Close failed");
+            }
+        };
 
+        FirebaseService testService = spy(service);
+        doReturn(faultyStream).when(testService).locateServiceAccountKey();
+
+        try (MockedStatic<FirebaseApp> apps = mockStatic(FirebaseApp.class)) {
+            apps.when(FirebaseApp::getApps).thenReturn(Collections.emptyList());
+            assertDoesNotThrow(testService::initialize);
+        }
+    }
 }
