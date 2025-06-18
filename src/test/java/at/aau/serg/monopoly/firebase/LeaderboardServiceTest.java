@@ -171,5 +171,14 @@ class LeaderboardServiceTest {
         // Erwartung: kein Aufruf von delete()
     }
 
+    @Test
+    void testUpdateWinsLeaderboard_callsUpdateLeaderboard() {
+        LeaderboardService spyService = Mockito.spy(new LeaderboardService());
+        doNothing().when(spyService).updateLeaderboard(any(), eq("wins"), eq("leaderboard_wins"));
+
+        spyService.updateWinsLeaderboard(firestore);
+
+        verify(spyService).updateLeaderboard(firestore, "wins", "leaderboard_wins");
+    }
 
 }
