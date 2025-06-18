@@ -15,7 +15,7 @@ class DiceTest {
     private Dice secondDice;
     private DiceManagerInterface diceManager;
     private List<Dice> diceList;
-    private static final int SIDES = 6;
+    private final int SIDES = 6;
 
     @BeforeEach
     void setUp() {

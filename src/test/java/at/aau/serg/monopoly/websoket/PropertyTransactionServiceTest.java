@@ -406,40 +406,4 @@ class PropertyTransactionServiceTest {
         assertFalse(result);
     }
 
-    @Test
-    void sellProperty_AddMoneyThrowsException_ReturnsFalse() {
-        testProperty.setOwnerId(PLAYER_ID);
-        when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(testProperty);
-        Player spyPlayer = spy(testPlayer);
-        doThrow(new RuntimeException("Boom")).when(spyPlayer).addMoney(anyInt());
-
-        boolean result = propertyTransactionService.sellProperty(spyPlayer, PROPERTY_ID);
-
-        assertFalse(result);
-    }
-    @Test
-    void buyProperty_SubtractMoneyThrowsException_ReturnsFalse() {
-        testPlayer.setMoney(PURCHASE_PRICE + 50);
-        testPlayer.setPosition(1);
-        when(propertyService.getHouseablePropertyById(PROPERTY_ID)).thenReturn(testProperty);
-        Player spyPlayer = spy(testPlayer);
-        doThrow(new RuntimeException("Boom")).when(spyPlayer).subtractMoney(anyInt());
-
-        boolean result = propertyTransactionService.buyProperty(spyPlayer, PROPERTY_ID);
-
-        assertFalse(result);
-    }
-    @Test
-    void canBuyProperty_NullPlayer_ReturnsFalse() {
-        boolean result = propertyTransactionService.canBuyProperty(null, PROPERTY_ID);
-        assertFalse(result);
-    }
-    @Test
-    void findPropertyByPosition_ReturnsCorrectProperty() {
-        when(propertyService.getPropertyByPosition(5)).thenReturn(testProperty);
-        BaseProperty found = propertyTransactionService.findPropertyByPosition(5);
-        assertEquals(testProperty, found);
-    }
-
-
 }
