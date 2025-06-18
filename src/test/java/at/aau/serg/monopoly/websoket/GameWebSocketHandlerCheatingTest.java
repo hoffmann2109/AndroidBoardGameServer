@@ -59,7 +59,7 @@ class GameWebSocketHandlerCheatingTest {
     void handleCheatMessage_successfulParsingAndUpdate() throws JsonProcessingException {
         // Arrange
         String payload = "{\"type\":\"CHEAT_MESSAGE\",\"message\":\"100\"}";
-        when(cheatService.getAmount(eq("100"), eq(1000))).thenReturn(100);
+        when(cheatService.getAmount("100", 1000)).thenReturn(100);
 
         // Act
         handler.handleCheatMessage(payload, "session1");
@@ -73,7 +73,7 @@ class GameWebSocketHandlerCheatingTest {
     void handleCheatMessage_invalidNumber_doesNotUpdate() throws JsonProcessingException {
         // Arrange
         String payload = "{\"type\":\"CHEAT_MESSAGE\",\"message\":\"NaN\"}";
-        when(cheatService.getAmount(eq("NaN"), eq(1000)))
+        when(cheatService.getAmount("NaN", 1000))
                 .thenThrow(new NumberFormatException("bad"));
 
         // Act
@@ -87,7 +87,7 @@ class GameWebSocketHandlerCheatingTest {
     void handleTextMessage_onCheatMessage_callsCheatAndBroadcastsState() throws Exception {
         // Arrange
         String payload = "{\"type\":\"CHEAT_MESSAGE\",\"message\":\"42\"}";
-        when(cheatService.getAmount(eq("42"), eq(1000))).thenReturn(42);
+        when(cheatService.getAmount("42", 1000)).thenReturn(42);
 
         // Act
         handler.handleTextMessage(session, new TextMessage(payload));

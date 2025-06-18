@@ -67,7 +67,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
     private final Map<String, Set<String>> kickVotes = new ConcurrentHashMap<>();
 
-    private final String USER_ID = "userId";
+    private static final String USERID = "userId";
 
     @Autowired
     private GameHistoryService gameHistoryService;
@@ -133,38 +133,38 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     public void afterConnectionEstablished(WebSocketSession session) {
         sessions.add(session);
         // Falls noch ein Kick-Timer läuft, abbrechen
-        String userId = sessionToUserId.get(session.getId());
-        if (userId == null) {
+        String userSessionId = sessionToUserId.get(session.getId());
+        if (userSessionId == null) {
             sendMessageToSession(session, createJsonError("Send INIT message first"));
             return;
         }
-        Optional.ofNullable(disconnectTasks.remove(userId))
+        Optional.ofNullable(disconnectTasks.remove(userSessionId))
                 .ifPresent(f -> f.cancel(false));
     }
 
 
     protected void handleInitMessage(WebSocketSession session, JsonNode jsonNode) {
         try {
-            String userId = jsonNode.get(USER_ID).asText();
+            String userSessionId = jsonNode.get(this.USERID).asText();
             String name = jsonNode.get("name").asText();
 
-            if (userId == null || sessionToUserId.containsValue(userId)) {
+            if (userSessionId == null || sessionToUserId.containsValue(userSessionId)) {
                 sendMessageToSession(session, createJsonError("Invalid user"));
                 return;
             }
 
-            if (game.isStarted() && game.getPlayerById(userId).map(p -> !p.isConnected()).orElse(false)) {
+            if (game.isStarted() && game.getPlayerById(userSessionId).map(p -> !p.isConnected()).orElse(false)) {
                 sendMessageToSession(session, createJsonError("Rejoin not allowed. You have been disconnected."));
                 return;
             }
 
 
             // Spieler mit Firebase-ID hinzufügen
-            game.addPlayer(userId, name);
-            sessionToUserId.put(session.getId(), userId);
+            game.addPlayer(userSessionId, name);
+            sessionToUserId.put(session.getId(), userSessionId);
 
-            logger.log(Level.INFO, "Player connected: {0} | Name: {1}", new Object[]{userId, name}); //bewusst geloggt aktuell
-            broadcastMessage(SYSTEM_PREFIX + name + " (" + userId + ") joined the game");
+            logger.log(Level.INFO, "Player connected: {0} | Name: {1}", new Object[]{userSessionId, name}); //bewusst geloggt aktuell
+            broadcastMessage(SYSTEM_PREFIX + name + " (" + userSessionId + ") joined the game");
 
             // Spielstart-Logik anpassen
             if (!game.isStarted() && sessionToUserId.size() >= 2 && sessionToUserId.size() <= 4) {
@@ -281,8 +281,8 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         }
 
         /* ───────── 2) Zugehörige Spieler-Session prüfen ───────── */
-        String userId = sessionToUserId.get(sessionId);
-        if (userId == null) {
+        String userSessionId = sessionToUserId.get(sessionId);
+        if (userSessionId == null) {
             sendMessageToSession(session, createJsonError("Send INIT message first"));
             return;
         }
@@ -292,7 +292,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             try {
                 ShakeMessage shake = objectMapper.readValue(payload, ShakeMessage.class);
                 logger.log(Level.INFO, "Player {0} has shaken his device", shake.getPlayerId());
-                handleDiceRoll(session, userId);
+                handleDiceRoll(session, userSessionId);
             } catch (Exception ex) {
                 logger.log(Level.WARNING, "Error parsing SHAKE_MESSAGE: {0}", ex.getMessage());
             }
@@ -303,9 +303,9 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         try {
             /* 4a · JSON-Nachrichten ------------------------------------ */
             if (payload.contains("\"type\":\"CHEAT_MESSAGE\"")) {
-                logger.log(Level.INFO, "Received cheat message from player {0}", userId);
+                logger.log(Level.INFO, "Received cheat message from player {0}", userSessionId);
                 broadcastMessage(payload);
-                handleCheatMessage(payload, userId);
+                handleCheatMessage(payload, userSessionId);
                 return;
             }
 
@@ -313,8 +313,8 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 ChatMessage chat = objectMapper.readValue(payload, ChatMessage.class);
                 if (chat.getMessage().startsWith("KICK ")) {
                     logger.log(Level.INFO, "Received kick request from {0}: {1}",
-                            new Object[]{userId, chat.getMessage()});
-                    handleKickVote(session, chat.getMessage(), userId);
+                            new Object[]{userSessionId, chat.getMessage()});
+                    handleKickVote(session, chat.getMessage(), userSessionId);
                 } else {
                     broadcastMessage(payload);
                 }
@@ -322,7 +322,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             }
 
             if (payload.contains("\"type\":\"TAX_PAYMENT\"")) {
-                handleTaxPayment(payload, userId);
+                handleTaxPayment(payload, userSessionId);
                 return;
             }
 
@@ -381,7 +381,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 model.cards.CardType deckType = model.cards.CardType.valueOf(pull.getCardType());
                 model.cards.Card card = cardDeckService.drawCard(deckType);
 
-                if (pull.getPlayerId().equals(userId)) {
+                if (pull.getPlayerId().equals(userSessionId)) {
                     card.apply(game, pull.getPlayerId());
                     DrawnCardMessage reply = new DrawnCardMessage(
                             pull.getPlayerId(), pull.getCardType(), card);
@@ -453,14 +453,14 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
             /* 4b · Plain-Text-Kommandos --------------------------------- */
             if (payload.trim().equalsIgnoreCase("Roll")) {
-                handleDiceRoll(session, userId);
+                handleDiceRoll(session, userSessionId);
                 return;
             }
 
             if ("NEXT_TURN".equals(payload)) {
-                logger.log(Level.INFO, "Received NEXT_TURN from {0}", userId);
+                logger.log(Level.INFO, "Received NEXT_TURN from {0}", userSessionId);
 
-                if (!game.isPlayerTurn(userId)) {
+                if (!game.isPlayerTurn(userSessionId)) {
                     sendMessageToSession(session, createJsonError("Not your turn!"));
                     return;
                 }
@@ -474,7 +474,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                     if (!current.isInJail()) {
                         broadcastMessage(PLAYER_PREFIX+ current.getName() + " is released from jail!");
                     }
-                    cancelTurnTimer(userId);
+                    cancelTurnTimer(userSessionId);
                     switchToNextPlayer();
                     checkAllPlayersForBankruptcy();
                     return;
@@ -487,41 +487,41 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 }
 
                 /* Zug übergeben */
-                cancelTurnTimer(userId);
+                cancelTurnTimer(userSessionId);
                 switchToNextPlayer();
                 checkAllPlayersForBankruptcy();
                 return;
             }
 
             if (payload.startsWith("MANUAL_ROLL:")) {
-                handleManualRoll(payload, userId, session);
+                handleManualRoll(payload, userSessionId, session);
                 return;
             }
 
             if (payload.startsWith("UPDATE_MONEY:")) {
-                handleUpdateMoney(payload, userId);
+                handleUpdateMoney(payload, userSessionId);
                 return;
             }
 
             if (payload.startsWith("BUY_PROPERTY:")) {
-                handleBuyProperty(session, userId, payload);
+                handleBuyProperty(session, userSessionId, payload);
                 return;
             }
 
             if (payload.startsWith("SELL_PROPERTY:")) {
-                handleSellProperty(session, payload, userId);
+                handleSellProperty(session, payload, userSessionId);
                 return;
             }
 
             /* 4c · Unbekanntes Format ----------------------------------- */
             String safe = sanitizeForLog(payload);
-            logger.log(Level.INFO, "Unknown message format: {0} from {1}", new Object[]{safe, userId});
-            broadcastMessage(PLAYER_PREFIX + userId + ": " + safe);
+            logger.log(Level.INFO, "Unknown message format: {0} from {1}", new Object[]{safe, userSessionId});
+            broadcastMessage(PLAYER_PREFIX + userSessionId + ": " + safe);
             checkAllPlayersForBankruptcy();
 
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Error handling message from {0}: {1}",
-                    new Object[]{userId, e.getMessage()});
+                    new Object[]{userSessionId, e.getMessage()});
             sendMessageToSession(session, createJsonError("Server error processing your request."));
         }
     }
@@ -531,10 +531,10 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
 
-        String userId = sessionToUserId.remove(session.getId());
+        String userSessionId = sessionToUserId.remove(session.getId());
         sessions.remove(session);
-        if (userId == null) return;
-        game.markPlayerDisconnected(userId);
+        if (userSessionId == null) return;
+        game.markPlayerDisconnected(userSessionId);
         // ➊  Prüfen, ob noch ein echter Spieler online ist
         if (!anyHumanConnected()) {
             logger.info("No human players connected – ending game.");
@@ -547,22 +547,22 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         ScheduledFuture<?> task = disconnectExec.schedule(() -> {
 
             /* 1 ─ Mensch endgültig ersetzen */
-            cancelTurnTimer(userId);                //  ← laufenden 30-s-Timer stoppen
-            game.replaceDisconnectedWithBot(userId);
+            cancelTurnTimer(userSessionId);                //  ← laufenden 30-s-Timer stoppen
+            game.replaceDisconnectedWithBot(userSessionId);
 
-            broadcastMessage(SYSTEM_PREFIX + userId +
+            broadcastMessage(SYSTEM_PREFIX + userSessionId +
                     " hat die Verbindung verloren und wurde durch einen Bot ersetzt.");
             broadcastGameState();
             checkAllPlayersForBankruptcy();
 
             /* 2 ─ Bot sofort loslegen lassen, falls er an der Reihe ist */
-            if (game.isPlayerTurn(userId)) {
-                botManager.queueBotTurn(userId);    //  ← jetzt BOT_DELAY_SEC später würfeln
+            if (game.isPlayerTurn(userSessionId)) {
+                botManager.queueBotTurn(userSessionId);    //  ← jetzt BOT_DELAY_SEC später würfeln
             }
 
         }, DISCONNECT_GRACE_SEC, TimeUnit.SECONDS);
 
-        disconnectTasks.put(userId, task);
+        disconnectTasks.put(userSessionId, task);
     }
 
 
@@ -874,7 +874,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     }
 
     void handleGiveUpFromClient(WebSocketSession session, JsonNode jsonNode) {
-        String quittingUserId = jsonNode.get(USER_ID).asText();
+        String quittingUserId = jsonNode.get(USERID).asText();
 
         if (!game.isPlayerTurn(quittingUserId)) {
             sendMessageToSession(session,
@@ -982,7 +982,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 try {
                     ObjectNode bankruptNotice = objectMapper.createObjectNode();
                     bankruptNotice.put("type", "IS_BANKRUPT");
-                    bankruptNotice.put("userId", pid);
+                    bankruptNotice.put(USERID, pid);
                     broadcastMessage(objectMapper.writeValueAsString(bankruptNotice));
                 } catch (JsonProcessingException e) {
                     logger.log(Level.SEVERE, "Error serializing IS_BANKRUPT for {0}: {1}",
