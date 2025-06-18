@@ -154,4 +154,22 @@ class LeaderboardServiceTest {
         // Erwartung: kein Set-Aufruf, da getData() == null
     }
 
+    @Test
+    void testDeleteCollection_empty() throws Exception {
+        CollectionReference collection = mock(CollectionReference.class);
+        Query limitedQuery = mock(Query.class);
+        ApiFuture<QuerySnapshot> future = mock(ApiFuture.class);
+        QuerySnapshot snapshot = mock(QuerySnapshot.class);
+
+        when(firestore.collection("empty")).thenReturn(collection);
+        when(collection.limit(100)).thenReturn(limitedQuery);
+        when(limitedQuery.get()).thenReturn(future);
+        when(future.get()).thenReturn(snapshot);
+        when(snapshot.getDocuments()).thenReturn(Collections.emptyList());
+
+        leaderboardService.deleteCollection(firestore, "empty");
+        // Erwartung: kein Aufruf von delete()
+    }
+
+
 }
