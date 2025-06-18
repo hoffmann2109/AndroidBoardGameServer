@@ -1,7 +1,6 @@
 package at.aau.serg.monopoly.websoket;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import data.TaxPaymentMessage;
 import model.Game;
 import model.Player;
 import model.DiceManagerInterface;
@@ -12,7 +11,6 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
 import java.lang.reflect.Field;
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

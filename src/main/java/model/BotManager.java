@@ -151,13 +151,8 @@ public class BotManager {
         //    - Sonst sofort und Spielstand pushen, damit UI umschaltet
         Player next = game.getNextPlayer();  // assume getNextPlayer() liefert das Player-Objekt nach dem current
         if (next.isBot()) {
-            exec.schedule(
-                    () -> {
-                        cb.advanceToNextPlayer();
-                        // der Bot-Thread kümmert sich dann selbst um den nächsten Bot-Zug
-                    },
-                    1, TimeUnit.SECONDS
-            );
+            // der Bot-Thread kümmert sich dann selbst um den nächsten Bot-Zug
+            exec.schedule(cb::advanceToNextPlayer, 1, TimeUnit.SECONDS);
         } else {
             // sofort zum Menschen weitergeben
             cb.advanceToNextPlayer();

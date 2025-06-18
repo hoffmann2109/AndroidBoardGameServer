@@ -1,6 +1,5 @@
 package at.aau.serg.monopoly.websoket;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import model.BotManager;
 import model.Game;
