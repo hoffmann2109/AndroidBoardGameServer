@@ -202,5 +202,16 @@ class FirebaseServiceTest {
         }
     }
 
+    @Test
+    void testInitialize_serviceAccountKeyNotFound() throws Exception {
+        FirebaseService testService = spy(service);
+        doReturn(null).when(testService).locateServiceAccountKey();
+
+        try (MockedStatic<FirebaseApp> apps = mockStatic(FirebaseApp.class)) {
+            apps.when(FirebaseApp::getApps).thenReturn(Collections.emptyList());
+            assertDoesNotThrow(testService::initialize);
+        }
+    }
+
 
 }
