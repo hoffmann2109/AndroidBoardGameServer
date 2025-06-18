@@ -168,4 +168,16 @@ class FirebaseServiceTest {
         }
     }
 
+    @Test
+    void testHandleFirebaseInitialization_throwsIOException() throws Exception {
+        FirebaseService testService = spy(service);
+        doThrow(new IOException("test")).when(testService).locateServiceAccountKey();
+
+        try (MockedStatic<FirebaseApp> apps = mockStatic(FirebaseApp.class)) {
+            apps.when(FirebaseApp::getApps).thenReturn(Collections.emptyList());
+            assertDoesNotThrow(testService::initialize);
+        }
+    }
+
+
 }
