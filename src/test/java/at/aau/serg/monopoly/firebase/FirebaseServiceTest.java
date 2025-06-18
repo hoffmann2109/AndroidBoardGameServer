@@ -179,5 +179,28 @@ class FirebaseServiceTest {
         }
     }
 
+    @Test
+    void testTestFirestoreConnection_success() throws Exception {
+        try (MockedStatic<FirestoreClient> firestoreMock = mockStatic(FirestoreClient.class)) {
+            Firestore firestore = mock(Firestore.class);
+            firestoreMock.when(FirestoreClient::getFirestore).thenReturn(firestore);
+
+            CollectionReference col = mock(CollectionReference.class);
+            DocumentReference doc = mock(DocumentReference.class);
+            ApiFuture<WriteResult> future = mock(ApiFuture.class);
+
+            when(firestore.collection(anyString())).thenReturn(col);
+            when(col.document(anyString())).thenReturn(doc);
+            when(doc.set(any())).thenReturn(future);
+            when(future.get(anyLong(), any())).thenReturn(mock(WriteResult.class));
+            when(doc.delete()).thenReturn(mock(ApiFuture.class));
+
+            FirebaseService testService = new FirebaseService();
+            var method = FirebaseService.class.getDeclaredMethod("testFirestoreConnection");
+            method.setAccessible(true);
+            assertDoesNotThrow(() -> method.invoke(testService));
+        }
+    }
+
 
 }
