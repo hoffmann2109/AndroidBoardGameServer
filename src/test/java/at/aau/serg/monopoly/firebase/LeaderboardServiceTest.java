@@ -181,4 +181,13 @@ class LeaderboardServiceTest {
         verify(spyService).updateLeaderboard(firestore, "wins", "leaderboard_wins");
     }
 
+    @Test
+    void testUpdateAllLeaderboards_firestoreNull() {
+        firestoreClientMock.when(FirestoreClient::getFirestore).thenReturn(null);
+
+        leaderboardService.updateAllLeaderboards();
+        // Erwartung: Es passiert nichts, keine Exception
+    }
+
+
 }
