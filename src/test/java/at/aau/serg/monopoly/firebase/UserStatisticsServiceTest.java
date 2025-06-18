@@ -169,4 +169,36 @@ class UserStatisticsServiceTest {
         ), any(SetOptions.class));
     }
 
+    @Test
+    void testUpdateUserStats_userNoName() throws Exception {
+        CollectionReference users = mock(CollectionReference.class);
+        DocumentReference userDoc = mock(DocumentReference.class);
+        CollectionReference history = mock(CollectionReference.class);
+        ApiFuture<QuerySnapshot> future = mock(ApiFuture.class);
+        QuerySnapshot snapshot = mock(QuerySnapshot.class);
+        QueryDocumentSnapshot doc1 = mock(QueryDocumentSnapshot.class);
+        DocumentSnapshot userSnapshot = mock(DocumentSnapshot.class);
+        ApiFuture<DocumentSnapshot> userFuture = mock(ApiFuture.class);
+
+        when(firestore.collection("users")).thenReturn(users);
+        when(users.document("uid")).thenReturn(userDoc);
+        when(userDoc.collection("gameHistory")).thenReturn(history);
+        when(history.get()).thenReturn(future);
+        when(future.get()).thenReturn(snapshot);
+        when(snapshot.getDocuments()).thenReturn(List.of(doc1));
+        when(doc1.getData()).thenReturn(Map.of("won", true, "endMoney", 1000));
+
+        when(userDoc.get()).thenReturn(userFuture);
+        when(userFuture.get()).thenReturn(userSnapshot);
+        when(userSnapshot.exists()).thenReturn(true);
+        when(userSnapshot.contains("name")).thenReturn(false); // Kein Name
+
+        userStatisticsService.updateUserStats("uid", firestore);
+
+        verify(userDoc).set(argThat(map ->
+                !map.containsKey("name") &&
+                        map.get("wins").equals(1)
+        ), any(SetOptions.class));
+    }
+
 }
