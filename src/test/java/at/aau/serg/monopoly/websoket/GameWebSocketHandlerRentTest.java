@@ -283,4 +283,82 @@ class GameWebSocketHandlerRentTest {
         verify(rentCalculationService, never()).calculateRent(any(), any(), any());
         verify(rentCollectionService, never()).collectRent(any(), any(), any());
     }
+
+    @Test
+    void testHandlePlayerLanding_RentCollectionScenarios() throws Exception {
+        var method = GameWebSocketHandler.class.getDeclaredMethod("handlePlayerLanding", Player.class);
+        method.setAccessible(true);
+
+        GameWebSocketHandler spyHandler = spy(handler);
+        doNothing().when(spyHandler).broadcastGameState();
+        doNothing().when(spyHandler).processPlayerGiveUp(anyString(), anyInt(), anyInt());
+
+        // Common mocks
+        int position = 7;
+        Player testPlayer = mock(Player.class);
+        when(testPlayer.getPosition()).thenReturn(position);
+        when(testPlayer.getId()).thenReturn("player1");
+        BaseProperty property = mock(BaseProperty.class);
+        when(property.getOwnerId()).thenReturn("owner1");
+        when(property.getId()).thenReturn(42);
+        when(property.getName()).thenReturn("Boardwalk");
+        Player owner = mock(Player.class);
+        when(owner.getId()).thenReturn("owner1");
+        when(spyHandler.propertyService.getPropertyByPosition(position)).thenReturn(property);
+        when(spyHandler.rentCalculationService.calculateRent(property, owner, testPlayer)).thenReturn(100);
+
+        // --- Case 1: Enough money, rent collected successfully ---
+        when(game.getPlayerById("owner1")).thenReturn(Optional.of(owner));
+        when(testPlayer.getMoney()).thenReturn(200);
+        when(spyHandler.rentCollectionService.collectRent(testPlayer, property, owner)).thenReturn(true);
+        method.invoke(spyHandler, testPlayer);
+        verify(spyHandler.rentCollectionService).collectRent(testPlayer, property, owner);
+        // Info log for successful collection is not easily verifiable without a logger mock
+
+        // --- Case 2: Not enough money, triggers give up ---
+        reset(spyHandler.rentCollectionService, testPlayer, game);
+        when(testPlayer.getPosition()).thenReturn(position);
+        when(testPlayer.getId()).thenReturn("player1");
+        when(game.getPlayerById("owner1")).thenReturn(Optional.of(owner));
+        when(testPlayer.getMoney()).thenReturn(50);
+        when(spyHandler.rentCalculationService.calculateRent(property, owner, testPlayer)).thenReturn(100);
+        when(spyHandler.propertyService.getPropertyByPosition(position)).thenReturn(property);
+        method.invoke(spyHandler, testPlayer);
+        verify(spyHandler).processPlayerGiveUp(eq("player1"), anyInt(), eq(50));
+        verify(spyHandler.rentCollectionService, never()).collectRent(any(), any(), any());
+
+        // --- Case 3: Owner is self, no rent collected ---
+        reset(spyHandler.rentCollectionService, testPlayer, game);
+        when(testPlayer.getPosition()).thenReturn(position);
+        when(testPlayer.getId()).thenReturn("player1");
+        when(property.getOwnerId()).thenReturn("player1");
+        when(game.getPlayerById("player1")).thenReturn(Optional.of(testPlayer));
+        when(spyHandler.propertyService.getPropertyByPosition(position)).thenReturn(property);
+        method.invoke(spyHandler, testPlayer);
+        verify(spyHandler.rentCollectionService, never()).collectRent(any(), any(), any());
+
+        // --- Case 4: Owner is null, no rent collected ---
+        reset(spyHandler.rentCollectionService, testPlayer, game);
+        when(testPlayer.getPosition()).thenReturn(position);
+        when(testPlayer.getId()).thenReturn("player1");
+        when(property.getOwnerId()).thenReturn("owner2");
+        when(game.getPlayerById("owner2")).thenReturn(Optional.empty());
+        when(spyHandler.propertyService.getPropertyByPosition(position)).thenReturn(property);
+        method.invoke(spyHandler, testPlayer);
+        verify(spyHandler.rentCollectionService, never()).collectRent(any(), any(), any());
+
+        // --- Case 5: Rent collection fails (collectRent returns false) ---
+        reset(spyHandler.rentCollectionService, testPlayer, game);
+        when(testPlayer.getPosition()).thenReturn(position);
+        when(testPlayer.getId()).thenReturn("player1");
+        when(property.getOwnerId()).thenReturn("owner1");
+        when(game.getPlayerById("owner1")).thenReturn(Optional.of(owner));
+        when(testPlayer.getMoney()).thenReturn(200);
+        when(spyHandler.rentCalculationService.calculateRent(property, owner, testPlayer)).thenReturn(100);
+        when(spyHandler.propertyService.getPropertyByPosition(position)).thenReturn(property);
+        when(spyHandler.rentCollectionService.collectRent(testPlayer, property, owner)).thenReturn(false);
+        method.invoke(spyHandler, testPlayer);
+        verify(spyHandler.rentCollectionService).collectRent(testPlayer, property, owner);
+        // Warning log for failed collection is not easily verifiable without a logger mock
+    }
 } 

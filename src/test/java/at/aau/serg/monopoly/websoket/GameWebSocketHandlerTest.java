@@ -226,4 +226,49 @@ class GameWebSocketHandlerTest {
                 ((TextMessage) msg).getPayload().contains("Not your turn!")
         ));
     }
+
+    @Test
+    void testHandlePlayerLanding_TaxAndJailSquares() throws Exception {
+        // Use reflection to access private method
+        var method = GameWebSocketHandler.class.getDeclaredMethod("handlePlayerLanding", Player.class);
+        method.setAccessible(true);
+
+        // Mocks for processPlayerGiveUp
+        GameWebSocketHandler spyHandler = spy(handler);
+        doNothing().when(spyHandler).broadcastGameState();
+        doNothing().when(spyHandler).processPlayerGiveUp(anyString(), anyInt(), anyInt());
+        // No verify on package-private broadcastMessage/checkAllPlayersForBankruptcy
+
+        // --- Test Jail (position 30) ---
+        when(player.getPosition()).thenReturn(30);
+        when(player.getId()).thenReturn("player1");
+        method.invoke(spyHandler, player);
+        verify(game).sendToJail("player1");
+
+        // --- Test Einkommensteuer (position 4) ---
+        reset(game, spyHandler, player);
+        when(player.getPosition()).thenReturn(4);
+        when(player.getId()).thenReturn("player1");
+        when(game.getPlayerById("player1")).thenReturn(Optional.of(player));
+        method.invoke(spyHandler, player);
+        verify(game).updatePlayerMoney("player1", -200);
+
+        // --- Test Zusatzsteuer (position 38, enough money) ---
+        reset(game, spyHandler, player);
+        when(player.getPosition()).thenReturn(38);
+        when(player.getId()).thenReturn("player1");
+        when(player.getMoney()).thenReturn(200);
+        when(game.getPlayerById("player1")).thenReturn(Optional.of(player));
+        method.invoke(spyHandler, player);
+        verify(game).updatePlayerMoney("player1", -100);
+
+        // --- Test Zusatzsteuer (position 38, not enough money) ---
+        reset(game, spyHandler, player);
+        when(player.getPosition()).thenReturn(38);
+        when(player.getId()).thenReturn("player1");
+        when(player.getMoney()).thenReturn(50);
+        when(game.getPlayerById("player1")).thenReturn(Optional.of(player));
+        method.invoke(spyHandler, player);
+        verify(spyHandler).processPlayerGiveUp(eq("player1"), anyInt(), eq(50));
+    }
 }
