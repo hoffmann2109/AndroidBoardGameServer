@@ -11,13 +11,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
+import java.io.*;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.*;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -150,4 +150,22 @@ class FirebaseServiceTest {
             });
         }
     }
+
+    @Test
+    void testLocateServiceAccountKey_fromFileSystem() throws Exception {
+        File tempFile = File.createTempFile("serviceAccountKey", ".json");
+        tempFile.deleteOnExit();
+
+        FirebaseService testService = new FirebaseService() {
+            @Override
+            public InputStream locateServiceAccountKey() throws IOException {
+                return new FileInputStream(tempFile);
+            }
+        };
+
+        try (InputStream in = testService.locateServiceAccountKey()) {
+            assertNotNull(in);
+        }
+    }
+
 }
