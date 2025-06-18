@@ -4,7 +4,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import model.Player;
 
 @Data
 @NoArgsConstructor
@@ -20,13 +19,5 @@ public abstract class BaseProperty {
 
     @JsonProperty("isMortgaged")
     protected boolean isMortgaged;
-
-    /**
-     * Calculates the rent for this property
-     * @param owner The owner of the property
-     * @param renter The player who landed on the property
-     * @return The calculated rent amount
-     */
-    public abstract int calculateRent(Player owner, Player renter);
 }
 

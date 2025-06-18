@@ -12,7 +12,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class RentCalculationServiceTest {
@@ -88,7 +87,6 @@ class RentCalculationServiceTest {
         // Assert
         assertEquals(0, rent, "Rent should be zero when renter is null");
     }
-
     @Test
     void calculateRent_WithTrainStation_ReturnsCorrectRent() {
         TrainStation station = new TrainStation(
@@ -100,7 +98,6 @@ class RentCalculationServiceTest {
 
         assertEquals(50, rent);
     }
-
     @Test
     void calculateRent_WithUtility_ReturnsCorrectRent() {
         Utility utility = new Utility(
@@ -111,13 +108,5 @@ class RentCalculationServiceTest {
         int rent = rentCalculationService.calculateRent(utility, owner, renter);
 
         assertTrue(rent >= 0);
-    }
-
-    @Test
-    void calculateRent_WhenPropertyThrowsException_ReturnsZero() {
-        var faultyProperty = mock(model.properties.BaseProperty.class);
-        when(faultyProperty.calculateRent(owner, renter)).thenThrow(new RuntimeException("rent error"));
-        int rent = rentCalculationService.calculateRent(faultyProperty, owner, renter);
-        assertEquals(0, rent, "Rent should be zero when property.calculateRent throws an exception");
     }
 } 
