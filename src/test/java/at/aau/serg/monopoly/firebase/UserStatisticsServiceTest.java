@@ -94,4 +94,11 @@ class UserStatisticsServiceTest {
         userStatisticsService.updateUserStats("uid", firestore);
         verify(userDoc, never()).set(anyMap(), any(SetOptions.class));
     }
+
+    @Test
+    void testUpdateStatsForUsers_firestoreNull() {
+        firestoreClientMock.when(FirestoreClient::getFirestore).thenReturn(null);
+        userStatisticsService.updateStatsForUsers(List.of("uid"));
+        // Prüft nur, ob keine Exception geworfen wird
+    }
 }
