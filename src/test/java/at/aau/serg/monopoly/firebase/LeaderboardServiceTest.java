@@ -283,6 +283,4 @@ class LeaderboardServiceTest {
         verify(lb, never()).document(anyString());
     }
 
-
-
 }
