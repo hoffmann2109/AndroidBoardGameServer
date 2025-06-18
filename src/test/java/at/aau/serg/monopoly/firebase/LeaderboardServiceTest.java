@@ -103,4 +103,23 @@ class LeaderboardServiceTest {
 
         verify(docRef, times(100)).delete();
     }
+
+    @Test
+    void testUpdateAllLeaderboards_success() {
+        leaderboardService = spy(new LeaderboardService());
+        doNothing().when(leaderboardService).updateWinsLeaderboard(any());
+        doNothing().when(leaderboardService).updateLevelLeaderboard(any());
+        doNothing().when(leaderboardService).updateMoneyLeaderboard(any());
+        doNothing().when(leaderboardService).updateHighMoneyLeaderboard(any());
+        doNothing().when(leaderboardService).updateGamesPlayedLeaderboard(any());
+
+        leaderboardService.updateAllLeaderboards();
+
+        verify(leaderboardService).updateWinsLeaderboard(any());
+        verify(leaderboardService).updateLevelLeaderboard(any());
+        verify(leaderboardService).updateMoneyLeaderboard(any());
+        verify(leaderboardService).updateHighMoneyLeaderboard(any());
+        verify(leaderboardService).updateGamesPlayedLeaderboard(any());
+    }
+
 }
