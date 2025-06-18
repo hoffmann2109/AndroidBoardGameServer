@@ -9,6 +9,7 @@ import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 
 import static org.mockito.Mockito.*;
 
@@ -187,6 +188,22 @@ class LeaderboardServiceTest {
 
         leaderboardService.updateAllLeaderboards();
         // Erwartung: Es passiert nichts, keine Exception
+    }
+
+    @Test
+    void testDeleteCollection_firestoreThrowsException() throws Exception {
+        CollectionReference collection = mock(CollectionReference.class);
+        Query limitedQuery = mock(Query.class);
+        ApiFuture<QuerySnapshot> future = mock(ApiFuture.class);
+
+        when(firestore.collection("some")).thenReturn(collection);
+        when(collection.limit(100)).thenReturn(limitedQuery);
+        when(limitedQuery.get()).thenReturn(future);
+        when(future.get()).thenThrow(new ExecutionException(new RuntimeException("Fehler")));
+
+        Assertions.assertThrows(ExecutionException.class, () -> {
+            leaderboardService.deleteCollection(firestore, "some");
+        });
     }
 
 
