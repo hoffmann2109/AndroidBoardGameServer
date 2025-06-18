@@ -47,7 +47,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     private DiceManagerInterface diceManager;
     private final Map<String, Set<String>> kickVotes = new ConcurrentHashMap<>();
     private static final String BOUGHT_PROPERTY_MSG = " bought property ";
-    private final String userId = "userId";
+    private static final String userId = "userId";
 
     @Autowired
     private GameHistoryService gameHistoryService;
