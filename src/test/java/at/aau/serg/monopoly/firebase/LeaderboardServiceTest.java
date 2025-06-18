@@ -227,4 +227,23 @@ class LeaderboardServiceTest {
         verify(spyService).updateLeaderboard(firestore, field, collection);
     }
 
+    @Test
+    void testUpdateLeaderboard_executionException() throws Exception {
+        CollectionReference users = mock(CollectionReference.class);
+        Query query = mock(Query.class);
+        Query limitedQuery = mock(Query.class);
+        ApiFuture<QuerySnapshot> future = mock(ApiFuture.class);
+
+        when(firestore.collection("users")).thenReturn(users);
+        when(users.orderBy(eq("wins"), any())).thenReturn(query);
+        when(query.limit(anyInt())).thenReturn(limitedQuery);
+        when(limitedQuery.get()).thenReturn(future);
+        when(future.get()).thenThrow(new ExecutionException("Fehler", new Exception()));
+
+        leaderboardService.updateLeaderboard(firestore, "wins", "leaderboard_wins");
+
+        // Kein Exceptionwurf = Erfolg
+    }
+
+
 }
