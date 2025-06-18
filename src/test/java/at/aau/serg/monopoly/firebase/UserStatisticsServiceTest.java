@@ -9,6 +9,7 @@ import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 
 import static org.mockito.Mockito.*;
 
@@ -201,4 +202,20 @@ class UserStatisticsServiceTest {
         ), any(SetOptions.class));
     }
 
+    @Test
+    void testUpdateUserStats_withExecutionException() throws Exception {
+        CollectionReference users = mock(CollectionReference.class);
+        DocumentReference userDoc = mock(DocumentReference.class);
+        CollectionReference history = mock(CollectionReference.class);
+        ApiFuture<QuerySnapshot> future = mock(ApiFuture.class);
+
+        when(firestore.collection("users")).thenReturn(users);
+        when(users.document("uid")).thenReturn(userDoc);
+        when(userDoc.collection("gameHistory")).thenReturn(history);
+        when(history.get()).thenReturn(future);
+        when(future.get()).thenThrow(new ExecutionException("error", new RuntimeException()));
+
+        userStatisticsService.updateUserStats("uid", firestore);
+        // Prüfung: keine Exception geworfen, Logging erfolgt
+    }
 }
