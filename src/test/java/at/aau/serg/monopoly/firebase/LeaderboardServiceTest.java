@@ -5,9 +5,12 @@ import com.google.cloud.firestore.*;
 import com.google.firebase.cloud.FirestoreClient;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 
@@ -206,5 +209,22 @@ class LeaderboardServiceTest {
         });
     }
 
+    @ParameterizedTest
+    @CsvSource({
+            "updateWinsLeaderboard,wins,leaderboard_wins",
+            "updateLevelLeaderboard,level,leaderboard_level",
+            "updateMoneyLeaderboard,averageMoney,leaderboard_averageMoney",
+            "updateHighMoneyLeaderboard,highestMoney,leaderboard_highestMoney",
+            "updateGamesPlayedLeaderboard,gamesPlayed,leaderboard_gamesPlayed"
+    })
+    void testUpdateXLeaderboardCallsCorrectUpdate(String methodName, String field, String collection) throws Exception {
+        LeaderboardService spyService = Mockito.spy(new LeaderboardService());
+        Method method = LeaderboardService.class.getDeclaredMethod(methodName, Firestore.class);
+        doNothing().when(spyService).updateLeaderboard(any(), eq(field), eq(collection));
+
+        method.invoke(spyService, firestore);
+
+        verify(spyService).updateLeaderboard(firestore, field, collection);
+    }
 
 }
