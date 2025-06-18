@@ -101,4 +101,38 @@ class UserStatisticsServiceTest {
         userStatisticsService.updateStatsForUsers(List.of("uid"));
         // Prüft nur, ob keine Exception geworfen wird
     }
+
+    @Test
+    void testUpdateUserStats_gameDataNull() throws Exception {
+        CollectionReference users = mock(CollectionReference.class);
+        DocumentReference userDoc = mock(DocumentReference.class);
+        CollectionReference history = mock(CollectionReference.class);
+        ApiFuture<QuerySnapshot> future = mock(ApiFuture.class);
+        QuerySnapshot snapshot = mock(QuerySnapshot.class);
+        QueryDocumentSnapshot doc1 = mock(QueryDocumentSnapshot.class);
+        DocumentSnapshot userSnapshot = mock(DocumentSnapshot.class);
+        ApiFuture<DocumentSnapshot> userFuture = mock(ApiFuture.class);
+
+        when(firestore.collection("users")).thenReturn(users);
+        when(users.document("uid")).thenReturn(userDoc);
+        when(userDoc.collection("gameHistory")).thenReturn(history);
+        when(history.get()).thenReturn(future);
+        when(future.get()).thenReturn(snapshot);
+        when(snapshot.getDocuments()).thenReturn(List.of(doc1));
+        when(doc1.getData()).thenReturn(null);
+
+        when(userDoc.get()).thenReturn(userFuture);
+        when(userFuture.get()).thenReturn(userSnapshot);
+        when(userSnapshot.exists()).thenReturn(false); // keine "name"-Ergänzung
+
+        userStatisticsService.updateUserStats("uid", firestore);
+
+        verify(userDoc).set(argThat(map ->
+                map.get("wins").equals(0) &&
+                        map.get("averageMoney").equals(0) &&
+                        map.get("gamesPlayed").equals(1) &&
+                        map.get("highestMoney").equals(0) &&
+                        map.get("level").equals(0)
+        ), any(SetOptions.class));
+    }
 }
