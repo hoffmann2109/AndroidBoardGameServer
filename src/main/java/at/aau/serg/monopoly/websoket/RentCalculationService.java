@@ -36,8 +36,8 @@ public class RentCalculationService {
         // Calculate rent based on property type
         if (property instanceof HouseableProperty houseableProperty) {
             return calculateHouseablePropertyRent(houseableProperty);
-        } else if (property instanceof TrainStation) {
-            return calculateTrainStationRent((TrainStation) property);
+        } else if (property instanceof TrainStation trainStation) {
+            return calculateTrainStationRent(trainStation);
         } else if (property instanceof Utility) {
             return calculateUtilityRent((Utility) property, owner);
         }
