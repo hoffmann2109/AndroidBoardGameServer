@@ -156,6 +156,7 @@ class LeaderboardServiceTest {
 
         leaderboardService.updateLeaderboard(firestore, "wins", "leaderboard_wins");
         // Erwartung: kein Set-Aufruf, da getData() == null
+        verify(lb, never()).document(anyString());
     }
 
     @Test
@@ -173,6 +174,8 @@ class LeaderboardServiceTest {
 
         leaderboardService.deleteCollection(firestore, "empty");
         // Erwartung: kein Aufruf von delete()
+        verify(collection).limit(100);
+        verify(limitedQuery).get();
     }
 
     @Test
@@ -189,8 +192,7 @@ class LeaderboardServiceTest {
     void testUpdateAllLeaderboards_firestoreNull() {
         firestoreClientMock.when(FirestoreClient::getFirestore).thenReturn(null);
 
-        leaderboardService.updateAllLeaderboards();
-        // Erwartung: Es passiert nichts, keine Exception
+        Assertions.assertDoesNotThrow(() -> leaderboardService.updateAllLeaderboards());
     }
 
     @Test
@@ -240,8 +242,9 @@ class LeaderboardServiceTest {
         when(limitedQuery.get()).thenReturn(future);
         when(future.get()).thenThrow(new ExecutionException("Fehler", new Exception()));
 
-        leaderboardService.updateLeaderboard(firestore, "wins", "leaderboard_wins");
-
+        Assertions.assertDoesNotThrow(() ->
+                leaderboardService.updateLeaderboard(firestore, "wins", "leaderboard_wins")
+        );
         // Kein Exceptionwurf = Erfolg
     }
 
