@@ -47,7 +47,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     private DiceManagerInterface diceManager;
     private final Map<String, Set<String>> kickVotes = new ConcurrentHashMap<>();
     private static final String BOUGHT_PROPERTY_MSG = " bought property ";
-    private static final String userId = "userId";
+    private static final String USERID = "userId";
 
     @Autowired
     private GameHistoryService gameHistoryService;
@@ -84,7 +84,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
     protected void handleInitMessage(WebSocketSession session, JsonNode jsonNode) {
         try {
-            String userId = jsonNode.get(this.userId).asText();
+            String userId = jsonNode.get(this.USERID).asText();
             String name = jsonNode.get("name").asText();
 
             if (userId == null || sessionToUserId.containsValue(userId)) {
@@ -718,7 +718,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     }
 
     void handleGiveUpFromClient(WebSocketSession session, JsonNode jsonNode) {
-        String quittingUserId = jsonNode.get(userId).asText();
+        String quittingUserId = jsonNode.get(USERID).asText();
 
         if (!game.isPlayerTurn(quittingUserId)) {
             sendMessageToSession(session,
@@ -815,7 +815,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 try {
                     ObjectNode bankruptNotice = objectMapper.createObjectNode();
                     bankruptNotice.put("type", "IS_BANKRUPT");
-                    bankruptNotice.put(userId, pid);
+                    bankruptNotice.put(USERID, pid);
                     broadcastMessage(objectMapper.writeValueAsString(bankruptNotice));
                 } catch (JsonProcessingException e) {
                     logger.log(Level.SEVERE, "Error serializing IS_BANKRUPT for {0}: {1}",
