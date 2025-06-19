@@ -101,6 +101,9 @@ class UserStatisticsServiceTest {
         firestoreClientMock.when(FirestoreClient::getFirestore).thenReturn(null);
         userStatisticsService.updateStatsForUsers(List.of("uid"));
         // Prüft nur, ob keine Exception geworfen wird
+        Assertions.assertDoesNotThrow(() ->
+                userStatisticsService.updateStatsForUsers(List.of("uid"))
+        );
     }
 
     @Test
@@ -215,7 +218,8 @@ class UserStatisticsServiceTest {
         when(history.get()).thenReturn(future);
         when(future.get()).thenThrow(new ExecutionException("error", new RuntimeException()));
 
-        userStatisticsService.updateUserStats("uid", firestore);
-        // Prüfung: keine Exception geworfen, Logging erfolgt
+        Assertions.assertDoesNotThrow(() ->
+                userStatisticsService.updateUserStats("uid", firestore)
+        );
     }
 }
