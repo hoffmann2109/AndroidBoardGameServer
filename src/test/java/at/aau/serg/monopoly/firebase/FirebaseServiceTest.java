@@ -11,13 +11,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
+import java.io.*;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.*;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -148,6 +148,86 @@ class FirebaseServiceTest {
                 method.setAccessible(true);
                 method.invoke(testService);
             });
+        }
+    }
+
+    @Test
+    void testLocateServiceAccountKey_fromFileSystem() throws Exception {
+        File tempFile = File.createTempFile("serviceAccountKey", ".json");
+        tempFile.deleteOnExit();
+
+        FirebaseService testService = new FirebaseService() {
+            @Override
+            public InputStream locateServiceAccountKey() throws IOException {
+                return new FileInputStream(tempFile);
+            }
+        };
+
+        try (InputStream in = testService.locateServiceAccountKey()) {
+            assertNotNull(in);
+        }
+    }
+
+    @Test
+    void testHandleFirebaseInitialization_throwsIOException() throws Exception {
+        FirebaseService testService = spy(service);
+        doThrow(new IOException("test")).when(testService).locateServiceAccountKey();
+
+        try (MockedStatic<FirebaseApp> apps = mockStatic(FirebaseApp.class)) {
+            apps.when(FirebaseApp::getApps).thenReturn(Collections.emptyList());
+            assertDoesNotThrow(testService::initialize);
+        }
+    }
+
+    @Test
+    void testTestFirestoreConnection_success() throws Exception {
+        try (MockedStatic<FirestoreClient> firestoreMock = mockStatic(FirestoreClient.class)) {
+            Firestore firestore = mock(Firestore.class);
+            firestoreMock.when(FirestoreClient::getFirestore).thenReturn(firestore);
+
+            CollectionReference col = mock(CollectionReference.class);
+            DocumentReference doc = mock(DocumentReference.class);
+            ApiFuture<WriteResult> future = mock(ApiFuture.class);
+
+            when(firestore.collection(anyString())).thenReturn(col);
+            when(col.document(anyString())).thenReturn(doc);
+            when(doc.set(any())).thenReturn(future);
+            when(future.get(anyLong(), any())).thenReturn(mock(WriteResult.class));
+            when(doc.delete()).thenReturn(mock(ApiFuture.class));
+
+            FirebaseService testService = new FirebaseService();
+            var method = FirebaseService.class.getDeclaredMethod("testFirestoreConnection");
+            method.setAccessible(true);
+            assertDoesNotThrow(() -> method.invoke(testService));
+        }
+    }
+
+    @Test
+    void testInitialize_serviceAccountKeyNotFound() throws Exception {
+        FirebaseService testService = spy(service);
+        doReturn(null).when(testService).locateServiceAccountKey();
+
+        try (MockedStatic<FirebaseApp> apps = mockStatic(FirebaseApp.class)) {
+            apps.when(FirebaseApp::getApps).thenReturn(Collections.emptyList());
+            assertDoesNotThrow(testService::initialize);
+        }
+    }
+
+    @Test
+    void testHandleFirebaseInitialization_serviceAccountCloseFailsSilently() throws Exception {
+        InputStream faultyStream = new ByteArrayInputStream("{}".getBytes()) {
+            @Override
+            public void close() throws IOException {
+                throw new IOException("Close failed");
+            }
+        };
+
+        FirebaseService testService = spy(service);
+        doReturn(faultyStream).when(testService).locateServiceAccountKey();
+
+        try (MockedStatic<FirebaseApp> apps = mockStatic(FirebaseApp.class)) {
+            apps.when(FirebaseApp::getApps).thenReturn(Collections.emptyList());
+            assertDoesNotThrow(testService::initialize);
         }
     }
 }
