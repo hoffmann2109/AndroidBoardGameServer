@@ -252,4 +252,20 @@ class FirebaseServiceTest {
         }
     }
 
+    @Test
+    void testLocateServiceAccountKey_fromClasspath() throws Exception {
+        FirebaseService testService = new FirebaseService();
+        InputStream resourceAsStream = getClass().getClassLoader().getResourceAsStream("serviceAccountKey.json");
+
+        if (resourceAsStream != null) {
+            try (InputStream in = testService.locateServiceAccountKey()) {
+                assertNotNull(in);
+            }
+        } else {
+            // Test-Datei fehlt im Ressourcenordner
+            // Kann als optionaler Test markiert werden oder Dummy-Ressource hinzufügen
+            Assumptions.assumeTrue(false, "serviceAccountKey.json not present in classpath");
+        }
+    }
+
 }
