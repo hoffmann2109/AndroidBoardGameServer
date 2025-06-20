@@ -2,6 +2,7 @@ package model.properties;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import model.Player;
 
 @Data
 @NoArgsConstructor
@@ -28,5 +29,11 @@ public class HouseableProperty extends BaseProperty {
         this.rentHotel = rentHotel;
         this.housePrice = housePrice;
         this.hotelPrice = hotelPrice;
+    }
+
+    @Override
+    public int calculateRent(Player owner, Player renter) {
+        // For now, just return base rent
+        return baseRent;
     }
 }
