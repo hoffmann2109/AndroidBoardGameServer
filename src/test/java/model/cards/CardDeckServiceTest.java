@@ -1,7 +1,6 @@
 package model.cards;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
 import at.aau.serg.monopoly.websoket.CardDeckService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.*;
@@ -12,7 +11,6 @@ import java.util.*;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class CardDeckServiceTest {
     private ObjectMapper realMapper = new ObjectMapper();
-    private ObjectMapper badMapper = mock(ObjectMapper.class);
 
     private CardDeckService service;
     private Map<CardType, Deque<Card>> decks;
