@@ -303,17 +303,17 @@ class GameWebSocketHandlerRentTest {
         when(mockProperty.getOwnerId()).thenReturn("owner1");
         when(mockProperty.getId()).thenReturn(42);
         when(mockProperty.getName()).thenReturn("Boardwalk");
-        Player owner = mock(Player.class);
-        when(owner.getId()).thenReturn("owner1");
+        Player mockOwner = mock(Player.class);
+        when(mockOwner.getId()).thenReturn("owner1");
         when(spyHandler.propertyService.getPropertyByPosition(position)).thenReturn(mockProperty);
-        when(spyHandler.rentCalculationService.calculateRent(mockProperty, owner, testPlayer)).thenReturn(100);
+        when(spyHandler.rentCalculationService.calculateRent(mockProperty, mockOwner, testPlayer)).thenReturn(100);
 
         // --- Case 1: Enough money, rent collected successfully ---
-        when(game.getPlayerById("owner1")).thenReturn(Optional.of(owner));
+        when(game.getPlayerById("owner1")).thenReturn(Optional.of(mockOwner));
         when(testPlayer.getMoney()).thenReturn(200);
-        when(spyHandler.rentCollectionService.collectRent(testPlayer, mockProperty, owner)).thenReturn(true);
+        when(spyHandler.rentCollectionService.collectRent(testPlayer, mockProperty, mockOwner)).thenReturn(true);
         method.invoke(spyHandler, testPlayer);
-        verify(spyHandler.rentCollectionService).collectRent(testPlayer, mockProperty, owner);
+        verify(spyHandler.rentCollectionService).collectRent(testPlayer, mockProperty, mockOwner);
         // Info log for successful collection is not easily verifiable without a logger mock
 
 
@@ -333,12 +333,12 @@ class GameWebSocketHandlerRentTest {
         when(testPlayer.getPosition()).thenReturn(position);
         when(testPlayer.getId()).thenReturn("player1");
         when(mockProperty.getOwnerId()).thenReturn("owner1");
-        when(game.getPlayerById("owner1")).thenReturn(Optional.of(owner));
+        when(game.getPlayerById("owner1")).thenReturn(Optional.of(mockOwner));
         when(testPlayer.getMoney()).thenReturn(200);
-        when(spyHandler.rentCalculationService.calculateRent(mockProperty, owner, testPlayer)).thenReturn(100);
+        when(spyHandler.rentCalculationService.calculateRent(mockProperty, mockOwner, testPlayer)).thenReturn(100);
         when(spyHandler.propertyService.getPropertyByPosition(position)).thenReturn(mockProperty);
-        when(spyHandler.rentCollectionService.collectRent(testPlayer, mockProperty, owner)).thenReturn(false);
+        when(spyHandler.rentCollectionService.collectRent(testPlayer, mockProperty, mockOwner)).thenReturn(false);
         method.invoke(spyHandler, testPlayer);
-        verify(spyHandler.rentCollectionService).collectRent(testPlayer, mockProperty, owner);
+        verify(spyHandler.rentCollectionService).collectRent(testPlayer, mockProperty, mockOwner);
     }
 } 
