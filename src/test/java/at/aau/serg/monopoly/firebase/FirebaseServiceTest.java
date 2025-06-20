@@ -230,4 +230,26 @@ class FirebaseServiceTest {
             assertDoesNotThrow(testService::initialize);
         }
     }
+
+    @Test
+    void testInitializeFirebaseApp_executesSuccessfully() throws Exception {
+        FirebaseService testService = new FirebaseService();
+        InputStream dummyStream = new ByteArrayInputStream("{}".getBytes());
+
+        try (MockedStatic<FirebaseApp> firebaseAppMock = mockStatic(FirebaseApp.class);
+             MockedStatic<GoogleCredentials> credentialsMock = mockStatic(GoogleCredentials.class)) {
+
+            GoogleCredentials creds = mock(GoogleCredentials.class);
+            credentialsMock.when(() -> GoogleCredentials.fromStream(any())).thenReturn(creds);
+
+            firebaseAppMock.when(() -> FirebaseApp.initializeApp(any(FirebaseOptions.class)))
+                    .thenReturn(mock(FirebaseApp.class));
+
+            // Zugriff auf private Methode via Reflection
+            var method = FirebaseService.class.getDeclaredMethod("initializeFirebaseApp", InputStream.class);
+            method.setAccessible(true);
+            assertDoesNotThrow(() -> method.invoke(testService, dummyStream));
+        }
+    }
+
 }
