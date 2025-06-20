@@ -1,6 +1,7 @@
 package at.aau.serg.monopoly.websoket;
 
 import model.Player;
+import model.properties.BaseProperty;
 import model.properties.HouseableProperty;
 import model.properties.TrainStation;
 import model.properties.Utility;
@@ -12,6 +13,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class RentCalculationServiceTest {
@@ -108,5 +110,13 @@ class RentCalculationServiceTest {
         int rent = rentCalculationService.calculateRent(utility, owner, renter);
 
         assertTrue(rent >= 0);
+    }
+
+    @Test
+    void calculateRent_WhenPropertyThrowsException_ReturnsZero() {
+        var faultyProperty = mock(BaseProperty.class);
+        when(faultyProperty.calculateRent(owner, renter)).thenThrow(new RuntimeException("rent error"));
+        int rent = rentCalculationService.calculateRent(faultyProperty, owner, renter);
+        assertEquals(0, rent, "Rent should be zero when property.calculateRent throws an exception");
     }
 } 
