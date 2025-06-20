@@ -12,7 +12,6 @@ import org.mockito.MockitoAnnotations;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
-import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.Optional;
 
