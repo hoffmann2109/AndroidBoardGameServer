@@ -1,0 +1,20 @@
+We acknowledge that this class is bloated and has several code smells:
+    - Nearly every method is too long (Long-Method smell)
+    - The class is WAY too large (Large-Class smell)
+    - Too many parameters (Long Parameter List smell)
+    - Many important values are written directly in the code (Magic numbers smell)
+    - We could have extracted a lot more methods (Duplication smell)
+    - Tight coupling and too many dependencies
+    - We should have used enums instead of primitive data types (Primitive obsession smell)
+
+What do you do when you notice that your code is bad? You refactor.
+So the question becomes: Why didn't we do just that?
+1. Well, firstly we didn't think about refactoring this class until it was already
+    so big that it became hard to fix without breaking something.
+2. Secondly we wanted to refactor in the last two weeks but were not able
+    to because we were deadlocked by the bot-feature which didn't even make it
+    into the game at the end (for reference: the email we wrote)
+3. We don't want to completely change the most important class of the whole codebase
+    five days before the end of the sprint, because we are afraid that something breaks
+    with no time to fix left.
+
