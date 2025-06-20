@@ -12,7 +12,6 @@ import java.util.*;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class CardDeckServiceTest {
     private ObjectMapper realMapper = new ObjectMapper();
-    private ObjectMapper badMapper = mock(ObjectMapper.class);
 
     private CardDeckService service;
     private Map<CardType, Deque<Card>> decks;
