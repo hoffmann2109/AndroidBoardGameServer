@@ -39,7 +39,9 @@ public class GameHistoryService {
                 logger.log(Level.INFO, "Benutzerdokument-gameHistory für {0} angelegt", userId);
             }
         } catch (InterruptedException | ExecutionException e) {
-            logger.log(Level.WARNING, "Fehler beim Prüfen der Subcollection für Benutzer: " + userId, e);
+            if (logger.isLoggable(Level.WARNING)) {
+                logger.log(Level.WARNING, "Fehler beim Prüfen der Subcollection für Benutzer: " + userId, e);
+            }
             Thread.currentThread().interrupt();
         }
     }
@@ -122,7 +124,8 @@ public class GameHistoryService {
                 userId, durationMinutes, endMoney, false
         ));
 
-        logger.info("Spielabbruch als Niederlage für " + userId + " gespeichert.");
-
+        if (logger.isLoggable(Level.INFO)) {
+            logger.info("Spielabbruch als Niederlage für " + userId + " gespeichert.");
+        }
     }
 }

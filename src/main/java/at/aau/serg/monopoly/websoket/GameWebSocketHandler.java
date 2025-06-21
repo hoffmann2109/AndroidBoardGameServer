@@ -398,10 +398,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         }
         try {
             // Erstellen einer ClearChatMessage
-            Map<String, String> clearChatMessage = new HashMap<>();
-            clearChatMessage.put("type", "CLEAR_CHAT");
-            clearChatMessage.put("reason", "Game has ended");
-
+            ClearChatMessage clearChatMessage = new ClearChatMessage();
             String clearChatJson = objectMapper.writeValueAsString(clearChatMessage);
 
             // Senden der Nachricht an alle Clients
@@ -446,6 +443,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         logger.log(Level.INFO, "Player {0} has given up", quittingUserId);
         processPlayerGiveUp(quittingUserId, 0,0);
     }
+
 
     // Helper method to handle giveUp
     public void processPlayerGiveUp(String quittingUserId, int durationMinutes, int endMoney) {
