@@ -5,7 +5,13 @@ public class PullCardMessage {
     private String playerId;
     private String cardType;  // "COMMUNITY_CHEST" or "CHANCE"
 
-    public PullCardMessage() { }
+    public PullCardMessage() {
+        /*
+         * Default constructor for JSON (de)serialization.
+         * Jackson requires a no-argument constructor to instantiate this class.
+         */
+    }
+
     public String getType()       { return type; }
     public void   setType(String t)       { this.type = t; }
     public String getPlayerId()   { return playerId; }
