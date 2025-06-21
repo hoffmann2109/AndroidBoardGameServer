@@ -679,7 +679,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             resetGame();
 
         } catch (JsonProcessingException e) {
-            logger.log(Level.SEVERE, "Error creating clear chat message: " + e.getMessage());
+            logger.log(Level.SEVERE, "Error creating clear chat message", e);
         }
     }
 
