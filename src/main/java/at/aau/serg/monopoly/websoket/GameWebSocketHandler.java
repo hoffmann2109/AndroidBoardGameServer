@@ -663,15 +663,11 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         }
         try {
             // Erstellen einer ClearChatMessage
-            Map<String, String> clearChatMessage = new HashMap<>();
-            clearChatMessage.put("type", "CLEAR_CHAT");
-            clearChatMessage.put("reason", "Game has ended");
-
+            ClearChatMessage clearChatMessage = ClearChatMessage.create();
             String clearChatJson = objectMapper.writeValueAsString(clearChatMessage);
 
             // Senden der Nachricht an alle Clients
             broadcastMessage(clearChatJson);
-
             logger.info("Sent chat clear signal to all clients");
 
             // Send a message to the client: Server is setting up a new game
@@ -682,11 +678,9 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             // Clear out the game state
             resetGame();
 
-
         } catch (JsonProcessingException e) {
             logger.log(Level.SEVERE, "Error creating clear chat message: " + e.getMessage());
         }
-
     }
 
 
