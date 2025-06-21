@@ -25,8 +25,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.*;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 import model.ChatMessage;
-
-
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -34,10 +32,15 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-
+//*******************************************************************************//
+// --------------------------IMPORTANT INFORMATION:------------------------------//
+/*
+    We acknowledge that the code quality of this class is very poor:
+    Please refer to the file Acknowledgement for more information!
+ */
+//*******************************************************************************//
 @Component
 public class GameWebSocketHandler extends TextWebSocketHandler {
-
     private static final String PLAYER_PREFIX = "Player ";
     private final Logger logger = Logger.getLogger(GameWebSocketHandler.class.getName());
     protected final CopyOnWriteArrayList<WebSocketSession> sessions = new CopyOnWriteArrayList<>();
@@ -68,7 +71,9 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     @Autowired
     private UserStatisticsService userStatisticsService;
 
-
+    //*******************************************************************************//
+    // ------------------ GameWebSocket ------------------ //
+    //*******************************************************************************//
     @PostConstruct
     public void init() {
         dealService.setGame(game);
@@ -110,6 +115,69 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
+    private void broadcastMessage(String message) {
+        for (WebSocketSession session : sessions) {
+            try {
+                if (session.isOpen()) {
+                    session.sendMessage(new TextMessage(message));
+                } else {
+                    sessions.remove(session);
+                }
+            } catch (Exception e) {
+                logger.log(Level.SEVERE, "Error sending message: {0}", e.getMessage());//bewusst geloggt aktuell
+            }
+        }
+    }
+
+    void broadcastGameState() {
+        try {
+            String gameState = objectMapper.writeValueAsString(game.getPlayerInfo());
+            broadcastMessage("GAME_STATE:" + gameState);
+            broadcastMessage("PLAYER_TURN:" + game.getCurrentPlayer().getId());
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "Error broadcasting game state: {0}", e.getMessage());//bewusst geloggt aktuell
+        }
+    }
+
+    private void sendMessageToSession(WebSocketSession session, String message) {
+        try {
+            if (session.isOpen()) {
+                session.sendMessage(new TextMessage(message));
+            }
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "Error sending message to session {0}: {1}", new Object[]{session.getId(), e.getMessage()});//bewusst geloggt aktuell
+        }
+    }
+
+    @Override
+    public void afterConnectionClosed(@NonNull WebSocketSession session, @NonNull CloseStatus status) {
+        String userId = sessionToUserId.get(session.getId());
+        if (userId != null) {
+            game.removePlayer(userId);
+            sessionToUserId.remove(session.getId());
+            broadcastMessage("Player left: " + userId + " (Total: " + sessions.size() + ")");
+            broadcastGameState();
+            checkAllPlayersForBankruptcy();
+            logger.log(Level.INFO, "Player disconnected: {0}", userId);//bewusst geloggt aktuell
+        }
+        sessions.remove(session);
+    }
+
+    //*******************************************************************************//
+    // ------------------ WebSocketGameActions  ------------------ //
+    //*******************************************************************************//
+    private void startGame() {
+        try {
+            String gameState = objectMapper.writeValueAsString(game.getPlayerInfo());
+            broadcastMessage("GAME_STATE:" + gameState);
+            broadcastMessage("Game started! " + sessions.size() + " players are connected.");
+            logger.log(Level.INFO, "Game started with {0} players!", sessions.size());//bewusst geloggt aktuell
+            game.start();
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "Error sending game state: {0}", e.getMessage());//bewusst geloggt aktuell
+        }
+    }
+
     private void handleTaxPayment(String payload, String userId) {
         try {
             TaxPaymentMessage taxMsg = objectMapper.readValue(payload, TaxPaymentMessage.class);
@@ -124,17 +192,6 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             }
         } catch (Exception e) {
             logger.log(Level.WARNING, "Error processing tax payment message: {0}", e.getMessage());//bewusst geloggt aktuell
-        }
-    }
-
-    public class JsonDeserializationException extends RuntimeException {
-
-        public JsonDeserializationException(String message, Throwable cause) {
-            super(message, cause);
-        }
-
-        public JsonDeserializationException(String message) {
-            super(message);
         }
     }
 
@@ -177,7 +234,468 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
+    private void handleDiceRoll(WebSocketSession session, String userId) throws JsonProcessingException {
+        if (!game.isPlayerTurn(userId)) {
+            sendMessageToSession(session, createJsonError("Not your turn!"));
+            return;
+        }
+        Player player = game.getPlayerById(userId).orElse(null);
+        if (player == null) return;
 
+        if (player.isInJail()) {
+            sendMessageToSession(session,
+                    createJsonError("You are in jail and cannot roll. End your turn."));
+            return;
+        }
+
+        if (player.hasRolledThisTurn()) {
+            sendMessageToSession(session, createJsonError("You already rolled this turn."));
+            return;
+        }
+
+        int roll = diceManager.rollDices();
+        boolean isPasch = diceManager.isPasch();
+        if (logger.isLoggable(Level.INFO)) {
+            logger.info(String.format("Spieler %s hat geworfen: %s | Pasch: %s",
+                    userId,
+                    diceManager.getLastRollValues().toString(),
+                    isPasch));
+        }
+        player.setHasRolledThisTurn(!isPasch);
+        logger.log(Level.INFO, "Player {0} rolled {1}", new Object[]{userId, roll});//bewusst geloggt aktuell
+
+        DiceRollMessage drm = new DiceRollMessage(userId, roll, false, isPasch);
+        String json = objectMapper.writeValueAsString(drm);
+        broadcastMessage(json);
+
+        // Update Position and broadcast Game-State:
+        if (game.updatePlayerPosition(roll, userId)) {
+            broadcastMessage(PLAYER_PREFIX + userId + " passed GO and collected €200");
+        }
+        handlePlayerLanding(player);
+    }
+
+    private void handleBuyProperty(WebSocketSession session, String userId, String payload) {
+        try {
+            int propertyId = Integer.parseInt(payload.substring("BUY_PROPERTY:".length()));
+
+            Optional<Player> playerOpt = game.getPlayerById(userId);
+            if (playerOpt.isEmpty()) {
+                sendMessageToSession(session, createJsonError("Player not found."));
+                return;
+            }
+            Player player = playerOpt.get();
+
+            if (propertyTransactionService.canBuyProperty(player, propertyId)) {
+                boolean success = propertyTransactionService.buyProperty(player, propertyId);
+                if (success) {
+                    broadcastMessage(createJsonMessage(PLAYER_PREFIX + userId + BOUGHT_PROPERTY_MSG + propertyId));
+                    broadcastGameState();
+                    checkAllPlayersForBankruptcy();
+                } else {
+                    sendMessageToSession(session, createJsonError("Failed to buy property due to server error."));
+                }
+            } else {
+                if (!game.isPlayerTurn(userId)) {
+                    sendMessageToSession(session, createJsonError("Cannot buy property - it's not your turn."));
+                } else {
+                    sendMessageToSession(session, createJsonError("Cannot buy property (insufficient funds or already owned)."));
+                }
+            }
+        } catch (NumberFormatException e) {
+            sendMessageToSession(session, createJsonError("Invalid property ID format."));
+        } catch (Exception e) {
+            sendMessageToSession(session, createJsonError("Server error handling buy property request."));
+        }
+    }
+
+    private void handleSellProperty(WebSocketSession session, String payload, String userId) {
+        try {
+            int propertyId;
+            // Check if the payload is in JSON format
+            if (payload.contains("\"type\":\"SELL_PROPERTY\"")) {
+                JsonNode jsonNode = objectMapper.readTree(payload);
+                propertyId = jsonNode.get("propertyId").asInt();
+            } else {
+                // Handle string format
+                propertyId = Integer.parseInt(payload.substring("SELL_PROPERTY:".length()));
+            }
+
+            Optional<Player> playerOpt = game.getPlayerById(userId);
+            if (playerOpt.isEmpty()) {
+                sendMessageToSession(session, createJsonError("Player not found."));
+                return;
+            }
+            Player player = playerOpt.get();
+
+            if (propertyTransactionService.sellProperty(player, propertyId)) {
+                broadcastMessage(createJsonMessage(PLAYER_PREFIX + userId + " sold property " + propertyId));
+                broadcastGameState();
+                checkAllPlayersForBankruptcy();
+            } else {
+                sendMessageToSession(session, createJsonError("Cannot sell property (not owned by player)."));
+            }
+        } catch (NumberFormatException e) {
+            sendMessageToSession(session, createJsonError("Invalid property ID format."));
+        } catch (Exception e) {
+            sendMessageToSession(session, createJsonError("Server error handling sell property request."));
+        }
+    }
+
+    void handleCheatMessage(String payload, String userId) throws JsonProcessingException {
+        CheatCodeMessage cheatCodeMessage = objectMapper.readValue(payload, CheatCodeMessage.class);
+        String cheatCode = cheatCodeMessage.getMessage();
+        Optional<Player> optionalPlayer = game.getPlayerById(userId);
+        if (optionalPlayer.isPresent()) {
+            Player player = optionalPlayer.get();
+            try {
+                int amount = cheatService.getAmount(cheatCode, player.getMoney());
+                game.updatePlayerMoney(userId, amount);
+                broadcastGameState();
+                checkAllPlayersForBankruptcy();
+            } catch (NumberFormatException e) {
+                logger.log(Level.SEVERE, "Invalid money update format: {0}", sanitizeForLog(payload));
+            }
+        } else {
+            logger.log(Level.WARNING, "Player not found for cheat code handling (userId={0})", userId);
+        }
+    }
+
+    /**
+     * Behandelt die Beendigung eines Spiels und speichert die Spielhistorie
+     */
+    private void handleEndGame() {
+        try {
+            String winnerId = game.determineWinner();
+
+            // Beende das Spiel und erhalte die Spieldauer
+            int durationMinutes = game.endGame(winnerId);
+
+
+            // Speichere die Spielhistorie für alle Spieler
+            gameHistoryService.saveGameHistoryForAllPlayers(
+                    game.getPlayers(),
+                    durationMinutes,
+                    winnerId
+            );
+
+
+            // Stats für beteiligte Spieler aktualisieren
+            List<String> playerIds = new ArrayList<>();
+            for (Player player : game.getPlayers()) {
+                playerIds.add(player.getId());
+            }
+            userStatisticsService.updateStatsForUsers(playerIds);
+
+
+            // Informiere alle Spieler über das Spielende
+            broadcastMessage(createJsonMessage("Das Spiel wurde beendet. Der Gewinner ist " +
+                    game.getPlayerById(winnerId).map(Player::getName).orElse("unbekannt")));
+
+            logger.info("Spiel beendet und Spielhistorie gespeichert");//bewusst geloggt aktuell
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "Fehler beim Beenden des Spiels", e);//bewusst geloggt aktuell
+        }
+        try {
+            // Erstellen einer ClearChatMessage
+            ClearChatMessage clearChatMessage = new ClearChatMessage();
+            String clearChatJson = objectMapper.writeValueAsString(clearChatMessage);
+
+            // Senden der Nachricht an alle Clients
+            broadcastMessage(clearChatJson);
+
+            logger.info("Sent chat clear signal to all clients");
+
+            // Send a message to the client: Server is setting up a new game
+            ObjectNode resetMsg = objectMapper.createObjectNode();
+            resetMsg.put("type", "RESET");
+            broadcastMessage(objectMapper.writeValueAsString(resetMsg));
+
+            // Clear out the game state
+            resetGame();
+
+
+        } catch (JsonProcessingException e) {
+            logger.log(Level.SEVERE, "Error creating clear chat message: " + e.getMessage());
+        }
+
+    }
+
+    private void resetGame() {
+        game.getPlayers().clear();
+
+        // New INITs will now be accepted
+        sessionToUserId.clear();
+
+        diceManager = new DiceManager();
+        diceManager.initializeStandardDices();
+    }
+
+    void handleGiveUpFromClient(WebSocketSession session, JsonNode jsonNode) {
+        String quittingUserId = jsonNode.get(USERID).asText();
+
+        if (!game.isPlayerTurn(quittingUserId)) {
+            sendMessageToSession(session,
+                    createJsonError("You can only give up on your turn."));
+            return;
+        }
+
+        logger.log(Level.INFO, "Player {0} has given up", quittingUserId);
+        processPlayerGiveUp(quittingUserId, 0,0);
+    }
+
+
+    // Helper method to handle giveUp
+    public void processPlayerGiveUp(String quittingUserId, int durationMinutes, int endMoney) {
+
+        //mark player as looser for firebase
+        gameHistoryService.markPlayerAsLoser(quittingUserId, durationMinutes , endMoney);
+
+        //handle give up in game logic
+        game.giveUp(quittingUserId);
+
+        // Broadcast a GIVE_UP message
+        try {
+            GiveUpMessage giveUpMsg = new GiveUpMessage(quittingUserId);
+            String json = objectMapper.writeValueAsString(giveUpMsg);
+            broadcastMessage(json);
+        } catch (JsonProcessingException e) {
+            logger.log(Level.SEVERE, "Error serializing GIVE_UP for {0}: {1}",
+                    new Object[]{ quittingUserId, e.getMessage() });
+        }
+
+        // Do we have a winner already?
+        if (game.getPlayers().size() == 1) {
+            String winnerId = game.getPlayers().get(0).getId();
+            try {
+                HasWonMessage win = new HasWonMessage(winnerId);
+                String winJson = objectMapper.writeValueAsString(win);
+                broadcastMessage(winJson);
+            } catch (JsonProcessingException e) {
+                logger.log(Level.SEVERE, "Error serializing HAS_WON: {0}", e.getMessage());
+            }
+            // Wrap up the game
+            handleEndGame();
+            return;
+        }
+
+        broadcastGameState();
+        checkAllPlayersForBankruptcy();
+    }
+
+    private void handleKickVote(WebSocketSession session, String payload, String voterId) {
+        String targetName = payload.substring("KICK ".length()).trim();
+
+        Optional<Player> targetOpt = game.getPlayers().stream()
+                .filter(p -> p.getName().equals(targetName))
+                .findFirst();
+
+        if (targetOpt.isEmpty()) {
+            sendMessageToSession(session,
+                    createJsonError("Player not found: " + targetName));
+            return;
+        }
+
+        String targetId = targetOpt.get().getId();
+
+        Optional<Player> voterOpt = game.getPlayerById(voterId);
+        if (voterOpt.isEmpty()) {
+            sendMessageToSession(session,
+                    createJsonError("Voting player not found: " + voterId));
+            return;
+        }
+        String voterName = voterOpt.get().getName();
+
+        kickVotes.computeIfAbsent(targetId, k -> ConcurrentHashMap.newKeySet())
+                .add(voterId);
+
+        int votesFor = kickVotes.get(targetId).size();
+        int totalPlayers = game.getPlayers().size();
+
+        // Broadcast:
+        broadcastMessage("SYSTEM: " + voterName
+                + " voted to kick " + targetName
+                + " (" + votesFor + "/" + totalPlayers + ")");
+
+        // Wenn mehr als 50% der Spieler voten -> GIVE_UP = KICK
+        if (votesFor > totalPlayers / 2.0) {
+            processPlayerGiveUp(targetId, 0, 0);
+            kickVotes.remove(targetId);
+        }
+    }
+
+
+    private void handlePlayerLanding(Player player) {
+        try {
+
+            int position = player.getPosition();
+
+            // Check for tax squares
+            if (position == 30) {
+                game.sendToJail(player.getId());
+                broadcastMessage(PLAYER_PREFIX + player.getId() + " goes to jail!");
+            }
+            else if (position == 4) {  // Einkommensteuer
+                game.updatePlayerMoney(player.getId(), -200);  // Deduct money first
+                TaxPaymentMessage taxMsg = new TaxPaymentMessage(player.getId(), 200, "EINKOMMENSTEUER");
+                String jsonTax = objectMapper.writeValueAsString(taxMsg);
+                broadcastMessage(jsonTax);
+            } else if (position == 38) {  // Zusatzsteuer
+                game.updatePlayerMoney(player.getId(), -100);  // Deduct money first
+                TaxPaymentMessage taxMsg = new TaxPaymentMessage(player.getId(), 100, "ZUSATZSTEUER");
+                String jsonTax = objectMapper.writeValueAsString(taxMsg);
+                broadcastMessage(jsonTax);
+            }
+            // Check for property and collect rent if applicable
+            BaseProperty property = propertyService.getPropertyByPosition(position);
+            if (property != null) {
+                // Get the property owner first
+                Player owner = game.getPlayerById(property.getOwnerId()).orElse(null);
+                if (owner != null) {
+                    // Calculate rent amount
+                    int rentAmount = rentCalculationService.calculateRent(property, owner, player);
+
+                    // Create and broadcast rent payment message
+                    RentPaymentMessage rentMsg = new RentPaymentMessage(
+                            player.getId(),
+                            owner.getId(),
+                            property.getId(),
+                            property.getName(),
+                            rentAmount
+                    );
+                    String jsonRent = objectMapper.writeValueAsString(rentMsg);
+                    broadcastMessage(jsonRent);
+
+                    // Now try to collect the rent
+                    boolean rentCollected = rentCollectionService.collectRent(player, property, owner);
+                    if (rentCollected) {
+                        logger.log(Level.INFO, "Rent of {0} collected from player {1} for property {2}",
+                                new Object[]{rentAmount, player.getId(), property.getName()});
+                    } else {
+                        logger.warning("Failed to collect rent for property " + property.getName());
+                    }
+                }
+            }
+
+            broadcastGameState();
+            checkAllPlayersForBankruptcy();
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "Error handling player landing: {0}", e.getMessage());
+        }
+    }
+
+
+
+    //*******************************************************************************//
+    // ------------------ WebSocketHelper  ------------------ //
+    //*******************************************************************************//
+
+    // Helper method to calculate the value of all owned properties
+    private int sumLiquidationValueOfOwnedProperties(String playerId) {
+        int total = 0;
+
+        // Houseable properties
+        for (HouseableProperty p : propertyService.getHouseableProperties()) {
+            if (playerId.equals(p.getOwnerId())) {
+                total += p.getPurchasePrice() / 2;
+            }
+        }
+        // Train stations
+        for (TrainStation ts : propertyService.getTrainStations()) {
+            if (playerId.equals(ts.getOwnerId())) {
+                total += ts.getPurchasePrice() / 2;
+            }
+        }
+        // Utilities
+        for (Utility u : propertyService.getUtilities()) {
+            if (playerId.equals(u.getOwnerId())) {
+                total += u.getPurchasePrice() / 2;
+            }
+        }
+
+        return total;
+    }
+
+    private WebSocketSession findSessionByPlayerId(String playerId) {
+        for (Map.Entry<String, String> entry : sessionToUserId.entrySet()) {
+            if (entry.getValue().equals(playerId)) {
+                String sessionId = entry.getKey();
+                for (WebSocketSession session : sessions) {
+                    if (session.getId().equals(sessionId)) {
+                        return session;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    // Helper method to check if any player is bankrupt
+    private void checkAllPlayersForBankruptcy() {
+        // Copy of the players list
+        List<Player> snapshot = new ArrayList<>(game.getPlayers());
+
+        for (Player p : snapshot) {
+            String pid = p.getId();
+
+            // Net worth: cash + sum(property)
+            int cash = p.getMoney();
+            int assets = sumLiquidationValueOfOwnedProperties(pid);
+            int netWorth = cash + assets;
+
+            if (netWorth <= 0) {
+                logger.log(Level.INFO, "Player {0} is bankrupt (net worth {1}). Forcing GIVE_UP.",
+                        new Object[]{ pid, netWorth });
+
+                // Broadcast an IS_BANKRUPT
+                try {
+                    ObjectNode bankruptNotice = objectMapper.createObjectNode();
+                    bankruptNotice.put("type", "IS_BANKRUPT");
+                    bankruptNotice.put(USERID, pid);
+                    broadcastMessage(objectMapper.writeValueAsString(bankruptNotice));
+                } catch (JsonProcessingException e) {
+                    logger.log(Level.SEVERE, "Error serializing IS_BANKRUPT for {0}: {1}",
+                            new Object[]{ pid, e.getMessage() });
+                }
+
+                int playedDuration = game.getDurationPlayed();
+                // Process GIVE_UP
+                processPlayerGiveUp(pid, playedDuration, p.getMoney());
+            }
+        }
+    }
+
+    public class JsonDeserializationException extends RuntimeException {
+
+        public JsonDeserializationException(String message, Throwable cause) {
+            super(message, cause);
+        }
+
+        public JsonDeserializationException(String message) {
+            super(message);
+        }
+    }
+
+    private String createJsonError(String errorMessage) {
+        return "{\"type\":\"ERROR\", \"message\":\"" + escapeJson(errorMessage) + "\"}";
+    }
+
+    private String createJsonMessage(String message) {
+        return "{\"type\":\"PROPERTY_BOUGHT\", \"message\":\"" + escapeJson(message) + "\"}";
+    }
+
+    private String escapeJson(String value) {
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
+    private String sanitizeForLog(String input) {
+        String sanitized = input.replaceAll("[\\r\\n]", "_");
+        return sanitized.length() > 100 ? sanitized.substring(0, 100) + "..." : sanitized;
+    }
+
+    //*******************************************************************************//
+    // ------------------ MessageParser  ------------------ //
+    //*******************************************************************************//
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) {
         String payload = message.getPayload();
@@ -447,503 +965,5 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             logger.log(Level.SEVERE, "Error handling message from player {0}: {1}", new Object[]{userId, e.getMessage()});//bewusst geloggt aktuell
             sendMessageToSession(session, createJsonError("Server error processing your request."));
         }
-    }
-
-    @Override
-    public void afterConnectionClosed(@NonNull WebSocketSession session, @NonNull CloseStatus status) {
-        String userId = sessionToUserId.get(session.getId());
-        if (userId != null) {
-            game.removePlayer(userId);
-            sessionToUserId.remove(session.getId());
-            broadcastMessage("Player left: " + userId + " (Total: " + sessions.size() + ")");
-            broadcastGameState();
-            checkAllPlayersForBankruptcy();
-            logger.log(Level.INFO, "Player disconnected: {0}", userId);//bewusst geloggt aktuell
-        }
-        sessions.remove(session);
-    }
-
-    private void handleDiceRoll(WebSocketSession session, String userId) throws JsonProcessingException {
-        if (!game.isPlayerTurn(userId)) {
-            sendMessageToSession(session, createJsonError("Not your turn!"));
-            return;
-        }
-        Player player = game.getPlayerById(userId).orElse(null);
-        if (player == null) return;
-
-        if (player.isInJail()) {
-            sendMessageToSession(session,
-                    createJsonError("You are in jail and cannot roll. End your turn."));
-            return;
-        }
-
-        if (player.hasRolledThisTurn()) {
-            sendMessageToSession(session, createJsonError("You already rolled this turn."));
-            return;
-        }
-
-        int roll = diceManager.rollDices();
-        boolean isPasch = diceManager.isPasch();
-        if (logger.isLoggable(Level.INFO)) {
-            logger.info(String.format("Spieler %s hat geworfen: %s | Pasch: %s",
-                    userId,
-                    diceManager.getLastRollValues().toString(),
-                    isPasch));
-        }
-        player.setHasRolledThisTurn(!isPasch);
-        logger.log(Level.INFO, "Player {0} rolled {1}", new Object[]{userId, roll});//bewusst geloggt aktuell
-
-        DiceRollMessage drm = new DiceRollMessage(userId, roll, false, isPasch);
-        String json = objectMapper.writeValueAsString(drm);
-        broadcastMessage(json);
-
-        // Update Position and broadcast Game-State:
-        if (game.updatePlayerPosition(roll, userId)) {
-            broadcastMessage(PLAYER_PREFIX + userId + " passed GO and collected €200");
-        }
-        handlePlayerLanding(player);
-    }
-
-    private void broadcastMessage(String message) {
-        for (WebSocketSession session : sessions) {
-            try {
-                if (session.isOpen()) {
-                    session.sendMessage(new TextMessage(message));
-                } else {
-                    sessions.remove(session);
-                }
-            } catch (Exception e) {
-                logger.log(Level.SEVERE, "Error sending message: {0}", e.getMessage());//bewusst geloggt aktuell
-            }
-        }
-    }
-
-    void broadcastGameState() {
-        try {
-            String gameState = objectMapper.writeValueAsString(game.getPlayerInfo());
-            broadcastMessage("GAME_STATE:" + gameState);
-            broadcastMessage("PLAYER_TURN:" + game.getCurrentPlayer().getId());
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error broadcasting game state: {0}", e.getMessage());//bewusst geloggt aktuell
-        }
-    }
-
-    private void startGame() {
-        try {
-            String gameState = objectMapper.writeValueAsString(game.getPlayerInfo());
-            broadcastMessage("GAME_STATE:" + gameState);
-            broadcastMessage("Game started! " + sessions.size() + " players are connected.");
-            logger.log(Level.INFO, "Game started with {0} players!", sessions.size());//bewusst geloggt aktuell
-            game.start();
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error sending game state: {0}", e.getMessage());//bewusst geloggt aktuell
-        }
-    }
-
-    private void handleBuyProperty(WebSocketSession session, String userId, String payload) {
-        try {
-            int propertyId = Integer.parseInt(payload.substring("BUY_PROPERTY:".length()));
-
-            Optional<Player> playerOpt = game.getPlayerById(userId);
-            if (playerOpt.isEmpty()) {
-                sendMessageToSession(session, createJsonError("Player not found."));
-                return;
-            }
-            Player player = playerOpt.get();
-
-            if (propertyTransactionService.canBuyProperty(player, propertyId)) {
-                boolean success = propertyTransactionService.buyProperty(player, propertyId);
-                if (success) {
-                    broadcastMessage(createJsonMessage(PLAYER_PREFIX + userId + BOUGHT_PROPERTY_MSG + propertyId));
-                    broadcastGameState();
-                    checkAllPlayersForBankruptcy();
-                } else {
-                    sendMessageToSession(session, createJsonError("Failed to buy property due to server error."));
-                }
-            } else {
-                if (!game.isPlayerTurn(userId)) {
-                    sendMessageToSession(session, createJsonError("Cannot buy property - it's not your turn."));
-                } else {
-                    sendMessageToSession(session, createJsonError("Cannot buy property (insufficient funds or already owned)."));
-                }
-            }
-        } catch (NumberFormatException e) {
-            sendMessageToSession(session, createJsonError("Invalid property ID format."));
-        } catch (Exception e) {
-            sendMessageToSession(session, createJsonError("Server error handling buy property request."));
-        }
-    }
-
-    private void handleSellProperty(WebSocketSession session, String payload, String userId) {
-        try {
-            int propertyId;
-            // Check if the payload is in JSON format
-            if (payload.contains("\"type\":\"SELL_PROPERTY\"")) {
-                JsonNode jsonNode = objectMapper.readTree(payload);
-                propertyId = jsonNode.get("propertyId").asInt();
-            } else {
-                // Handle string format
-                propertyId = Integer.parseInt(payload.substring("SELL_PROPERTY:".length()));
-            }
-
-            Optional<Player> playerOpt = game.getPlayerById(userId);
-            if (playerOpt.isEmpty()) {
-                sendMessageToSession(session, createJsonError("Player not found."));
-                return;
-            }
-            Player player = playerOpt.get();
-
-            if (propertyTransactionService.sellProperty(player, propertyId)) {
-                broadcastMessage(createJsonMessage(PLAYER_PREFIX + userId + " sold property " + propertyId));
-                broadcastGameState();
-                checkAllPlayersForBankruptcy();
-            } else {
-                sendMessageToSession(session, createJsonError("Cannot sell property (not owned by player)."));
-            }
-        } catch (NumberFormatException e) {
-            sendMessageToSession(session, createJsonError("Invalid property ID format."));
-        } catch (Exception e) {
-            sendMessageToSession(session, createJsonError("Server error handling sell property request."));
-        }
-    }
-
-    void handleCheatMessage(String payload, String userId) throws JsonProcessingException {
-        CheatCodeMessage cheatCodeMessage = objectMapper.readValue(payload, CheatCodeMessage.class);
-        String cheatCode = cheatCodeMessage.getMessage();
-        Optional<Player> optionalPlayer = game.getPlayerById(userId);
-        if (optionalPlayer.isPresent()) {
-            Player player = optionalPlayer.get();
-            try {
-                int amount = cheatService.getAmount(cheatCode, player.getMoney());
-                game.updatePlayerMoney(userId, amount);
-                broadcastGameState();
-                checkAllPlayersForBankruptcy();
-            } catch (NumberFormatException e) {
-                logger.log(Level.SEVERE, "Invalid money update format: {0}", sanitizeForLog(payload));
-            }
-        } else {
-            logger.log(Level.WARNING, "Player not found for cheat code handling (userId={0})", userId);
-        }
-    }
-
-    /**
-     * Behandelt die Beendigung eines Spiels und speichert die Spielhistorie
-     */
-    private void handleEndGame() {
-        try {
-            String winnerId = game.determineWinner();
-
-            // Beende das Spiel und erhalte die Spieldauer
-            int durationMinutes = game.endGame(winnerId);
-
-
-            // Speichere die Spielhistorie für alle Spieler
-            gameHistoryService.saveGameHistoryForAllPlayers(
-                    game.getPlayers(),
-                    durationMinutes,
-                    winnerId
-            );
-
-
-            // Stats für beteiligte Spieler aktualisieren
-            List<String> playerIds = new ArrayList<>();
-            for (Player player : game.getPlayers()) {
-                playerIds.add(player.getId());
-            }
-            userStatisticsService.updateStatsForUsers(playerIds);
-
-
-            // Informiere alle Spieler über das Spielende
-            broadcastMessage(createJsonMessage("Das Spiel wurde beendet. Der Gewinner ist " +
-                    game.getPlayerById(winnerId).map(Player::getName).orElse("unbekannt")));
-
-            logger.info("Spiel beendet und Spielhistorie gespeichert");//bewusst geloggt aktuell
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, "Fehler beim Beenden des Spiels", e);//bewusst geloggt aktuell
-        }
-        try {
-            // Erstellen einer ClearChatMessage
-            ClearChatMessage clearChatMessage = new ClearChatMessage();
-            String clearChatJson = objectMapper.writeValueAsString(clearChatMessage);
-
-            // Senden der Nachricht an alle Clients
-            broadcastMessage(clearChatJson);
-            logger.info("Sent chat clear signal to all clients");
-
-            // Send a message to the client: Server is setting up a new game
-            ObjectNode resetMsg = objectMapper.createObjectNode();
-            resetMsg.put("type", "RESET");
-            broadcastMessage(objectMapper.writeValueAsString(resetMsg));
-
-            // Clear out the game state
-            resetGame();
-
-        } catch (JsonProcessingException e) {
-            logger.log(Level.SEVERE, "Error creating clear chat message", e);
-        }
-    }
-
-
-    private void sendMessageToSession(WebSocketSession session, String message) {
-        try {
-            if (session.isOpen()) {
-                session.sendMessage(new TextMessage(message));
-            }
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error sending message to session {0}: {1}", new Object[]{session.getId(), e.getMessage()});//bewusst geloggt aktuell
-        }
-    }
-
-    private String createJsonError(String errorMessage) {
-        return "{\"type\":\"ERROR\", \"message\":\"" + escapeJson(errorMessage) + "\"}";
-    }
-
-    private String createJsonMessage(String message) {
-        return "{\"type\":\"PROPERTY_BOUGHT\", \"message\":\"" + escapeJson(message) + "\"}";
-    }
-
-    private String escapeJson(String value) {
-        return value.replace("\\", "\\\\").replace("\"", "\\\"");
-    }
-
-    private String sanitizeForLog(String input) {
-        String sanitized = input.replaceAll("[\\r\\n]", "_");
-        return sanitized.length() > 100 ? sanitized.substring(0, 100) + "..." : sanitized;
-    }
-
-    void handleGiveUpFromClient(WebSocketSession session, JsonNode jsonNode) {
-        String quittingUserId = jsonNode.get(USERID).asText();
-
-        if (!game.isPlayerTurn(quittingUserId)) {
-            sendMessageToSession(session,
-                    createJsonError("You can only give up on your turn."));
-            return;
-        }
-
-        logger.log(Level.INFO, "Player {0} has given up", quittingUserId);
-        processPlayerGiveUp(quittingUserId, 0,0);
-    }
-
-    // Helper method to handle giveUp
-    public void processPlayerGiveUp(String quittingUserId, int durationMinutes, int endMoney) {
-
-        //mark player as looser for firebase
-        gameHistoryService.markPlayerAsLoser(quittingUserId, durationMinutes , endMoney);
-
-        //handle give up in game logic
-        game.giveUp(quittingUserId);
-
-        // Broadcast a GIVE_UP message
-        try {
-            GiveUpMessage giveUpMsg = new GiveUpMessage(quittingUserId);
-            String json = objectMapper.writeValueAsString(giveUpMsg);
-            broadcastMessage(json);
-        } catch (JsonProcessingException e) {
-            logger.log(Level.SEVERE, "Error serializing GIVE_UP for {0}: {1}",
-                    new Object[]{ quittingUserId, e.getMessage() });
-        }
-
-        // Do we have a winner already?
-        if (game.getPlayers().size() == 1) {
-            String winnerId = game.getPlayers().get(0).getId();
-            try {
-                HasWonMessage win = new HasWonMessage(winnerId);
-                String winJson = objectMapper.writeValueAsString(win);
-                broadcastMessage(winJson);
-            } catch (JsonProcessingException e) {
-                logger.log(Level.SEVERE, "Error serializing HAS_WON: {0}", e.getMessage());
-            }
-            // Wrap up the game
-            handleEndGame();
-            return;
-        }
-
-        broadcastGameState();
-        checkAllPlayersForBankruptcy();
-    }
-
-    // Helper method to calculate the value of all owned properties
-    private int sumLiquidationValueOfOwnedProperties(String playerId) {
-        int total = 0;
-
-        // Houseable properties
-        for (HouseableProperty p : propertyService.getHouseableProperties()) {
-            if (playerId.equals(p.getOwnerId())) {
-                total += p.getPurchasePrice() / 2;
-            }
-        }
-        // Train stations
-        for (TrainStation ts : propertyService.getTrainStations()) {
-            if (playerId.equals(ts.getOwnerId())) {
-                total += ts.getPurchasePrice() / 2;
-            }
-        }
-        // Utilities
-        for (Utility u : propertyService.getUtilities()) {
-            if (playerId.equals(u.getOwnerId())) {
-                total += u.getPurchasePrice() / 2;
-            }
-        }
-
-        return total;
-    }
-
-    // Helper method to check if any player is bankrupt
-    private void checkAllPlayersForBankruptcy() {
-        // Copy of the players list
-        List<Player> snapshot = new ArrayList<>(game.getPlayers());
-
-        for (Player p : snapshot) {
-            String pid = p.getId();
-
-            // Net worth: cash + sum(property)
-            int cash = p.getMoney();
-            int assets = sumLiquidationValueOfOwnedProperties(pid);
-            int netWorth = cash + assets;
-
-            if (netWorth <= 0) {
-                logger.log(Level.INFO, "Player {0} is bankrupt (net worth {1}). Forcing GIVE_UP.",
-                        new Object[]{ pid, netWorth });
-
-                // Broadcast an IS_BANKRUPT
-                try {
-                    ObjectNode bankruptNotice = objectMapper.createObjectNode();
-                    bankruptNotice.put("type", "IS_BANKRUPT");
-                    bankruptNotice.put(USERID, pid);
-                    broadcastMessage(objectMapper.writeValueAsString(bankruptNotice));
-                } catch (JsonProcessingException e) {
-                    logger.log(Level.SEVERE, "Error serializing IS_BANKRUPT for {0}: {1}",
-                            new Object[]{ pid, e.getMessage() });
-                }
-
-                int playedDuration = game.getDurationPlayed();
-                // Process GIVE_UP
-                processPlayerGiveUp(pid, playedDuration, p.getMoney());
-            }
-        }
-    }
-
-    private void resetGame() {
-        game.getPlayers().clear();
-
-        // New INITs will now be accepted
-        sessionToUserId.clear();
-
-        diceManager = new DiceManager();
-        diceManager.initializeStandardDices();
-    }
-
-    private void handleKickVote(WebSocketSession session, String payload, String voterId) {
-        String targetName = payload.substring("KICK ".length()).trim();
-
-        Optional<Player> targetOpt = game.getPlayers().stream()
-                .filter(p -> p.getName().equals(targetName))
-                .findFirst();
-
-        if (targetOpt.isEmpty()) {
-            sendMessageToSession(session,
-                    createJsonError("Player not found: " + targetName));
-            return;
-        }
-
-        String targetId = targetOpt.get().getId();
-
-        Optional<Player> voterOpt = game.getPlayerById(voterId);
-        if (voterOpt.isEmpty()) {
-            sendMessageToSession(session,
-                    createJsonError("Voting player not found: " + voterId));
-            return;
-        }
-        String voterName = voterOpt.get().getName();
-
-        kickVotes.computeIfAbsent(targetId, k -> ConcurrentHashMap.newKeySet())
-                .add(voterId);
-
-        int votesFor = kickVotes.get(targetId).size();
-        int totalPlayers = game.getPlayers().size();
-
-        // Broadcast:
-        broadcastMessage("SYSTEM: " + voterName
-                + " voted to kick " + targetName
-                + " (" + votesFor + "/" + totalPlayers + ")");
-
-        // Wenn mehr als 50% der Spieler voten -> GIVE_UP = KICK
-        if (votesFor > totalPlayers / 2.0) {
-            processPlayerGiveUp(targetId, 0, 0);
-            kickVotes.remove(targetId);
-        }
-    }
-
-
-    private void handlePlayerLanding(Player player) {
-        try {
-
-            int position = player.getPosition();
-
-            // Check for tax squares
-            if (position == 30) {
-                game.sendToJail(player.getId());
-                broadcastMessage(PLAYER_PREFIX + player.getId() + " goes to jail!");
-            }
-            else if (position == 4) {  // Einkommensteuer
-                game.updatePlayerMoney(player.getId(), -200);  // Deduct money first
-                TaxPaymentMessage taxMsg = new TaxPaymentMessage(player.getId(), 200, "EINKOMMENSTEUER");
-                String jsonTax = objectMapper.writeValueAsString(taxMsg);
-                broadcastMessage(jsonTax);
-            } else if (position == 38) {  // Zusatzsteuer
-                game.updatePlayerMoney(player.getId(), -100);  // Deduct money first
-                TaxPaymentMessage taxMsg = new TaxPaymentMessage(player.getId(), 100, "ZUSATZSTEUER");
-                String jsonTax = objectMapper.writeValueAsString(taxMsg);
-                broadcastMessage(jsonTax);
-            }
-            // Check for property and collect rent if applicable
-            BaseProperty property = propertyService.getPropertyByPosition(position);
-            if (property != null) {
-                // Get the property owner first
-                Player owner = game.getPlayerById(property.getOwnerId()).orElse(null);
-                if (owner != null) {
-                    // Calculate rent amount
-                    int rentAmount = rentCalculationService.calculateRent(property, owner, player);
-                    
-                    // Create and broadcast rent payment message
-                    RentPaymentMessage rentMsg = new RentPaymentMessage(
-                            player.getId(),
-                            owner.getId(),
-                            property.getId(),
-                            property.getName(),
-                            rentAmount
-                    );
-                    String jsonRent = objectMapper.writeValueAsString(rentMsg);
-                    broadcastMessage(jsonRent);
-                    
-                    // Now try to collect the rent
-                    boolean rentCollected = rentCollectionService.collectRent(player, property, owner);
-                    if (rentCollected) {
-                        logger.log(Level.INFO, "Rent of {0} collected from player {1} for property {2}", 
-                            new Object[]{rentAmount, player.getId(), property.getName()});
-                    } else {
-                        logger.warning("Failed to collect rent for property " + property.getName());
-                    }
-                }
-            }
-
-            broadcastGameState();
-            checkAllPlayersForBankruptcy();
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error handling player landing: {0}", e.getMessage());
-        }
-    }
-    private WebSocketSession findSessionByPlayerId(String playerId) {
-        for (Map.Entry<String, String> entry : sessionToUserId.entrySet()) {
-            if (entry.getValue().equals(playerId)) {
-                String sessionId = entry.getKey();
-                for (WebSocketSession session : sessions) {
-                    if (session.getId().equals(sessionId)) {
-                        return session;
-                    }
-                }
-            }
-        }
-        return null;
     }
 }

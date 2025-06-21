@@ -10,6 +10,8 @@ public class VariablePayCard extends Card {
 
     @Override
     public void apply(Game game, String playerId) {
-
+        throw new UnsupportedOperationException(
+                "VariablePayCard.apply() not implemented yet"
+        );
     }
 }

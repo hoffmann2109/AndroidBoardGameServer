@@ -15,12 +15,12 @@ class DiceTest {
     private Dice secondDice;
     private DiceManagerInterface diceManager;
     private List<Dice> diceList;
-    private final int SIDES = 6;
+    private final int sides = 6;
 
     @BeforeEach
     void setUp() {
-        this.firstDice = new Dice(SIDES);
-        this.secondDice = new Dice(SIDES);
+        this.firstDice = new Dice(sides);
+        this.secondDice = new Dice(sides);
         this.diceList = List.of(firstDice, secondDice);
         this.diceManager = new DiceManager();
         diceManager.addDicesToGame(diceList);
@@ -28,9 +28,9 @@ class DiceTest {
 
     @Test
     void testConstructorWithCorrectParameterWorks() {
-        Dice testDice = new Dice(SIDES);
+        Dice testDice = new Dice(sides);
         Dice testSecondDice = new Dice(50);
-        assertEquals(SIDES, testDice.sides());
+        assertEquals(sides, testDice.sides());
         assertEquals(50, testSecondDice.sides());
     }
 
@@ -43,7 +43,7 @@ class DiceTest {
     @RepeatedTest(200)
     void testRollingReturnsMoreThanTwo(){
         int roll = diceManager.rollDices();
-        assertTrue(roll > 1 && roll <= 2 * SIDES);
+        assertTrue(roll > 1 && roll <= 2 * sides);
     }
 
     @Test
