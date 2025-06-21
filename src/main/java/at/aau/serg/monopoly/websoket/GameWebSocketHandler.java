@@ -663,7 +663,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         }
         try {
             // Erstellen einer ClearChatMessage
-            ClearChatMessage clearChatMessage = ClearChatMessage.create();
+            ClearChatMessage clearChatMessage = new ClearChatMessage();
             String clearChatJson = objectMapper.writeValueAsString(clearChatMessage);
 
             // Senden der Nachricht an alle Clients
