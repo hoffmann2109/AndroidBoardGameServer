@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class HasWonMessage {
-    private static final String type = "HAS_WON";
+    private static final String TYPE = "HAS_WON";
     private final String userId;
 
     @JsonCreator
@@ -12,7 +12,7 @@ public class HasWonMessage {
         this.userId = userId;
     }
 
-    public String getType()  { return type; }
+    public String getType()  { return TYPE; }
     public String getUserId(){ return userId; }
 }
 
