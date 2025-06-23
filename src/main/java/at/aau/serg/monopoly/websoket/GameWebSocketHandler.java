@@ -429,6 +429,13 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
         diceManager = new DiceManager();
         diceManager.initializeStandardDices();
+
+        // Wieder JSON init für neue Runde
+        try {
+            propertyService.init();
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "Failed to reset property state: {0}", e.getMessage());
+        }
     }
 
     void handleGiveUpFromClient(WebSocketSession session, JsonNode jsonNode) {
