@@ -1,6 +1,6 @@
-# Monopoly WebSocket Server (WebSocketDemo-Server)
+# Android Board Game WebSocket Server
 
-This repository contains the server-side application for a digital Monopoly game. It is built with Spring Boot and uses WebSockets for real-time communication with the game client.
+This repository contains the server-side application for a digital Monopoly-like game. It is built with Spring Boot and uses WebSockets for real-time communication with the game client.
 
 This backend handles game logic, player state, and communication between all connected clients.
 
